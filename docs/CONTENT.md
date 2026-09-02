@@ -23,11 +23,27 @@ Rough is fine — I will write the copy, I just cannot invent the facts.
   **2.0**, and **SIH** (Smart India Hackathon).
 - **Farming:** not a closed chapter. Continued *through* college.
 
-### The through-line
+- **Village:** Mehrajpur, Fazilka district.
+- **Community:** Bishnoi.
 
-Farming → agri-tech AI at IIT Ropar (bees = pollination) → Zamindara (farm
-machinery for Punjab farmers). Every chapter feeds the next. This is the
-spine of the site, not a coincidence to mention once.
+### The through-line — this is the whole site
+
+Bishnoi (protect animals and trees, since 1485) → farming → a model that
+finds bees → Zamindara, software for farmers.
+
+Not a career path. An inheritance. The community's twenty-nine principles,
+nine of them about protecting animals and trees; the 363 Bishnois killed at
+Khejarli in 1730 holding khejri trees against the Maharaja of Jodhpur's men,
+generally counted among the first recorded environmental movements anywhere.
+Then a descendant of that, five centuries later, teaching a machine to look
+after pollinators and building dispatch software for farm machinery.
+
+Every chapter feeds the next. State it once, plainly, in Ch.1 — and then let
+the rest of the site be evidence rather than repeating it.
+
+> **Rahul: verify.** I know the Bishnoi history from the public record, not
+> from you. Correct anything I have wrong, and say if you would rather the
+> site not lead with community at all — it is your call, not mine.
 
 ### Two structural consequences
 

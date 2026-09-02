@@ -1,0 +1,127 @@
+{
+  "_note": "Chapter copy for the journey. Lives in the repo, not the DB — see docs/ARCHITECTURE.md §3. Voice: plain and understated (docs/CONTENT.md). `todo` entries are gaps Rahul still needs to fill; they render nowhere.",
+
+  "chapters": [
+    {
+      "id": "soil",
+      "title": "Soil",
+      "years": "2003 —",
+      "accent": "#D4A72C",
+      "place": "Mehrajpur, Fazilka district, Punjab",
+      "lede": "I grew up farming. I still farm.",
+      "body": [
+        "I was born in June 2003 in Mehrajpur, a village in Fazilka district, Punjab.",
+        "My family are Bishnoi. In 1485 Guru Jambheshwar gave the community twenty-nine rules to live by. Nine of them are about protecting animals and trees. In 1730, at Khejarli, three hundred and sixty-three Bishnois were killed holding on to khejri trees that a king's men had come to cut down. They did not let go.",
+        "I did not choose any of that. It was the water I grew up in.",
+        "Farming is not a chapter that closed when I left for college. I went to Bathinda and I kept coming back for the seasons that need hands. It is still going on underneath everything below this."
+      ],
+      "artifacts": [
+        { "type": "photo", "src": "/photos/soil-1.jpg", "alt": "TODO", "caption": "" },
+        { "type": "quote", "text": "Twenty-nine principles. Nine of them about animals and trees.", "source": "Bishnoi, since 1485" }
+      ],
+      "todo": [
+        "What is actually grown on your land",
+        "The specific work you did — irrigating at 4am, driving the tractor, harvest weeks. Not 'helped on the farm'.",
+        "One memory: a day, a season, an argument",
+        "Confirm you want the Bishnoi history on the site, and that I have it right"
+      ]
+    },
+
+    {
+      "id": "grit",
+      "title": "Grit",
+      "years": "2010 — 2026",
+      "accent": "#E2703A",
+      "place": "School, then BFCET",
+      "lede": "Four sports. Inter-college medals in all of them.",
+      "body": [
+        "Basketball, athletics, volleyball, shooting ball.",
+        "Shooting ball is a Punjabi game — two teams, a net strung high between them, the ball struck over by hand. It is barely played outside this part of the country, which is why it never appears on anyone's list of sports and why it is on mine.",
+        "Four sports is not focus. It is what happens when you will play anything anyone is short a player for.",
+        "Sport is the only place most people learn to lose in front of an audience and come back the next week anyway. That turned out to be the transferable part."
+      ],
+      "artifacts": [
+        { "type": "photo", "src": "/photos/grit-basketball.jpg", "alt": "TODO", "caption": "Basketball" },
+        { "type": "photo", "src": "/photos/grit-volleyball.jpg", "alt": "TODO", "caption": "Volleyball" },
+        { "type": "photo", "src": "/photos/grit-athletics.jpg", "alt": "TODO", "caption": "Athletics" },
+        { "type": "stat", "value": "4", "label": "sports, inter-college medals" }
+      ],
+      "todo": [
+        "Check my description of shooting ball is right",
+        "Which sport you were actually best at",
+        "One loss worth putting on a public website"
+      ]
+    },
+
+    {
+      "id": "campus",
+      "title": "Campus",
+      "years": "2022 — 2026",
+      "accent": "#5B8DBE",
+      "place": "Baba Farid College of Engineering and Technology, Bathinda",
+      "lede": "B.Tech, Computer Science.",
+      "body": [
+        "Four years at BFCET in Bathinda, about two hundred kilometres from the field I grew up on.",
+        "I went home for the seasons. Most of my class did not have a second job waiting for them at the end of term; I did, and it had nothing to do with computers.",
+        "This is where the input started outrunning the output — where reading stopped being a syllabus and became a habit."
+      ],
+      "artifacts": [
+        { "type": "photo", "src": "/photos/campus-1.jpg", "alt": "TODO", "caption": "" }
+      ],
+      "todo": [
+        "Three books that changed something, one line each on what they changed",
+        "What you actually studied vs what you actually learned",
+        "Anything you started or ran at college besides the hackathons"
+      ]
+    },
+
+    {
+      "id": "build",
+      "title": "Build",
+      "years": "2022 —",
+      "accent": "#3DDC97",
+      "place": "IIT Ropar → Fazilka",
+      "lede": "One month at IIT Ropar, teaching a machine to find bees.",
+      "body": [
+        "First year of college, I spent a month at iHub AWaDH — IIT Ropar's agriculture and water technology hub — training a model to detect honey bees.",
+        "I do not think I noticed at the time that I had travelled four hundred kilometres to do a more technical version of what my family has done for five hundred years. Look after the things that keep the field alive.",
+        "Everything since has pointed the same direction. Rights is a legal-emergency app — press SOS, reach a verified lawyer, store the evidence encrypted. Zamindara is Uber for farm machinery: a farmer walks his boundary with his phone, the app measures it in killa and kanal and marla, and the machine owners nearby get the request.",
+        "One of those is for people in the worst hour of their life. The other is for my neighbours."
+      ],
+      "artifacts": [
+        { "type": "photo", "src": "/photos/build-1.jpg", "alt": "TODO", "caption": "IIT Ropar, iHub AWaDH" },
+        { "type": "stat", "value": "1 month", "label": "IIT Ropar, first year" }
+      ],
+      "todo": [
+        "What was the bee model FOR — hive counts, disease, pollination monitoring?",
+        "The first thing you ever made that worked, and the year",
+        "Hardest bug or problem you have solved"
+      ]
+    },
+
+    {
+      "id": "signal",
+      "title": "Signal",
+      "years": "2023 —",
+      "accent": "#B06AF0",
+      "place": "BFCET, and wherever the next one is",
+      "lede": "Three hackathons. I was on the side that runs them.",
+      "body": [
+        "Before I knew the word hackathon, I won silver at a youth competition for an event called installation: collect garbage, and build something out of it in three hours. That is the whole format. I have been doing versions of it ever since.",
+        "BFCET Hack 1.0. BFCET Hack 2.0. Smart India Hackathon. Organiser, core team, all three — between one and three hundred people through the door each time.",
+        "Attending a hackathon is a weekend. Running one is sponsors, food, wifi that holds under two hundred laptops, judges who turn up, and a room that still has energy in it at four in the morning. Nobody claps for the people who did that. It is still the thing on this site I am most willing to be judged on."
+      ],
+      "artifacts": [
+        { "type": "stat", "value": "3", "label": "hackathons, organiser side" },
+        { "type": "stat", "value": "100–300", "label": "people through the door, each" },
+        { "type": "photo", "src": "/photos/signal-1.jpg", "alt": "TODO", "caption": "" }
+      ],
+      "todo": [
+        "Exact participant numbers if you can get them",
+        "Dates for BFCET Hack 1.0 and 2.0",
+        "One thing that got built, and one thing that went wrong",
+        "Sponsors worth naming"
+      ]
+    }
+  ]
+}
