@@ -147,10 +147,6 @@
   pointer-events: none;
 }
 
-.node-label {
-  transition: opacity 500ms var(--ease);
-}
-
 /* ---------- the chapter panel ---------- */
 
 .panel {

@@ -4,6 +4,8 @@ import { Line, Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { HEAD } from './layout.js'
 
+const world = new THREE.Vector3()
+
 export default function Nodes({ nodes, active, onPick }) {
   return (
     <group>
@@ -25,12 +27,16 @@ function Node({ node, index, state, onPick }) {
   const dot = useRef()
   const group = useRef()
   const line = useRef()
+  const label = useRef()
 
   // A curve, not a straight spoke — straight lines look like a diagram.
+  // The bulge pushes outward from the spine, not sideways in x, or the
+  // branches on the left and right of the ring bow the wrong way.
   const curve = useMemo(() => {
     const mid = HEAD.clone().lerp(node.pos, 0.5)
     mid.y += 0.35
-    mid.x *= 1.25
+    mid.x *= 1.3
+    mid.z *= 1.3
     return new THREE.QuadraticBezierCurve3(HEAD, mid, node.pos).getPoints(40)
   }, [node.pos])
 
@@ -47,20 +53,36 @@ function Node({ node, index, state, onPick }) {
     group.current.position.y = state === 'idle' ? Math.sin(t * 0.5) * 0.06 : 0
     const wobble = state === 'idle' && !hover ? Math.sin(t * 1.6) * 0.08 : 0
 
+    // Now that the rings are full circles, half the branches are behind him
+    // at any moment. Fade them by distance or the labels pile up on top of
+    // each other and it reads as noise rather than depth.
+    dot.current.getWorldPosition(world)
+    const depth = THREE.MathUtils.clamp(
+      (world.distanceTo(s.camera.position) - 4.7) / 6.2,
+      0,
+      1
+    )
+    const fade = 1 - depth * 0.82
+
     dot.current.scale.setScalar(
       THREE.MathUtils.lerp(dot.current.scale.x, targetScale + wobble, k)
     )
     dot.current.material.opacity = THREE.MathUtils.lerp(
       dot.current.material.opacity,
-      state === 'off' ? 0.15 : 1,
+      (state === 'off' ? 0.15 : 1) * fade,
       k
     )
     if (line.current) {
       line.current.material.opacity = THREE.MathUtils.lerp(
         line.current.material.opacity,
-        targetOpacity,
+        targetOpacity * fade,
         k
       )
+    }
+    if (label.current) {
+      label.current.style.opacity = state === 'off' ? 0 : fade.toFixed(3)
+      // a branch round the back should not be clickable through him
+      label.current.style.pointerEvents = fade < 0.45 ? 'none' : 'auto'
     }
   })
 
@@ -111,6 +133,7 @@ function Node({ node, index, state, onPick }) {
         }}
       >
         <button
+          ref={label}
           className={
             'node-label' +
             (hover ? ' is-hot' : '') +
