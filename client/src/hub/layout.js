@@ -16,10 +16,12 @@ const LAYOUT = [
 // Rooms sit low and close, under the chapters: places rather than years.
 // Kept up and in, clear of the name block in the bottom-left corner.
 const ROOM_LAYOUT = [
-  { a: -0.45, r: 2.15, y: 1.28 },
+  // left room rides higher: its dot was landing on the Mehrajpur line
+  { a: -0.45, r: 2.15, y: 1.55 },
   { a: 0.45, r: 2.15, y: 1.28 },
-  { a: -0.9, r: 2.45, y: 1.02 },
-  { a: 0.9, r: 2.45, y: 1.02 },
+  // third room goes right, not left — the name block owns the bottom-left
+  { a: 0.95, r: 2.45, y: 1.0 },
+  { a: -0.95, r: 2.45, y: 1.0 },
 ]
 
 export function placeRooms(rooms) {

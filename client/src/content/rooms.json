@@ -17,6 +17,14 @@
       "accent": "#8C8577",
       "kind": "link",
       "to": "/work"
+    },
+    {
+      "id": "blog",
+      "title": "Blog",
+      "years": "soon",
+      "accent": "#8C8577",
+      "kind": "text",
+      "lede": "Nothing written yet."
     }
   ]
 }
