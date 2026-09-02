@@ -1,5 +1,6 @@
 import { Suspense, useEffect, useMemo, useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { Shadow } from '@react-three/drei'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import * as THREE from 'three'
 import data from '../content/chapters.json'
@@ -74,7 +75,16 @@ export default function Hub() {
 
           <Suspense fallback={null}>
             <Rig frozen={!!active}>
-              <Figure />
+              {/* Grounds him. The painted horizon in each scene does not line
+                  up with the 3D floor, and without this he floats. */}
+              <Shadow
+                position={[0, 0.015, 0]}
+                rotation={[-Math.PI / 2, 0, 0]}
+                scale={[0.85, 0.85, 1]}
+                opacity={0.55}
+                color="#000000"
+              />
+              <Figure facing={active ? nodes.find((n) => n.id === active)?.pos : null} />
               <Nodes nodes={nodes} active={active} onPick={go} />
             </Rig>
           </Suspense>

@@ -51,12 +51,24 @@ export const HOME_VIEW = {
   look: new THREE.Vector3(0, 2.0, 0),
 }
 
-// Travelling to a branch. The look target is pushed left of the node so the
-// node lands right-of-centre and the reading panel gets the left half.
+const CHEST = new THREE.Vector3(0, 1.2, 0)
+const UP = new THREE.Vector3(0, 1, 0)
+
+// Travelling to a branch orbits the camera around the figure, part way
+// towards whichever branch you picked — so every chapter has its own
+// viewpoint and he is on screen in all of them, turning to face it.
+//
+// Framing the node itself put him behind the reading panel, which made the
+// turn pointless: you could not see him do it.
 export function viewFor(node) {
-  const off = new THREE.Vector3(-0.95, 0, 0)
-  return {
-    pos: node.pos.clone().add(new THREE.Vector3(-0.95, 0.08, 2.55)),
-    look: node.pos.clone().add(off),
-  }
+  const az = Math.atan2(node.pos.x, node.pos.z + 2.5) * 0.62
+  const pos = new THREE.Vector3(Math.sin(az) * 5.4, 2.2, Math.cos(az) * 5.4)
+
+  // Aim left of him, so he sits in the right half and the panel gets the
+  // left half to itself.
+  const forward = CHEST.clone().sub(pos).normalize()
+  const right = forward.clone().cross(UP).normalize()
+  const look = CHEST.clone().addScaledVector(right, -1.85)
+
+  return { pos, look }
 }
