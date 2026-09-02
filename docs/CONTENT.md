@@ -9,13 +9,19 @@ Rough is fine — I will write the copy, I just cannot invent the facts.
 
 ## CONFIRMED — answered 2026-09-03
 
+- **Born:** 9 June 2003. Fazilka, Punjab.
 - **College:** Baba Farid College of Engineering and Technology (BFCET),
   Bathinda, Punjab. B.Tech Computer Science. **2022–2026.**
 - **IIT training:** IIT Ropar, **iHub AWaDH** (Agriculture & Water Technology
   Development Hub). One month, first year (2022–23). Trained a model to
   detect bees / honey bees.
-- **Sports, medalled:** basketball, athletics, volleyball, shooting ball.
-- **Hackathons:** BFCET Hack **1.0** and **2.0**, hosted at the college.
+- **Sports:** basketball, athletics, volleyball, shooting ball. Medals at
+  **inter-college** level.
+- **Youth competition, silver:** "installation" event — collect garbage,
+  build something from it in three hours.
+- **Hackathons, organiser / core team:** BFCET Hack **1.0**, BFCET Hack
+  **2.0**, and **SIH** (Smart India Hackathon).
+- **Farming:** not a closed chapter. Continued *through* college.
 
 ### The through-line
 
@@ -23,18 +29,47 @@ Farming → agri-tech AI at IIT Ropar (bees = pollination) → Zamindara (farm
 machinery for Punjab farmers). Every chapter feeds the next. This is the
 spine of the site, not a coincidence to mention once.
 
+### Two structural consequences
+
+1. **Soil does not end.** It runs underneath Grit, Campus, Build and Signal.
+   The rail should show it as a continuing thread, not a segment that stops
+   in 2018. The line is "I never left", not "I left and came back".
+2. **The garbage installation is the first hackathon.** Three hours, build
+   something from waste, silver. It belongs beside SIH in Ch.5 as the
+   origin of the hackathon thread — not buried in the sports list.
+
+### Chapter year ranges
+
+| Chapter | Years | Note |
+|---|---|---|
+| Soil | 2003 → today | continuous, never ends |
+| Grit | ~2010 → 2026 | school sport → inter-college medals |
+| Campus | 2022 → 2026 | BFCET, B.Tech CSE |
+| Build | 2022 → today | starts with IIT Ropar in first year |
+| Signal | 2023 → today | BFCET Hack 1.0, 2.0, SIH |
+
+Grit and Build overlap Campus on purpose. Chapters are threads, not slots.
+
 ---
 
-## STILL MISSING — these four block Phase 2
+## INCOMING
 
-1. **Birth year**, so Soil and Grit get real year ranges. Roughly:
-   Soil 2003?–2018, Grit ~2016–2022, Campus/Build 2022–2026.
-2. **Sports level** — those medals: school, district, inter-college,
-   inter-university, or state?
-3. **Third hackathon.** You said three; I have BFCET Hack 1.0 and 2.0.
-   Name of the third, or is it actually two?
-4. **Hackathon numbers** — your role (organiser? core team? lead?), and
-   roughly how many people showed up to each.
+Rahul is sending: basketball, volleyball and athletics photos (separately),
+plus **photos and video** of farming.
+
+> Video note: muted, looping, ≤6s, poster frame required, and never on the
+> critical path. A farming clip as a chapter hero is worth it; anything
+> longer gets a play button, not an autoplay.
+
+---
+
+## STILL OPEN
+
+- Roughly how many people at each hackathon
+- Shooting ball (the Punjabi team sport) vs rifle shooting — naming it right
+- What the bee model was actually *for* (hive counts? disease? pollination?)
+- 3 books (Ch.3) — not blocking, Shelf is Phase 7
+- Voice
 
 ---
 
