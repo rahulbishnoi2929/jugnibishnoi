@@ -39,15 +39,24 @@ export default function Hub() {
         Just show me the work ↗
       </Link>
 
+      {/* The chapter's world, full bleed behind the canvas. Arriving at a
+          branch should put you in the place, not show you a stamp of it. */}
+      <div
+        className="hub-scene"
+        style={{
+          backgroundImage: chapter?.scene ? `url(${chapter.scene})` : 'none',
+          opacity: chapter ? 1 : 0,
+        }}
+      />
+
       <div className="hub-canvas">
         <Canvas
           shadows
           dpr={[1, 1.6]}
           camera={{ position: HOME_VIEW.pos.toArray(), fov: 40 }}
-          gl={{ antialias: true }}
+          // transparent so the scene behind shows through once travelled
+          gl={{ antialias: true, alpha: true }}
         >
-          <color attach="background" args={['#0f100d']} />
-          <fog attach="fog" args={['#0f100d', 7, 16]} />
 
           <ambientLight intensity={0.35} />
           <directionalLight position={[-4, 5, -6]} intensity={2.6} color="#d4a72c" />
@@ -62,10 +71,15 @@ export default function Hub() {
             </Rig>
           </Suspense>
 
-          <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-            <circleGeometry args={[7, 48]} />
-            <meshStandardMaterial color="#15130e" roughness={1} />
-          </mesh>
+          {/* Ground exists only at the hub. Once you have travelled, the
+              chapter's own artwork is the ground, and this drew a brown
+              band across it. */}
+          {!active && (
+            <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+              <circleGeometry args={[7, 48]} />
+              <meshStandardMaterial color="#15130e" roughness={1} />
+            </mesh>
+          )}
         </Canvas>
       </div>
 

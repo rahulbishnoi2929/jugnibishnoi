@@ -2,6 +2,21 @@
   position: relative;
   height: 100vh;
   overflow: hidden;
+  background: var(--bg);
+}
+
+/* the chapter's world, full bleed */
+.hub-scene {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  transition: opacity 700ms var(--ease);
+  z-index: 0;
+}
+
+.hub-canvas {
+  z-index: 1;
 }
 
 .hub-canvas {
@@ -154,15 +169,6 @@
     opacity: 0;
     transform: translateX(-24px);
   }
-}
-
-/* the chapter's own art, bled in behind its text */
-.panel-scene {
-  position: absolute;
-  inset: 0;
-  background-size: cover;
-  background-position: center right;
-  opacity: 0.5;
 }
 
 .panel::after {

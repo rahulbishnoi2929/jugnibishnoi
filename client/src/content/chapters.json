@@ -1,6 +1,5 @@
 {
   "_note": "Chapter copy for the journey. Lives in the repo, not the DB — see docs/ARCHITECTURE.md §3. Voice: plain and understated (docs/CONTENT.md). `todo` entries are gaps Rahul still needs to fill; they render nowhere.",
-
   "chapters": [
     {
       "id": "soil",
@@ -17,8 +16,17 @@
         "Farming is not a chapter that closed when I left for college. I went to Bathinda and I kept coming back for the seasons that need hands. It is still going on underneath everything below this."
       ],
       "artifacts": [
-        { "type": "photo", "src": "/photos/soil-1.jpg", "alt": "TODO", "caption": "" },
-        { "type": "quote", "text": "Twenty-nine principles. Nine of them about animals and trees.", "source": "Bishnoi, since 1485" }
+        {
+          "type": "photo",
+          "src": "/photos/soil-1.jpg",
+          "alt": "TODO",
+          "caption": ""
+        },
+        {
+          "type": "quote",
+          "text": "Twenty-nine principles. Nine of them about animals and trees.",
+          "source": "Bishnoi, since 1485"
+        }
       ],
       "todo": [
         "What is actually grown on your land",
@@ -27,7 +35,6 @@
         "Confirm you want the Bishnoi history on the site, and that I have it right"
       ]
     },
-
     {
       "id": "grit",
       "title": "Grit",
@@ -42,18 +49,37 @@
         "Sport is the only place most people learn to lose in front of an audience and come back the next week anyway. That turned out to be the transferable part."
       ],
       "artifacts": [
-        { "type": "photo", "src": "/photos/grit-basketball.jpg", "alt": "TODO", "caption": "Basketball" },
-        { "type": "photo", "src": "/photos/grit-volleyball.jpg", "alt": "TODO", "caption": "Volleyball" },
-        { "type": "photo", "src": "/photos/grit-athletics.jpg", "alt": "TODO", "caption": "Athletics" },
-        { "type": "stat", "value": "4", "label": "sports, inter-college medals" }
+        {
+          "type": "photo",
+          "src": "/photos/grit-basketball.jpg",
+          "alt": "TODO",
+          "caption": "Basketball"
+        },
+        {
+          "type": "photo",
+          "src": "/photos/grit-volleyball.jpg",
+          "alt": "TODO",
+          "caption": "Volleyball"
+        },
+        {
+          "type": "photo",
+          "src": "/photos/grit-athletics.jpg",
+          "alt": "TODO",
+          "caption": "Athletics"
+        },
+        {
+          "type": "stat",
+          "value": "4",
+          "label": "sports, inter-college medals"
+        }
       ],
       "todo": [
         "Check my description of shooting ball is right",
         "Which sport you were actually best at",
         "One loss worth putting on a public website"
-      ]
+      ],
+      "scene": "/scenes/grit.svg"
     },
-
     {
       "id": "campus",
       "title": "Campus",
@@ -67,15 +93,20 @@
         "This is where the input started outrunning the output — where reading stopped being a syllabus and became a habit."
       ],
       "artifacts": [
-        { "type": "photo", "src": "/photos/campus-1.jpg", "alt": "TODO", "caption": "" }
+        {
+          "type": "photo",
+          "src": "/photos/campus-1.jpg",
+          "alt": "TODO",
+          "caption": ""
+        }
       ],
       "todo": [
         "Three books that changed something, one line each on what they changed",
         "What you actually studied vs what you actually learned",
         "Anything you started or ran at college besides the hackathons"
-      ]
+      ],
+      "scene": "/scenes/campus.svg"
     },
-
     {
       "id": "build",
       "title": "Build",
@@ -90,16 +121,25 @@
         "One of those is for people in the worst hour of their life. The other is for my neighbours."
       ],
       "artifacts": [
-        { "type": "photo", "src": "/photos/build-1.jpg", "alt": "TODO", "caption": "IIT Ropar, iHub AWaDH" },
-        { "type": "stat", "value": "1 month", "label": "IIT Ropar, first year" }
+        {
+          "type": "photo",
+          "src": "/photos/build-1.jpg",
+          "alt": "TODO",
+          "caption": "IIT Ropar, iHub AWaDH"
+        },
+        {
+          "type": "stat",
+          "value": "1 month",
+          "label": "IIT Ropar, first year"
+        }
       ],
       "todo": [
         "What was the bee model FOR — hive counts, disease, pollination monitoring?",
         "The first thing you ever made that worked, and the year",
         "Hardest bug or problem you have solved"
-      ]
+      ],
+      "scene": "/scenes/build.svg"
     },
-
     {
       "id": "signal",
       "title": "Signal",
@@ -113,16 +153,30 @@
         "Attending a hackathon is a weekend. Running one is sponsors, food, wifi that holds under two hundred laptops, judges who turn up, and a room that still has energy in it at four in the morning. Nobody claps for the people who did that. It is still the thing on this site I am most willing to be judged on."
       ],
       "artifacts": [
-        { "type": "stat", "value": "3", "label": "hackathons, organiser side" },
-        { "type": "stat", "value": "100–300", "label": "people through the door, each" },
-        { "type": "photo", "src": "/photos/signal-1.jpg", "alt": "TODO", "caption": "" }
+        {
+          "type": "stat",
+          "value": "3",
+          "label": "hackathons, organiser side"
+        },
+        {
+          "type": "stat",
+          "value": "100–300",
+          "label": "people through the door, each"
+        },
+        {
+          "type": "photo",
+          "src": "/photos/signal-1.jpg",
+          "alt": "TODO",
+          "caption": ""
+        }
       ],
       "todo": [
         "Exact participant numbers if you can get them",
         "Dates for BFCET Hack 1.0 and 2.0",
         "One thing that got built, and one thing that went wrong",
         "Sponsors worth naming"
-      ]
+      ],
+      "scene": "/scenes/signal.svg"
     }
   ]
 }

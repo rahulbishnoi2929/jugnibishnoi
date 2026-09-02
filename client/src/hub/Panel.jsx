@@ -13,10 +13,6 @@ export default function Panel({ chapter, onBack }) {
       aria-label={title}
       key={chapter.id}
     >
-      {scene && (
-        <div className="panel-scene" style={{ backgroundImage: `url(${scene})` }} />
-      )}
-
       <div className="panel-scroll">
         <button className="panel-back" onClick={onBack}>
           ← All chapters

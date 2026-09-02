@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice">
+<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#07080b"/><stop offset="55%" stop-color="#140f0c"/><stop offset="100%" stop-color="#3a2416"/></linearGradient><linearGradient id="ground" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#43291b"/><stop offset="22%" stop-color="#241610"/><stop offset="100%" stop-color="#0d0907"/></linearGradient><radialGradient id="pool" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#e2703a" stop-opacity="0.42"/>
+      <stop offset="60%" stop-color="#e2703a" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#e2703a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="lamp" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#ffdfc0"/>
+      <stop offset="35%" stop-color="#e2703a" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#e2703a" stop-opacity="0"/>
+    </radialGradient></defs>
+
+  <rect width="1200" height="800" fill="url(#sky)"/>
+  <rect x="0" y="372" width="1200" height="428" fill="url(#ground)"/>
+
+  <!-- the light, and the pool it throws -->
+  <circle cx="252" cy="150" r="180" fill="url(#lamp)"/>
+  <ellipse cx="560" cy="620" rx="520" ry="190" fill="url(#pool)"/>
+
+  <g><line x1="620" y1="372" x2="0" y2="774.1" stroke="#e2b48f" stroke-width="1.6" stroke-opacity="0.2"/><line x1="620" y1="372" x2="290" y2="800" stroke="#e2b48f" stroke-width="1.6" stroke-opacity="0.2"/><line x1="620" y1="372" x2="620" y2="800" stroke="#e2b48f" stroke-width="1.6" stroke-opacity="0.3"/><line x1="620" y1="372" x2="950" y2="800" stroke="#e2b48f" stroke-width="1.6" stroke-opacity="0.2"/><line x1="620" y1="372" x2="1200" y2="748.1" stroke="#e2b48f" stroke-width="1.6" stroke-opacity="0.2"/></g>
+
+  <!-- free-throw arc and baseline, in perspective -->
+  <ellipse cx="580" cy="600" rx="250" ry="72" fill="none" stroke="#e2b48f" stroke-width="1.6" stroke-opacity="0.22"/>
+  <line x1="120" y1="470" x2="1080" y2="470" stroke="#e2b48f" stroke-width="1.2" stroke-opacity="0.14"/>
+
+  <circle cx="617.1" cy="375.8" r="0.7" fill="#ffd9bb" opacity="0.1"/><circle cx="616.2" cy="426.4" r="0.9" fill="#ffd9bb" opacity="0.1"/><circle cx="732.1" cy="547.5" r="1.4" fill="#ffd9bb" opacity="0.1"/><circle cx="617.4" cy="384.1" r="0.7" fill="#ffd9bb" opacity="0.1"/><circle cx="661.2" cy="454.6" r="1" fill="#ffd9bb" opacity="0.1"/><circle cx="540.6" cy="598.4" r="1.6" fill="#ffd9bb" opacity="0.2"/><circle cx="629.3" cy="398" r="0.8" fill="#ffd9bb" opacity="0.1"/><circle cx="562.4" cy="489.3" r="1.1" fill="#ffd9bb" opacity="0.1"/><circle cx="682" cy="656.5" r="1.8" fill="#ffd9bb" opacity="0.2"/><circle cx="591.2" cy="417.7" r="0.9" fill="#ffd9bb" opacity="0.1"/><circle cx="632.4" cy="530.7" r="1.3" fill="#ffd9bb" opacity="0.1"/><circle cx="613.5" cy="380.5" r="0.7" fill="#ffd9bb" opacity="0.1"/><circle cx="615.5" cy="443.6" r="1" fill="#ffd9bb" opacity="0.1"/><circle cx="753.9" cy="579.1" r="1.5" fill="#ffd9bb" opacity="0.1"/><circle cx="615.9" cy="392.3" r="0.8" fill="#ffd9bb" opacity="0.1"/><circle cx="672.6" cy="475.9" r="1.1" fill="#ffd9bb" opacity="0.1"/><circle cx="530" cy="634.5" r="1.7" fill="#ffd9bb" opacity="0.2"/><circle cx="633.8" cy="409.8" r="0.8" fill="#ffd9bb" opacity="0.1"/><circle cx="551" cy="514.9" r="1.2" fill="#ffd9bb" opacity="0.1"/><circle cx="621.2" cy="377.5" r="0.7" fill="#ffd9bb" opacity="0.1"/><circle cx="581.7" cy="433.4" r="0.9" fill="#ffd9bb" opacity="0.1"/><circle cx="636.2" cy="560.7" r="1.4" fill="#ffd9bb" opacity="0.1"/><circle cx="608.3" cy="387.3" r="0.8" fill="#ffd9bb" opacity="0.1"/><circle cx="615" cy="463.4" r="1" fill="#ffd9bb" opacity="0.1"/><circle cx="778" cy="613.5" r="1.6" fill="#ffd9bb" opacity="0.2"/><circle cx="614" cy="402.8" r="0.8" fill="#ffd9bb" opacity="0.1"/><circle cx="685.8" cy="499.9" r="1.2" fill="#ffd9bb" opacity="0.1"/><circle cx="519" cy="673.6" r="1.8" fill="#ffd9bb" opacity="0.2"/><circle cx="639.5" cy="424.1" r="0.9" fill="#ffd9bb" opacity="0.1"/><circle cx="538.6" cy="543.2" r="1.3" fill="#ffd9bb" opacity="0.1"/><circle cx="622.6" cy="383.2" r="0.7" fill="#ffd9bb" opacity="0.1"/><circle cx="570.9" cy="451.7" r="1" fill="#ffd9bb" opacity="0.1"/><circle cx="640.7" cy="593.5" r="1.5" fill="#ffd9bb" opacity="0.1"/><circle cx="601.5" cy="396.5" r="0.8" fill="#ffd9bb" opacity="0.1"/>
+
+  <!-- floodlight pole -->
+  <g fill="#08070a">
+    <rect x="246" y="150" width="11" height="330"/>
+    <rect x="228" y="132" width="48" height="20" rx="3"/>
+  </g>
+
+  <!-- hoop -->
+  <g fill="#08070a">
+    <rect x="908" y="250" width="9" height="250"/>
+    <rect x="856" y="238" width="96" height="58" rx="2"/>
+    <rect x="884" y="292" width="42" height="5" rx="2"/>
+  </g>
+  <path d="M886 297 L892 330 L918 330 L924 297" fill="none" stroke="#08070a" stroke-width="2.2" stroke-opacity="0.85"/>
+
+  <rect x="0" y="372" width="1200" height="120" fill="#3a2416" opacity="0.35"/>
+</svg>
