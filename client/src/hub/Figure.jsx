@@ -22,7 +22,7 @@ export default function Figure({ facing }) {
 
     // Breathing. The old amplitude was 0.025 on a 1.8-unit figure, which
     // is invisible at any camera distance — this is the same idea, read.
-    group.current.position.y = Math.sin(t * 0.9) * 0.07
+    group.current.position.y = Math.sin(t * 0.9) * 0.12
     chest.current.scale.y = 1 + Math.sin(t * 0.9) * 0.022
 
     // Turning with the cursor is the turntable's job now — he and the

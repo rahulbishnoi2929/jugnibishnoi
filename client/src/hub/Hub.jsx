@@ -34,21 +34,30 @@ export default function Hub() {
     navigate(node?.kind === 'link' ? node.to : '/c/' + next)
   }
 
-  // Drag to turn him. Held in a ref, not state — it changes every pointer
-  // move and only the render loop needs to read it.
-  const drag = useRef(0)
+  // Drag to turn him — both ways. Nothing happens on hover: the
+  // constellation moves when you take hold of it and not before.
+  // A ref, not state: it changes every pointer move and only the render
+  // loop reads it.
+  const drag = useRef({ x: 0, y: 0 })
   const from = useRef(null)
   const [dragging, setDragging] = useState(false)
 
   const onDown = (e) => {
     if (e.button !== 0) return
-    from.current = e.clientX
+    from.current = { x: e.clientX, y: e.clientY }
     setDragging(true)
   }
   const onMove = (e) => {
-    if (from.current === null) return
-    drag.current += (e.clientX - from.current) * 0.011
-    from.current = e.clientX
+    if (!from.current) return
+    drag.current.x += (e.clientX - from.current.x) * 0.011
+    // Tilt is clamped — past about 25° you are looking at the top of his
+    // head and the branches collapse into a line.
+    drag.current.y = THREE.MathUtils.clamp(
+      drag.current.y + (e.clientY - from.current.y) * 0.007,
+      -0.45,
+      0.45
+    )
+    from.current = { x: e.clientX, y: e.clientY }
   }
   const onUp = () => {
     from.current = null
@@ -168,10 +177,10 @@ function Travel({ view }) {
 // aims at are the ones layout.js computed.
 function Rig({ children, frozen, drag }) {
   const g = useRef()
-  useFrame((state, dt) => {
+  useFrame((_, dt) => {
     const k = 1 - Math.pow(0.002, Math.min(dt, 0.1))
-    const ty = frozen ? 0 : state.pointer.x * 0.8 + drag.current
-    const tx = frozen ? 0 : -state.pointer.y * 0.07
+    const ty = frozen ? 0 : drag.current.x
+    const tx = frozen ? 0 : drag.current.y
     g.current.rotation.y = THREE.MathUtils.lerp(g.current.rotation.y, ty, k)
     g.current.rotation.x = THREE.MathUtils.lerp(g.current.rotation.x, tx, k)
   })
