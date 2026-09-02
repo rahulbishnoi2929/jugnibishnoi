@@ -111,3 +111,206 @@
     bottom: var(--s3);
   }
 }
+
+/* ---------- travelled state ---------- */
+
+.hub-copy,
+.hub-alt {
+  transition: opacity 400ms var(--ease);
+}
+
+.is-travelled .hub-copy,
+.is-travelled .hub-alt {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Hidden, not faded: at 0.18 they still ghosted through the panel text.
+   The dots keep showing the branches you did not take. */
+.node-label.is-muted {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.node-label {
+  transition: opacity 500ms var(--ease);
+}
+
+/* ---------- the chapter panel ---------- */
+
+.panel {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: min(46ch, 52vw);
+  z-index: 3;
+  display: flex;
+  animation: panel-in 500ms var(--ease) both;
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+}
+
+/* the chapter's own art, bled in behind its text */
+.panel-scene {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center right;
+  opacity: 0.5;
+}
+
+.panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    var(--bg) 0%,
+    color-mix(in srgb, var(--bg) 94%, transparent) 55%,
+    color-mix(in srgb, var(--bg) 60%, transparent) 100%
+  );
+}
+
+.panel-scroll {
+  position: relative;
+  z-index: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--s5) var(--s5) var(--s7);
+  width: 100%;
+}
+
+.panel-back {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0 0 var(--s5);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: var(--step--1);
+  color: var(--ink-dim);
+}
+
+.panel-back:hover {
+  color: var(--node);
+}
+
+.panel-years {
+  font-family: var(--mono);
+  font-size: var(--step--1);
+  color: var(--node);
+  letter-spacing: 0.1em;
+  margin: 0;
+}
+
+.panel-title {
+  font-family: var(--display);
+  font-size: var(--step-2);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  margin: var(--s2) 0 0;
+}
+
+.panel-place {
+  font-family: var(--mono);
+  font-size: var(--step--1);
+  color: var(--ink-dim);
+  margin: var(--s3) 0 0;
+}
+
+.panel-lede {
+  font-family: var(--display);
+  font-size: var(--step-1);
+  line-height: 1.35;
+  color: var(--node);
+  margin: var(--s4) 0 0;
+}
+
+.panel-body {
+  margin: var(--s4) 0 0;
+}
+
+.panel-stat {
+  margin: var(--s5) 0 0;
+  display: grid;
+  gap: 2px;
+}
+
+.panel-stat-value {
+  font-family: var(--mono);
+  font-size: var(--step-1);
+  color: var(--node);
+  line-height: 1;
+}
+
+.panel-stat-label {
+  font-size: var(--step--1);
+  color: var(--ink-dim);
+}
+
+.panel-quote {
+  margin: var(--s5) 0 0;
+  padding-left: var(--s4);
+  border-left: 2px solid var(--node);
+}
+
+.panel-quote p {
+  font-family: var(--display);
+  font-size: var(--step-1);
+  line-height: 1.35;
+  margin: 0;
+}
+
+.panel-quote cite {
+  display: block;
+  margin-top: var(--s2);
+  font-family: var(--mono);
+  font-size: var(--step--1);
+  font-style: normal;
+  color: var(--ink-dim);
+}
+
+.panel-photo {
+  margin: var(--s5) 0 0;
+}
+
+.panel-photo img {
+  width: 100%;
+  height: auto;
+  display: block;
+  filter: saturate(0.85);
+}
+
+.panel-photo figcaption {
+  font-family: var(--mono);
+  font-size: var(--step--1);
+  color: var(--ink-dim);
+  margin-top: var(--s2);
+}
+
+@media (max-width: 900px) {
+  .panel {
+    width: 100%;
+    top: auto;
+    height: 72vh;
+  }
+
+  .panel-scroll {
+    padding: var(--s4) var(--s3) var(--s6);
+  }
+
+  .panel::after {
+    background: linear-gradient(
+      0deg,
+      var(--bg) 0%,
+      color-mix(in srgb, var(--bg) 94%, transparent) 70%,
+      color-mix(in srgb, var(--bg) 55%, transparent) 100%
+    );
+  }
+}

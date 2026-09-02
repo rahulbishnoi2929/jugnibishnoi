@@ -16,6 +16,8 @@ createRoot(document.getElementById('root')).render(
       <Suspense fallback={<div className="boot" />}>
         <Routes>
           <Route path="/" element={<Hub />} />
+          {/* a branch is a real URL, so it is shareable and Back works */}
+          <Route path="/c/:id" element={<Hub />} />
           <Route path="/journey" element={<Journey />} />
           <Route path="/work" element={<Work />} />
         </Routes>
