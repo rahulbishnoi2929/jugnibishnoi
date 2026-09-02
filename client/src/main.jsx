@@ -1,18 +1,25 @@
-import { StrictMode } from 'react'
+import { StrictMode, lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './styles/tokens.css'
 import './styles/app.css'
-import Journey from './journey/Journey.jsx'
 import Work from './pages/Work.jsx'
+
+// three.js is ~150KB gzipped. Split it so /work — the page a recruiter
+// opens — never downloads a line of it.
+const Hub = lazy(() => import('./hub/Hub.jsx'))
+const Journey = lazy(() => import('./journey/Journey.jsx'))
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Journey />} />
-        <Route path="/work" element={<Work />} />
-      </Routes>
+      <Suspense fallback={<div className="boot" />}>
+        <Routes>
+          <Route path="/" element={<Hub />} />
+          <Route path="/journey" element={<Journey />} />
+          <Route path="/work" element={<Work />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   </StrictMode>
 )

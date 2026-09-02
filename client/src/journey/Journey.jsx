@@ -56,6 +56,12 @@ export default function Journey() {
     return () => root.style.removeProperty('--accent')
   }, [active])
 
+  // Arriving from a hub node: /journey#soil lands on that chapter.
+  useEffect(() => {
+    const id = window.location.hash.slice(1)
+    if (id) document.getElementById(id)?.scrollIntoView({ block: 'start' })
+  }, [])
+
   const jump = (id) => {
     document.getElementById(id)?.scrollIntoView({
       behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
