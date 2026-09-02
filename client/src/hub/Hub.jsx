@@ -102,7 +102,7 @@ export default function Hub() {
           <Travel view={view} />
 
           <Suspense fallback={null}>
-            <Rig frozen={!!active}>
+            <Rig frozen={!!active} drag={drag}>
               {/* Grounds him. The painted horizon in each scene does not line
                   up with the 3D floor, and without this he floats. */}
               <Shadow
@@ -112,10 +112,7 @@ export default function Hub() {
                 opacity={0.55}
                 color="#000000"
               />
-              <Figure
-                facing={active ? nodes.find((n) => n.id === active)?.pos : null}
-                drag={drag}
-              />
+              <Figure facing={active ? nodes.find((n) => n.id === active)?.pos : null} />
               <Nodes nodes={nodes} active={active} onPick={go} />
             </Rig>
           </Suspense>
@@ -163,17 +160,20 @@ function Travel({ view }) {
   return null
 }
 
-// Mouse parallax, but only at the hub. Once you have travelled somewhere,
-// the scene holds still so the text is readable.
-function Rig({ children, frozen }) {
+// The turntable. The figure and the branches turn together, because the
+// branches grow out of his head — rotating him alone made him swivel
+// inside them.
+//
+// It returns to neutral once you travel, so the node positions the camera
+// aims at are the ones layout.js computed.
+function Rig({ children, frozen, drag }) {
   const g = useRef()
   useFrame((state, dt) => {
-    if (reduced) return
     const k = 1 - Math.pow(0.002, Math.min(dt, 0.1))
-    const tx = frozen ? 0 : state.pointer.x * 0.22
-    const ty = frozen ? 0 : -state.pointer.y * 0.09
-    g.current.rotation.y = THREE.MathUtils.lerp(g.current.rotation.y, tx, k)
-    g.current.rotation.x = THREE.MathUtils.lerp(g.current.rotation.x, ty, k)
+    const ty = frozen ? 0 : state.pointer.x * 0.8 + drag.current
+    const tx = frozen ? 0 : -state.pointer.y * 0.07
+    g.current.rotation.y = THREE.MathUtils.lerp(g.current.rotation.y, ty, k)
+    g.current.rotation.x = THREE.MathUtils.lerp(g.current.rotation.x, tx, k)
   })
   return <group ref={g}>{children}</group>
 }

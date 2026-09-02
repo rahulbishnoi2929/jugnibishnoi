@@ -10,7 +10,7 @@ import * as THREE from 'three'
 // the rest of the scene needs from it.
 export const HEAD_Y = 1.78
 
-export default function Figure({ facing, drag }) {
+export default function Figure({ facing }) {
   const group = useRef()
   const chest = useRef()
   const armL = useRef()
@@ -25,27 +25,15 @@ export default function Figure({ facing, drag }) {
     group.current.position.y = Math.sin(t * 0.9) * 0.07
     chest.current.scale.y = 1 + Math.sin(t * 0.9) * 0.022
 
-    // He turns with you, not on his own. At the hub he tracks the cursor,
-    // and dragging spins him past that — drag wins while you hold it, then
-    // the cursor takes over again. Travelled, he faces the branch you picked.
-    const target = facing
-      ? Math.atan2(facing.x, facing.z + 2.2)
-      : state.pointer.x * 1.15 + (drag?.current ?? 0)
-
+    // Turning with the cursor is the turntable's job now — he and the
+    // branches move as one thing. All he does himself is face the branch
+    // you travelled to.
+    const target = facing ? Math.atan2(facing.x, facing.z + 2.2) : 0
     group.current.rotation.y = THREE.MathUtils.lerp(
       group.current.rotation.y,
       target,
       k
     )
-
-    // A small lean towards the cursor, so he leads with the shoulder.
-    if (!facing) {
-      group.current.rotation.x = THREE.MathUtils.lerp(
-        group.current.rotation.x,
-        state.pointer.y * -0.06,
-        k
-      )
-    }
 
     // Weight shifting from foot to foot, and arms that follow it.
     group.current.rotation.z = Math.sin(t * 0.45) * 0.016
