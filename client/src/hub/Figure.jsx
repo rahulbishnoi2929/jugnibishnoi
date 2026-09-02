@@ -10,11 +10,18 @@ import * as THREE from 'three'
 // the rest of the scene needs from it.
 export const HEAD_Y = 1.78
 
+// Someone who has asked their OS for less motion should not get a figure
+// spinning on the spot. They still get the breathing.
+const reduced =
+  typeof matchMedia !== 'undefined' &&
+  matchMedia('(prefers-reduced-motion: reduce)').matches
+
 export default function Figure({ facing }) {
   const group = useRef()
   const chest = useRef()
   const armL = useRef()
   const armR = useRef()
+  const spin = useRef(0)
 
   useFrame((state, dt) => {
     const t = state.clock.elapsedTime
@@ -22,24 +29,30 @@ export default function Figure({ facing }) {
 
     // Breathing. The old amplitude was 0.025 on a 1.8-unit figure, which
     // is invisible at any camera distance — this is the same idea, read.
-    group.current.position.y = Math.sin(t * 0.9) * 0.05
+    group.current.position.y = Math.sin(t * 0.9) * 0.07
     chest.current.scale.y = 1 + Math.sin(t * 0.9) * 0.022
 
-    // Turn to face whichever branch you travelled to. Idle, he drifts.
-    const target = facing
-      ? Math.atan2(facing.x, facing.z + 2.2)
-      : Math.sin(t * 0.22) * 0.16
-    group.current.rotation.y = THREE.MathUtils.lerp(
-      group.current.rotation.y,
-      target,
-      k
-    )
+    // At the hub he turns on the spot — a slow full revolution, so the
+    // figure is visibly a three-dimensional thing rather than a cut-out.
+    // Travelled, he stops and faces the branch you picked.
+    if (facing) {
+      const target = Math.atan2(facing.x, facing.z + 2.2)
+      group.current.rotation.y = THREE.MathUtils.lerp(
+        group.current.rotation.y,
+        target,
+        k
+      )
+      spin.current = group.current.rotation.y
+    } else {
+      if (!reduced) spin.current += dt * 0.32 // ~20s per revolution
+      group.current.rotation.y = spin.current
+    }
 
     // Weight shifting from foot to foot, and arms that follow it.
     group.current.rotation.z = Math.sin(t * 0.45) * 0.016
     const sway = Math.sin(t * 0.7)
-    armL.current.rotation.x = sway * 0.13
-    armR.current.rotation.x = -sway * 0.13
+    armL.current.rotation.x = sway * 0.22
+    armR.current.rotation.x = -sway * 0.22
   })
 
   return (
