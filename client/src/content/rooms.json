@@ -1,18 +1,14 @@
 {
-  "_note": "The lower ring on the hub. Life chapters are the five above; these are places rather than years. Add one by adding an entry — kind 'game' opens the game, kind 'link' routes away, kind 'text' just shows body copy.",
+  "_note": "The lower ring on the hub. Life chapters are the five above; these are places rather than years. Add one by adding an entry — kind 'game' opens the game, kind 'link' routes away, kind 'text' just shows copy. Connect four is built and tested (src/game, `npm test`) but parked: switch Games back on by setting its kind to 'game'.",
 
   "rooms": [
     {
       "id": "games",
       "title": "Games",
-      "years": "play me",
+      "years": "soon",
       "accent": "#8C8577",
-      "kind": "game",
-      "lede": "Connect four. I go second and I do not go easy.",
-      "body": [
-        "The computer searches five moves ahead, so it will take a win the moment you leave one and block yours the move before you get it. Beating it is a real thing to have done.",
-        "Tab to a column and press enter if you would rather not use a mouse."
-      ]
+      "kind": "text",
+      "lede": "khelega kya ....."
     },
     {
       "id": "work",
