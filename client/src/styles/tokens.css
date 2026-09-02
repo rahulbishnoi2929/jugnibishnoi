@@ -1,5 +1,24 @@
 /* Design tokens — see docs/DESIGN.md §2, §3, §4 */
 
+/* Registering --accent as a real color makes it animatable, so the palette
+   migration (DESIGN.md §2) is a CSS transition instead of a scroll-linked
+   lerp in JS. The browser interpolates in oklab. */
+@property --accent {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #d4a72c;
+}
+
+:root {
+  transition: --accent 700ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    transition: none;
+  }
+}
+
 :root {
   /* base */
   --bg: #0f100d;

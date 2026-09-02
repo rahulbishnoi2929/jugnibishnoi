@@ -1,13 +1,18 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './styles/tokens.css'
 import './styles/app.css'
+import Journey from './journey/Journey.jsx'
 import Work from './pages/Work.jsx'
 
-// Phase 1 ships one page, so it lives at /. When the journey lands in
-// Phase 2, add a router and move this to /work — that is the whole change.
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <Work />
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Journey />} />
+        <Route path="/work" element={<Work />} />
+      </Routes>
+    </BrowserRouter>
   </StrictMode>
 )

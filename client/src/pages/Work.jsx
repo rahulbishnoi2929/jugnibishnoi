@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { me, links, stats, featured, also } from '../content/work.js'
 
 // The escape hatch (docs/DESIGN.md §8). Deliberately plain. No canvas,
@@ -69,6 +70,7 @@ export default function Work() {
         <footer className="footer">
           <a href={`mailto:${me.email}`}>{me.email}</a>
           <a href={me.resume}>Resume (PDF)</a>
+          <Link to="/">The long version ←</Link>
           <span className="note">Fazilka, Punjab</span>
         </footer>
       </div>

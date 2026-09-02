@@ -1,0 +1,373 @@
+/* The journey — docs/DESIGN.md §4 layout, §5 motion */
+
+.journey {
+  padding-left: 200px;
+}
+
+/* ---------- escape hatch ---------- */
+
+.hatch {
+  position: fixed;
+  top: var(--s3);
+  right: var(--s3);
+  z-index: 5;
+  font-family: var(--mono);
+  font-size: var(--step--1);
+  text-decoration: none;
+  color: var(--ink-dim);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  padding: var(--s2) var(--s3);
+  transition: color 180ms var(--ease), border-color 180ms var(--ease);
+}
+
+.hatch:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ---------- rail ---------- */
+
+.rail {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 200px;
+  display: flex;
+  align-items: center;
+  padding-left: var(--s4);
+  z-index: 4;
+}
+
+.rail-track {
+  position: absolute;
+  left: calc(var(--s4) + 5px);
+  top: 15%;
+  bottom: 15%;
+  width: 1px;
+  background: var(--line);
+}
+
+.rail-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: calc(var(--p, 0) * 100%);
+  background: var(--accent);
+  transition: background 700ms var(--ease);
+}
+
+.rail-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s5);
+  position: relative;
+}
+
+.rail-node {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--ink-dim);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.rail-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  flex: none;
+  transition: transform 180ms var(--ease), background 180ms var(--ease),
+    border-color 180ms var(--ease);
+}
+
+.rail-node.is-active .rail-dot {
+  background: var(--node);
+  border-color: var(--node);
+  transform: scale(1.5);
+}
+
+.rail-text {
+  display: grid;
+  opacity: 0.45;
+  transition: opacity 180ms var(--ease);
+}
+
+.rail-node:hover .rail-text,
+.rail-node.is-active .rail-text {
+  opacity: 1;
+}
+
+.rail-title {
+  font-family: var(--display);
+  font-size: var(--step-0);
+  line-height: 1.1;
+}
+
+.rail-node.is-active .rail-title {
+  color: var(--ink);
+}
+
+.rail-years {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-dim);
+}
+
+/* ---------- opening ---------- */
+
+.opening {
+  min-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-width: var(--measure);
+  padding: var(--s6) var(--s5);
+}
+
+.opening-eyebrow {
+  font-family: var(--mono);
+  font-size: var(--step--1);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  margin: 0 0 var(--s4);
+}
+
+.opening-title {
+  font-family: var(--display);
+  font-size: var(--step-3);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+.opening-line {
+  font-size: var(--step-1);
+  line-height: 1.4;
+  color: var(--ink-dim);
+  margin: var(--s4) 0 0;
+}
+
+.opening-hint {
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--ink-dim);
+  margin: var(--s6) 0 0;
+}
+
+/* ---------- chapter ---------- */
+
+.chapter {
+  min-height: 100vh;
+  padding: var(--s7) var(--s5);
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+}
+
+.chapter-inner {
+  max-width: var(--measure);
+}
+
+.chapter-num {
+  font-family: var(--mono);
+  font-size: var(--step--1);
+  color: var(--chapter);
+  margin: 0 0 var(--s3);
+  letter-spacing: 0.1em;
+}
+
+.chapter-num span {
+  color: var(--ink-dim);
+  margin-left: var(--s2);
+}
+
+.chapter-title {
+  font-family: var(--display);
+  font-size: var(--step-3);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+.chapter-place {
+  font-family: var(--mono);
+  font-size: var(--step--1);
+  color: var(--ink-dim);
+  margin: var(--s3) 0 0;
+}
+
+.chapter-lede {
+  font-family: var(--display);
+  font-size: var(--step-1);
+  line-height: 1.35;
+  color: var(--chapter);
+  margin: var(--s5) 0 0;
+}
+
+.chapter-body p {
+  margin: var(--s4) 0 0;
+}
+
+/* ---------- artifacts ---------- */
+
+.artifacts {
+  margin-top: var(--s6);
+  display: grid;
+  gap: var(--s4);
+}
+
+.art-stat {
+  margin: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.art-stat-value {
+  font-family: var(--mono);
+  font-size: var(--step-2);
+  line-height: 1;
+  color: var(--chapter);
+}
+
+.art-stat-label {
+  font-size: var(--step--1);
+  color: var(--ink-dim);
+}
+
+.art-quote {
+  margin: 0;
+  padding-left: var(--s4);
+  border-left: 2px solid var(--chapter);
+}
+
+.art-quote p {
+  font-family: var(--display);
+  font-size: var(--step-1);
+  line-height: 1.35;
+  margin: 0;
+}
+
+.art-quote cite {
+  display: block;
+  margin-top: var(--s2);
+  font-family: var(--mono);
+  font-size: var(--step--1);
+  font-style: normal;
+  color: var(--ink-dim);
+}
+
+.art-photo {
+  margin: 0;
+}
+
+.art-photo img {
+  width: 100%;
+  height: auto;
+  display: block;
+  filter: saturate(0.85);
+}
+
+.art-photo figcaption {
+  font-family: var(--mono);
+  font-size: var(--step--1);
+  color: var(--ink-dim);
+  margin-top: var(--s2);
+}
+
+/* ---------- closing ---------- */
+
+.closing {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--s3);
+  padding: var(--s6) var(--s5);
+  border-top: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: var(--step--1);
+}
+
+.closing p {
+  margin: 0;
+  color: var(--ink-dim);
+}
+
+.closing a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  width: fit-content;
+}
+
+.closing a:hover {
+  border-bottom-color: var(--accent);
+}
+
+/* ---------- mobile: rail becomes a top progress bar ---------- */
+
+@media (max-width: 900px) {
+  .journey {
+    padding-left: 0;
+  }
+
+  .rail {
+    width: 100%;
+    height: 3px;
+    bottom: auto;
+    padding: 0;
+    background: var(--line);
+  }
+
+  .rail-track {
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 100%;
+    height: 3px;
+    background: none;
+  }
+
+  .rail-fill {
+    height: 100%;
+    width: calc(var(--p, 0) * 100%);
+  }
+
+  .rail-list {
+    display: none;
+  }
+
+  /* Out of the reading column, into thumb reach. */
+  .hatch {
+    top: auto;
+    bottom: var(--s3);
+  }
+
+  .opening,
+  .chapter,
+  .closing {
+    padding-left: var(--s3);
+    padding-right: var(--s3);
+  }
+
+  .chapter {
+    min-height: auto;
+    padding-top: var(--s6);
+    padding-bottom: var(--s6);
+  }
+}
