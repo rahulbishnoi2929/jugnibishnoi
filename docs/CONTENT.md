@@ -7,20 +7,34 @@ Rough is fine — I will write the copy, I just cannot invent the facts.
 
 ---
 
-## MINIMUM TO START PHASE 2
+## CONFIRMED — answered 2026-09-03
 
-If you only do one section, do this one. Nine lines and I can build.
+- **College:** Baba Farid College of Engineering and Technology (BFCET),
+  Bathinda, Punjab. B.Tech Computer Science. **2022–2026.**
+- **IIT training:** IIT Ropar, **iHub AWaDH** (Agriculture & Water Technology
+  Development Hub). One month, first year (2022–23). Trained a model to
+  detect bees / honey bees.
+- **Sports, medalled:** basketball, athletics, volleyball, shooting ball.
+- **Hackathons:** BFCET Hack **1.0** and **2.0**, hosted at the college.
 
-1. Years for each chapter (e.g. `Soil 2003–2016`):
-   - Soil (farming/village):
-   - Grit (sports/school):
-   - Campus (college/books):
-   - Build (development/IIT training):
-   - Signal (hackathons/writing):
-2. College name + degree + years:
-3. Which IIT, which program, how long:
-4. Sport(s) you played, and how far you got:
-5. The 3 hackathons — just names and roughly how many people:
+### The through-line
+
+Farming → agri-tech AI at IIT Ropar (bees = pollination) → Zamindara (farm
+machinery for Punjab farmers). Every chapter feeds the next. This is the
+spine of the site, not a coincidence to mention once.
+
+---
+
+## STILL MISSING — these four block Phase 2
+
+1. **Birth year**, so Soil and Grit get real year ranges. Roughly:
+   Soil 2003?–2018, Grit ~2016–2022, Campus/Build 2022–2026.
+2. **Sports level** — those medals: school, district, inter-college,
+   inter-university, or state?
+3. **Third hackathon.** You said three; I have BFCET Hack 1.0 and 2.0.
+   Name of the third, or is it actually two?
+4. **Hackathon numbers** — your role (organiser? core team? lead?), and
+   roughly how many people showed up to each.
 
 ---
 
