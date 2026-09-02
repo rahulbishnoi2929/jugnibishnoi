@@ -3,7 +3,11 @@
 Personal site — a scroll-driven life journey (farming → sports → college →
 development → hackathons) with a blog, a bookshelf, and a small game.
 
-Status: **planning.** No code yet.
+Status: **Phase 1** — the plain `/work` escape-hatch page is built.
+
+```bash
+npm install && npm run dev
+```
 
 ## Docs
 

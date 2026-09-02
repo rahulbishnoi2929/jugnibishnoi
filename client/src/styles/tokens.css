@@ -1,0 +1,36 @@
+/* Design tokens — see docs/DESIGN.md §2, §3, §4 */
+
+:root {
+  /* base */
+  --bg: #0f100d;
+  --bg-raised: #1a1b16;
+  --ink: #f2efe4;
+  --ink-dim: #a8a498;
+  --line: #2c2e26;
+
+  /* chapter accent — static wheat here; the journey lerps this on scroll */
+  --accent: #d4a72c;
+
+  /* type */
+  --display: Georgia, 'Times New Roman', serif;
+  --body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, monospace;
+
+  --step--1: clamp(0.83rem, 0.8rem + 0.15vw, 0.9rem);
+  --step-0: clamp(1rem, 0.95rem + 0.25vw, 1.13rem);
+  --step-1: clamp(1.4rem, 1.2rem + 1vw, 1.9rem);
+  --step-2: clamp(2rem, 1.5rem + 2.5vw, 3.2rem);
+  --step-3: clamp(2.8rem, 1.8rem + 5vw, 6rem);
+
+  /* space — 8px base, only these values */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 16px;
+  --s4: 24px;
+  --s5: 40px;
+  --s6: 64px;
+  --s7: 96px;
+
+  --measure: 62ch;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
