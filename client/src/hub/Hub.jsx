@@ -3,13 +3,15 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import * as THREE from 'three'
 import data from '../content/chapters.json'
+import roomData from '../content/rooms.json'
 import Figure from './Figure.jsx'
 import Nodes from './Nodes.jsx'
 import Panel from './Panel.jsx'
-import { placeNodes, HOME_VIEW, viewFor } from './layout.js'
+import { placeNodes, placeRooms, HOME_VIEW, viewFor } from './layout.js'
 import '../styles/hub.css'
 
 const chapters = data.chapters
+const rooms = roomData.rooms
 const reduced =
   typeof matchMedia !== 'undefined' &&
   matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -17,13 +19,19 @@ const reduced =
 export default function Hub() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const nodes = useMemo(() => placeNodes(chapters), [])
+  const nodes = useMemo(() => [...placeNodes(chapters), ...placeRooms(rooms)], [])
 
-  const active = chapters.some((c) => c.id === id) ? id : null
-  const chapter = chapters.find((c) => c.id === active)
+  // Rooms that only route away are never a destination here.
+  const openable = nodes.filter((n) => n.kind !== 'link')
+  const active = openable.some((n) => n.id === id) ? id : null
+  const chapter = openable.find((n) => n.id === active)
   const view = active ? viewFor(nodes.find((n) => n.id === active)) : HOME_VIEW
 
-  const go = (next) => navigate(next ? '/c/' + next : '/')
+  const go = (next) => {
+    if (!next) return navigate('/')
+    const node = nodes.find((n) => n.id === next)
+    navigate(node?.kind === 'link' ? node.to : '/c/' + next)
+  }
 
   // Escape is how people leave things.
   useEffect(() => {

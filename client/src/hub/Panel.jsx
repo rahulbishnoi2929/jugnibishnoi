@@ -1,10 +1,24 @@
+import { lazy, Suspense } from 'react'
+
+// The game only loads if you go and play it.
+const Board = lazy(() => import('../game/Board.jsx'))
+
 // The chapter, opened in place. It scrolls inside itself and nothing
 // follows it — that is the point: a branch is a destination, not a
 // section you fall out of the bottom of into the next one.
 export default function Panel({ chapter, onBack }) {
   if (!chapter) return null
 
-  const { title, years, place, lede, body, artifacts = [], accent, scene } = chapter
+  const {
+    title,
+    years,
+    place,
+    lede,
+    body = [],
+    artifacts = [],
+    accent,
+    kind,
+  } = chapter
 
   return (
     <aside
@@ -28,6 +42,12 @@ export default function Panel({ chapter, onBack }) {
             {p}
           </p>
         ))}
+
+        {kind === 'game' && (
+          <Suspense fallback={<p className="panel-body">Loading the board…</p>}>
+            <Board />
+          </Suspense>
+        )}
 
         {artifacts.map((a, i) => (
           <Artifact key={i} {...a} />

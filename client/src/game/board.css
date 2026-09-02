@@ -1,0 +1,112 @@
+.cf {
+  margin-top: var(--s4);
+}
+
+.cf-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin-bottom: var(--s3);
+}
+
+.cf-status {
+  margin: 0;
+  font-family: var(--display);
+  font-size: var(--step-0);
+  color: var(--ink);
+}
+
+.cf-reset {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--ink-dim);
+  font-family: var(--mono);
+  font-size: var(--step--1);
+  padding: var(--s1) var(--s2);
+  cursor: pointer;
+  transition: color 180ms var(--ease), border-color 180ms var(--ease);
+}
+
+.cf-reset:hover {
+  color: var(--node);
+  border-color: var(--node);
+}
+
+.cf-cols,
+.cf-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+
+.cf-col {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--ink-dim);
+  font-size: 12px;
+  line-height: 1;
+  padding: 5px 0;
+  cursor: pointer;
+  transition: color 150ms var(--ease), border-color 150ms var(--ease);
+}
+
+.cf-col:hover:not(:disabled) {
+  color: var(--node);
+  border-color: var(--node);
+}
+
+.cf-col:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.cf-grid {
+  margin-top: 5px;
+  padding: 5px;
+  border: 1px solid var(--line);
+}
+
+.cf-cell {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #16170f;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.7);
+  transition: background 220ms var(--ease);
+}
+
+/* wheat for you, terminal green for the machine — the same two colours
+   the site already uses for the field and the model that reads it */
+.cf-cell.is-you {
+  background: #d4a72c;
+}
+
+.cf-cell.is-cpu {
+  background: #3ddc97;
+}
+
+.cf-cell.is-win {
+  outline: 2px solid var(--ink);
+  outline-offset: -3px;
+}
+
+.cf-key {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  margin: var(--s3) 0 0;
+  font-family: var(--mono);
+  font-size: var(--step--1);
+  color: var(--ink-dim);
+}
+
+.cf-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.cf-dot.is-cpu {
+  margin-left: var(--s3);
+}

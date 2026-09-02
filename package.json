@@ -1,10 +1,13 @@
 {
   "name": "jugnibishnoi",
   "private": true,
-  "workspaces": ["client"],
+  "workspaces": [
+    "client"
+  ],
   "scripts": {
     "dev": "npm run dev -w client",
     "build": "npm run build -w client",
-    "preview": "npm run preview -w client"
+    "preview": "npm run preview -w client",
+    "test": "node client/src/game/engine.test.mjs"
   }
 }

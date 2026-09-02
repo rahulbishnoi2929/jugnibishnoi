@@ -13,6 +13,26 @@ const LAYOUT = [
   { a: 1.18, r: 2.85, y: 2.0 },
 ]
 
+// Rooms sit low and close, under the chapters: places rather than years.
+// Kept up and in, clear of the name block in the bottom-left corner.
+const ROOM_LAYOUT = [
+  { a: -0.45, r: 2.15, y: 1.28 },
+  { a: 0.45, r: 2.15, y: 1.28 },
+  { a: -0.9, r: 2.45, y: 1.02 },
+  { a: 0.9, r: 2.45, y: 1.02 },
+]
+
+export function placeRooms(rooms) {
+  return rooms.map((room, i) => {
+    const { a, r, y } = ROOM_LAYOUT[i] ?? ROOM_LAYOUT[0]
+    return {
+      ...room,
+      ring: 'room',
+      pos: new THREE.Vector3(Math.sin(a) * r, y, Math.cos(a) * r * 0.5 + 0.5),
+    }
+  })
+}
+
 export function placeNodes(chapters) {
   return chapters.map((c, i) => {
     const { a, r, y } = LAYOUT[i] ?? LAYOUT[2]
