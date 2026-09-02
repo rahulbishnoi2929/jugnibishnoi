@@ -1,8 +1,19 @@
 export default function Chapter({ chapter, index }) {
-  const { id, title, years, place, lede, body, artifacts = [] } = chapter
+  const { id, title, years, place, lede, body, scene, artifacts = [] } = chapter
 
+  // Scenes are static .svg files, not inline SVG. As live DOM the field
+  // re-rasterised behind a sticky element on every scroll frame and stalled
+  // the compositor; as a background image the browser draws it once.
   return (
-    <section className="chapter" id={id} style={{ '--chapter': chapter.accent }}>
+    <section
+      className={'chapter' + (scene ? ' has-scene' : '')}
+      id={id}
+      style={{ '--chapter': chapter.accent }}
+    >
+      {scene && (
+        <div className="scene" style={{ backgroundImage: `url(${scene})` }} />
+      )}
+
       <div className="chapter-inner">
         <p className="chapter-num">
           {String(index + 1).padStart(2, '0')} <span>{years}</span>

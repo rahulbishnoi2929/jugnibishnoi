@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d1017"/>
+      <stop offset="45%" stop-color="#2a2118"/>
+      <stop offset="78%" stop-color="#7d5a2a"/>
+      <stop offset="100%" stop-color="#d4a72c"/>
+    </linearGradient>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7a5a2c"/>
+      <stop offset="18%" stop-color="#3d2f1c"/>
+      <stop offset="100%" stop-color="#100d09"/>
+    </linearGradient>
+    <linearGradient id="haze" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6f5227" stop-opacity="0.95"/>
+      <stop offset="55%" stop-color="#4a3720" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#2b2013" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#ffe9a8"/>
+      <stop offset="45%" stop-color="#f0b93f"/>
+      <stop offset="100%" stop-color="#d4a72c" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="800" fill="url(#sky)"/>
+  <circle cx="620" cy="366" r="150" fill="url(#sun)" opacity="0.55"/>
+  <circle cx="620" cy="366" r="27" fill="#ffe6a2" opacity="0.9"/>
+
+  <g stroke="#0d1017" stroke-width="2.2" fill="none" opacity="0.5">
+    <path d="M300 150 q9 -8 18 0 q9 -8 18 0"/>
+    <path d="M372 118 q7 -6 14 0 q7 -6 14 0"/>
+    <path d="M255 196 q6 -5 12 0 q6 -5 12 0"/>
+  </g>
+
+  <rect x="0" y="372" width="1200" height="428" fill="url(#ground)"/>
+
+  <g fill="none">
+    <line x1="620" y1="372" x2="7" y2="555.4" stroke="#0a0805" stroke-width="2.1" stroke-opacity="0.1"/><line x1="620" y1="372" x2="0" y2="555.4" stroke="#c8a469" stroke-width="1.3" stroke-opacity="0.1"/>
+    <line x1="620" y1="372" x2="7" y2="575.6" stroke="#0a0805" stroke-width="3" stroke-opacity="0.1"/><line x1="620" y1="372" x2="0" y2="575.6" stroke="#c8a469" stroke-width="1.9" stroke-opacity="0.2"/>
+    <line x1="620" y1="372" x2="7" y2="592.6" stroke="#0a0805" stroke-width="2.9" stroke-opacity="0.1"/><line x1="620" y1="372" x2="0" y2="592.6" stroke="#c8a469" stroke-width="1.8" stroke-opacity="0.1"/>
+    <line x1="620" y1="372" x2="7" y2="622.8" stroke="#0a0805" stroke-width="1.9" stroke-opacity="0.1"/><line x1="620" y1="372" x2="0" y2="622.8" stroke="#c8a469" stroke-width="1.2" stroke-opacity="0.2"/>
+    <line x1="620" y1="372" x2="7" y2="659.7" stroke="#0a0805" stroke-width="1.9" stroke-opacity="0.1"/><line x1="620" y1="372" x2="0" y2="659.7" stroke="#c8a469" stroke-width="1.2" stroke-opacity="0.2"/>
+    <line x1="620" y1="372" x2="7" y2="704.1" stroke="#0a0805" stroke-width="2.3" stroke-opacity="0.1"/><line x1="620" y1="372" x2="0" y2="704.1" stroke="#c8a469" stroke-width="1.4" stroke-opacity="0.2"/>
+    <line x1="620" y1="372" x2="7" y2="785.8" stroke="#0a0805" stroke-width="3.1" stroke-opacity="0.2"/><line x1="620" y1="372" x2="0" y2="785.8" stroke="#c8a469" stroke-width="2" stroke-opacity="0.3"/>
+    <line x1="620" y1="372" x2="96.3" y2="800" stroke="#0a0805" stroke-width="2" stroke-opacity="0.2"/><line x1="620" y1="372" x2="89.3" y2="800" stroke="#c8a469" stroke-width="1.2" stroke-opacity="0.2"/>
+    <line x1="620" y1="372" x2="216.3" y2="800" stroke="#0a0805" stroke-width="2.8" stroke-opacity="0.2"/><line x1="620" y1="372" x2="209.3" y2="800" stroke="#c8a469" stroke-width="1.8" stroke-opacity="0.2"/>
+    <line x1="620" y1="372" x2="370.3" y2="800" stroke="#0a0805" stroke-width="2.3" stroke-opacity="0.2"/><line x1="620" y1="372" x2="363.3" y2="800" stroke="#c8a469" stroke-width="1.4" stroke-opacity="0.3"/>
+    <line x1="620" y1="372" x2="488.3" y2="800" stroke="#0a0805" stroke-width="2.3" stroke-opacity="0.2"/><line x1="620" y1="372" x2="481.3" y2="800" stroke="#c8a469" stroke-width="1.4" stroke-opacity="0.3"/>
+    <line x1="620" y1="372" x2="634.8" y2="800" stroke="#0a0805" stroke-width="2.3" stroke-opacity="0.3"/><line x1="620" y1="372" x2="627.8" y2="800" stroke="#c8a469" stroke-width="1.5" stroke-opacity="0.3"/>
+    <line x1="620" y1="372" x2="771.6" y2="800" stroke="#0a0805" stroke-width="2.7" stroke-opacity="0.2"/><line x1="620" y1="372" x2="764.6" y2="800" stroke="#c8a469" stroke-width="1.7" stroke-opacity="0.3"/>
+    <line x1="620" y1="372" x2="872.5" y2="800" stroke="#0a0805" stroke-width="3.1" stroke-opacity="0.2"/><line x1="620" y1="372" x2="865.5" y2="800" stroke="#c8a469" stroke-width="2" stroke-opacity="0.2"/>
+    <line x1="620" y1="372" x2="1023.4" y2="800" stroke="#0a0805" stroke-width="1.8" stroke-opacity="0.2"/><line x1="620" y1="372" x2="1016.4" y2="800" stroke="#c8a469" stroke-width="1.1" stroke-opacity="0.2"/>
+    <line x1="620" y1="372" x2="1158.1" y2="800" stroke="#0a0805" stroke-width="2" stroke-opacity="0.2"/><line x1="620" y1="372" x2="1151.1" y2="800" stroke="#c8a469" stroke-width="1.2" stroke-opacity="0.2"/>
+    <line x1="620" y1="372" x2="1207" y2="750.5" stroke="#0a0805" stroke-width="2.1" stroke-opacity="0.2"/><line x1="620" y1="372" x2="1200" y2="750.5" stroke="#c8a469" stroke-width="1.3" stroke-opacity="0.2"/>
+    <line x1="620" y1="372" x2="1207" y2="678.6" stroke="#0a0805" stroke-width="3.1" stroke-opacity="0.2"/><line x1="620" y1="372" x2="1200" y2="678.6" stroke="#c8a469" stroke-width="1.9" stroke-opacity="0.2"/>
+    <line x1="620" y1="372" x2="1207" y2="643.1" stroke="#0a0805" stroke-width="2.4" stroke-opacity="0.1"/><line x1="620" y1="372" x2="1200" y2="643.1" stroke="#c8a469" stroke-width="1.5" stroke-opacity="0.2"/>
+    <line x1="620" y1="372" x2="1207" y2="610.1" stroke="#0a0805" stroke-width="2.8" stroke-opacity="0.1"/><line x1="620" y1="372" x2="1200" y2="610.1" stroke="#c8a469" stroke-width="1.7" stroke-opacity="0.1"/>
+    <line x1="620" y1="372" x2="1207" y2="579.2" stroke="#0a0805" stroke-width="2.5" stroke-opacity="0.1"/><line x1="620" y1="372" x2="1200" y2="579.2" stroke="#c8a469" stroke-width="1.6" stroke-opacity="0.2"/>
+    <line x1="620" y1="372" x2="1207" y2="560.8" stroke="#0a0805" stroke-width="2.1" stroke-opacity="0.1"/><line x1="620" y1="372" x2="1200" y2="560.8" stroke="#c8a469" stroke-width="1.3" stroke-opacity="0.1"/>
+    <line x1="620" y1="372" x2="1207" y2="541.9" stroke="#0a0805" stroke-width="2.4" stroke-opacity="0.1"/><line x1="620" y1="372" x2="1200" y2="541.9" stroke="#c8a469" stroke-width="1.5" stroke-opacity="0.1"/>
+  </g>
+
+  <rect x="0" y="372" width="1200" height="150" fill="url(#haze)"/>
+
+  <!-- khejri: the tree 363 Bishnois died for at Khejarli in 1730 -->
+  <g fill="#0b0a07" transform="translate(946 372) scale(1.15)">
+    <path d="M0 0 C-3 -22 -6 -40 -4 -58 L-9 -74 -3 -66 -2 -78 2 -66 8 -76 4 -60 C7 -44 4 -20 3 0 Z"/>
+    <path d="M-2 -70 C-26 -78 -44 -70 -54 -80 C-40 -80 -34 -86 -22 -84 C-32 -92 -20 -96 -10 -92 C-16 -100 -2 -106 4 -98 C10 -108 26 -102 24 -92 C36 -96 44 -88 36 -82 C48 -82 52 -74 40 -72 C26 -68 10 -74 -2 -70 Z"/>
+    <path d="M-30 -60 C-42 -62 -50 -56 -58 -60 C-50 -66 -42 -64 -34 -66 Z"/>
+    <path d="M28 -62 C40 -64 48 -58 56 -62 C48 -68 40 -66 32 -68 Z"/>
+  </g>
+
+  <!-- blackbuck: the other half of the promise -->
+  <g fill="#0b0a07" opacity="0.88" transform="translate(760 470) scale(0.62)">
+    <path d="M0 0 L2 -20 L-2 -30 L-14 -34 L-30 -30 L-40 -32 L-44 -24 L-40 -20 L-38 0 L-34 0 L-35 -16 L-22 -14 L-20 0 L-16 0 L-17 -15 L-6 -18 L-4 0 Z"/>
+    <path d="M-44 -32 L-50 -46 M-42 -32 L-44 -48" stroke="#0b0a07" stroke-width="2.4" fill="none"/>
+  </g>
+  <g fill="#0b0a07" opacity="0.7" transform="translate(688 452) scale(0.46)">
+    <path d="M0 0 L2 -20 L-2 -30 L-14 -34 L-30 -30 L-40 -32 L-44 -24 L-40 -20 L-38 0 L-34 0 L-35 -16 L-22 -14 L-20 0 L-16 0 L-17 -15 L-6 -18 L-4 0 Z"/>
+    <path d="M-44 -32 L-50 -46 M-42 -32 L-44 -48" stroke="#0b0a07" stroke-width="3" fill="none"/>
+  </g>
+</svg>
