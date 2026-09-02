@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Shadow } from '@react-three/drei'
 import { useNavigate, useParams, Link } from 'react-router-dom'
@@ -34,6 +34,27 @@ export default function Hub() {
     navigate(node?.kind === 'link' ? node.to : '/c/' + next)
   }
 
+  // Drag to turn him. Held in a ref, not state — it changes every pointer
+  // move and only the render loop needs to read it.
+  const drag = useRef(0)
+  const from = useRef(null)
+  const [dragging, setDragging] = useState(false)
+
+  const onDown = (e) => {
+    if (e.button !== 0) return
+    from.current = e.clientX
+    setDragging(true)
+  }
+  const onMove = (e) => {
+    if (from.current === null) return
+    drag.current += (e.clientX - from.current) * 0.011
+    from.current = e.clientX
+  }
+  const onUp = () => {
+    from.current = null
+    setDragging(false)
+  }
+
   // Escape is how people leave things.
   useEffect(() => {
     if (!active) return
@@ -58,7 +79,14 @@ export default function Hub() {
         }}
       />
 
-      <div className="hub-canvas">
+      <div
+        className={'hub-canvas' + (dragging ? ' is-dragging' : '')}
+        onPointerDown={onDown}
+        onPointerMove={onMove}
+        onPointerUp={onUp}
+        onPointerCancel={onUp}
+        onPointerLeave={onUp}
+      >
         <Canvas
           shadows
           dpr={[1, 1.6]}
@@ -84,7 +112,10 @@ export default function Hub() {
                 opacity={0.55}
                 color="#000000"
               />
-              <Figure facing={active ? nodes.find((n) => n.id === active)?.pos : null} />
+              <Figure
+                facing={active ? nodes.find((n) => n.id === active)?.pos : null}
+                drag={drag}
+              />
               <Nodes nodes={nodes} active={active} onPick={go} />
             </Rig>
           </Suspense>
