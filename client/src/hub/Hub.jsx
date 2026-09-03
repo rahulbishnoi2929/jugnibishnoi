@@ -56,6 +56,11 @@ export default function Hub() {
 
   const onDown = (e) => {
     if (e.button !== 0) return
+    // Capture, so the release reaches us even if the pointer ends up
+    // outside the window. Without it a drag that left the page never
+    // ended, and every later move kept turning the ring with no button
+    // held down.
+    e.currentTarget.setPointerCapture?.(e.pointerId)
     from.current = { x: e.clientX, y: e.clientY }
     setDragging(true)
   }
@@ -125,7 +130,7 @@ export default function Hub() {
         onPointerMove={onMove}
         onPointerUp={onUp}
         onPointerCancel={onUp}
-        onPointerLeave={onUp}
+        onLostPointerCapture={onUp}
       >
         <Canvas
           shadows

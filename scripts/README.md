@@ -13,9 +13,27 @@ curl -o land.json https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json
 node scripts/gen-earth.js land.json
 ```
 
-Source: world-atlas `land-110m` (TopoJSON), derived from **Natural Earth**,
-which is public domain. The TopoJSON is decoded here rather than adding a
-topojson runtime dependency for something that runs once.
+Takes two files now — land, and countries for the white borders:
+
+```bash
+node scripts/gen-earth.js land.json countries.json
+```
+
+Source: world-atlas `land-110m` and `countries-110m` (TopoJSON), derived
+from **Natural Earth**, which is public domain. The TopoJSON is decoded
+here rather than adding a topojson runtime dependency for something that
+runs once.
+
+Borders are baked into the texture rather than drawn as 3D lines — ~170
+countries would be ~170 draw calls, and the texture resolves them fine at
+this globe size.
+
+**India is excluded from the white borders on purpose.** This dataset draws
+India on the de-facto line; India's own boundary is drawn separately and
+officially in wheat, from `client/src/hub/india.json`. Drawing both would
+contradict itself. Neighbouring borders are also clipped where they fall
+inside India's official territory — a point-in-polygon test against that
+outline, which drops ~50 segments in the Kashmir region.
 
 Rings crossing the antimeridian are split, otherwise they streak straight
 across the map. Antarctica ends up open at the bottom as a result, which
