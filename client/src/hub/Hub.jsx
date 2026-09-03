@@ -6,6 +6,7 @@ import * as THREE from 'three'
 import data from '../content/chapters.json'
 import roomData from '../content/rooms.json'
 import Figure from './Figure.jsx'
+import Globe from './Globe.jsx'
 import Nodes from './Nodes.jsx'
 import SubNodes from './SubNodes.jsx'
 import Panel from './Panel.jsx'
@@ -172,15 +173,9 @@ export default function Hub() {
             </Rig>
           </Suspense>
 
-          {/* Ground exists only at the hub. Once you have travelled, the
-              chapter's own artwork is the ground, and this drew a brown
-              band across it. */}
-          {!active && (
-            <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-              <circleGeometry args={[7, 48]} />
-              <meshStandardMaterial color="#15130e" roughness={1} />
-            </mesh>
-          )}
+          {/* The ground only exists at the hub. Once you have travelled, the
+              chapter's own artwork is the ground, and this drew across it. */}
+          {!active && <Globe />}
         </Canvas>
       </div>
 
