@@ -10,7 +10,17 @@ import Globe from './Globe.jsx'
 import Nodes from './Nodes.jsx'
 import SubNodes from './SubNodes.jsx'
 import Panel from './Panel.jsx'
-import { placeNodes, placeRooms, placeBranches, HOME_VIEW, BRANCH_VIEW, spinToFront } from './layout.js'
+import {
+  placeNodes,
+  placeRooms,
+  placeBranches,
+  HOME_VIEW,
+  BRANCH_VIEW,
+  spinToFront,
+  applyZoom,
+  ZOOM_MIN,
+  ZOOM_MAX,
+} from './layout.js'
 import '../styles/hub.css'
 
 const chapters = data.chapters
@@ -85,6 +95,25 @@ export default function Hub() {
   // it, the branches read it.
   const bob = useRef(0)
 
+  // Wheel to zoom. Attached by hand rather than with onWheel so it can be
+  // non-passive and stop the page reacting to the same gesture.
+  const zoom = useRef(1)
+  const canvasBox = useRef(null)
+  useEffect(() => {
+    const el = canvasBox.current
+    if (!el) return
+    const onWheel = (e) => {
+      e.preventDefault()
+      zoom.current = THREE.MathUtils.clamp(
+        zoom.current * (1 + e.deltaY * 0.0012),
+        ZOOM_MIN,
+        ZOOM_MAX
+      )
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
+
   // Where the turntable should settle. Set from the active branch rather
   // than from the click, so a pasted /c/soil link spins there too.
   const aim = useRef(null)
@@ -125,6 +154,7 @@ export default function Hub() {
       />
 
       <div
+        ref={canvasBox}
         className={'hub-canvas' + (dragging ? ' is-dragging' : '')}
         onPointerDown={onDown}
         onPointerMove={onMove}
@@ -144,7 +174,7 @@ export default function Hub() {
           <directionalLight position={[-4, 5, -6]} intensity={2.6} color="#d4a72c" />
           <directionalLight position={[5, 3, 4]} intensity={0.5} color="#5b8dbe" />
 
-          <Travel view={view} />
+          <Travel view={view} zoom={zoom} />
 
           <Suspense fallback={null}>
             <Rig frozen={!!active} drag={drag} aim={aim}>
@@ -170,7 +200,7 @@ export default function Hub() {
 
               {/* Everything growing out of his head rides with it. */}
               <Breathe bob={bob}>
-                <Nodes nodes={nodes} active={active} onPick={go} />
+                <Nodes nodes={nodes} active={active} onPick={go} zoom={zoom} />
 
                 {branches.length > 0 && (
                   <SubNodes
@@ -208,14 +238,17 @@ export default function Hub() {
 
 // Flies the camera between the hub and a branch. Damping is exponential on
 // delta time, so the travel takes the same wall-clock time at 30fps or 144.
-function Travel({ view }) {
+function Travel({ view, zoom }) {
   const { camera } = useThree()
   const look = useRef(HOME_VIEW.look.clone())
+  const targetPos = useRef(new THREE.Vector3())
+  const targetLook = useRef(new THREE.Vector3())
 
   useFrame((_, dt) => {
     const k = reduced ? 1 : 1 - Math.pow(0.0007, Math.min(dt, 0.1))
-    camera.position.lerp(view.pos, k)
-    look.current.lerp(view.look, k)
+    applyZoom(view, zoom.current, targetPos.current, targetLook.current)
+    camera.position.lerp(targetPos.current, k)
+    look.current.lerp(targetLook.current, k)
     camera.lookAt(look.current)
   })
 

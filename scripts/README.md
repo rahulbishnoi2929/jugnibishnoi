@@ -74,6 +74,34 @@ curl -o india-composite.geojson https://raw.githubusercontent.com/datameet/maps/
 node --stack-size=8000 scripts/gen-india.js india-composite.geojson
 ```
 
+## gen-states.js
+
+Builds `client/src/hub/india-states.json` — the 36 states and union
+territories, drawn in orange on the globe.
+
+```bash
+curl -Lo states.geojson https://raw.githubusercontent.com/datameet/maps/master/docs/data/geojson/states.geojson
+```
+
+```bash
+node scripts/gen-states.js states.geojson
+```
+
+Same source family as the national outline, so the two agree: Datameet,
+reaching 37.08°N, which means Ladakh and J&K in full.
+
+359,694 points across 36 features and 15.7MB, simplified to 4,415 points
+across 59 rings and 70KB. Rings under 0.2° across are dropped.
+
+Drawn as **one LineSegments geometry**, not 59 line objects: a single draw
+call, and vector geometry stays sharp when you zoom in, which a baked
+texture would not. That is why the states are geometry while the world's
+country borders are baked into the texture — you never zoom far enough to
+see those pixellate, but you do zoom into India.
+
+The simplification is iterative Douglas-Peucker; some state rings run to
+tens of thousands of points and the recursive form overflows the stack.
+
 ## gen-soil.js / gen-scenes.js
 
 The five chapter scenes in `client/public/scenes/` were generated the same

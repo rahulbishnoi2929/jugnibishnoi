@@ -74,6 +74,23 @@ export const HOME_VIEW = {
 const CHEST = new THREE.Vector3(0, 1.2, 0)
 const UP = new THREE.Vector3(0, 1, 0)
 
+// Zooming pulls towards the ground at his feet, not towards his chest —
+// the point of zooming here is to get close to the planet.
+export const ZOOM_TARGET = new THREE.Vector3(0, -0.1, 0)
+export const ZOOM_MIN = 0.4
+export const ZOOM_MAX = 2.2
+
+// Camera position and aim for a given zoom factor. 1 is the framing the
+// view was authored at; below that the aim slides down to the planet so you
+// end up looking at the ground rather than past it.
+const scratch = new THREE.Vector3()
+
+export function applyZoom(view, zoom, outPos, outLook) {
+  scratch.copy(view.pos).sub(ZOOM_TARGET)
+  outPos.copy(ZOOM_TARGET).addScaledVector(scratch, zoom)
+  outLook.copy(view.look).lerp(ZOOM_TARGET, THREE.MathUtils.clamp(1 - zoom, 0, 1))
+}
+
 // Travelling holds one camera position and turns the world instead: the
 // branch you picked spins round to the front, the way a carousel brings
 // the thing you asked for to face you.

@@ -6,6 +6,7 @@ import * as THREE from 'three'
 // scripts/gen-india.js documents whose boundary this is — it is the de-facto
 // line, not India's official claim.
 import indiaData from './india.json'
+import stateData from './india-states.json'
 
 // The ground is a small planet, and he is standing on Punjab.
 //
@@ -72,10 +73,31 @@ export default function Globe({ radius = 1.35 }) {
   const indiaRings = useMemo(
     () =>
       indiaData.rings.map((r0) =>
-        r0.map(([lon, lat]) => onSphere(lon, lat, radius * 1.004))
+        r0.map(([lon, lat]) => onSphere(lon, lat, radius * 1.005))
       ),
     [radius]
   )
+
+  // State boundaries as one LineSegments rather than 59 Line components:
+  // a single draw call, and vector geometry stays crisp at any zoom, which
+  // a baked texture would not.
+  const states = useMemo(() => {
+    const pts = []
+    for (const ring of stateData.rings) {
+      for (let i = 0; i < ring.length; i++) {
+        const a = onSphere(ring[i][0], ring[i][1], radius * 1.003)
+        const b = onSphere(
+          ring[(i + 1) % ring.length][0],
+          ring[(i + 1) % ring.length][1],
+          radius * 1.003
+        )
+        pts.push(a.x, a.y, a.z, b.x, b.y, b.z)
+      }
+    }
+    const g = new THREE.BufferGeometry()
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3))
+    return g
+  }, [radius])
 
   return (
     // Sink it so the surface is at y=0, where he stands.
@@ -102,6 +124,10 @@ export default function Globe({ radius = 1.35 }) {
 
           <lineSegments geometry={graticule}>
             <lineBasicMaterial color="#4a5e56" transparent opacity={0.38} />
+          </lineSegments>
+
+          <lineSegments geometry={states}>
+            <lineBasicMaterial color="#e2703a" transparent opacity={0.75} />
           </lineSegments>
 
           {indiaRings.map((points, i) => (

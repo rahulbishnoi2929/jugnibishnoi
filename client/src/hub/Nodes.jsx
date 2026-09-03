@@ -6,7 +6,7 @@ import { HEAD } from './layout.js'
 
 const world = new THREE.Vector3()
 
-export default function Nodes({ nodes, active, onPick }) {
+export default function Nodes({ nodes, active, onPick, zoom }) {
   return (
     <group>
       {nodes.map((n, i) => (
@@ -15,6 +15,7 @@ export default function Nodes({ nodes, active, onPick }) {
           node={n}
           index={i}
           state={!active ? 'idle' : active === n.id ? 'on' : 'off'}
+          zoom={zoom}
           onPick={onPick}
         />
       ))}
@@ -22,7 +23,7 @@ export default function Nodes({ nodes, active, onPick }) {
   )
 }
 
-function Node({ node, index, state, onPick }) {
+function Node({ node, index, state, onPick, zoom }) {
   const [hover, setHover] = useState(false)
   const dot = useRef()
   const group = useRef()
@@ -62,7 +63,11 @@ function Node({ node, index, state, onPick }) {
       0,
       1
     )
-    const fade = 1 - depth * 0.82
+    // Zoomed close to the planet the ring ends up around the camera and
+    // the labels blow up into nonsense, so they get out of the way.
+    const near = zoom ? THREE.MathUtils.clamp((zoom.current - 0.55) / 0.25, 0, 1) : 1
+    const byDepth = 1 - depth * 0.82
+    const fade = byDepth * near
 
     dot.current.scale.setScalar(
       THREE.MathUtils.lerp(dot.current.scale.x, targetScale + wobble, k)
@@ -80,9 +85,11 @@ function Node({ node, index, state, onPick }) {
       )
     }
     if (label.current) {
-      // Dimmed, but still clickable: clicking a branch round the back is
-      // how you bring it round to the front.
-      label.current.style.opacity = state === 'off' ? 0 : Math.max(0.3, fade).toFixed(3)
+      // A branch round the back stays dimmed but clickable — that is how
+      // you bring it to the front — so the depth floor is 0.3. The zoom
+      // factor multiplies afterwards, or zooming in could never hide it.
+      label.current.style.opacity =
+        state === 'off' ? 0 : (Math.max(0.3, byDepth) * near).toFixed(3)
     }
   })
 
