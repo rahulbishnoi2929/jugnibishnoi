@@ -45,17 +45,35 @@ correct because of `vercel.json`.
 `npm run deploy:preview` puts up a throwaway preview URL instead of
 touching production.
 
-## The first deploy failed. Here is why, so it is not re-litigated
+## Root Directory must be `client`
+
+This is the one setting that matters, and getting it wrong is what broke
+the first three deploys.
+
+The existing Vercel project is named **`jugnibishnoi-client`**, which means
+its **Root Directory is `client`**. With that set:
+
+- Vercel reads **`client/vercel.json`**, not the one at the repo root
+- the Vite preset's default output, `dist`, resolves to `client/dist`
+- so the build lands exactly where Vercel looks, with nothing overridden
+
+Both files exist so either setting works: `client/vercel.json` carries the
+rewrites for a `client` root, and the root `vercel.json` names
+`client/dist` explicitly for a repo-root root. Check the setting in
+**Project Settings → Build & Deployment → Root Directory** before changing
+anything else.
+
+### What went wrong, so it is not re-litigated
 
 The first attempt built fine and then failed with:
 
     No Output Directory named "dist" found after the Build completed.
 
-Vercel detects the Vite preset when you import, and looks for dist/ at the
-project root. outputDirectory: "client/dist" in vercel.json did not
-override that. Rather than work out which setting wins, the Vite config
-now builds to dist/ at the repo root, which is where Vercel already looks.
-Nothing to change in the dashboard.
+I read that as Vercel wanting `dist` at the repo root and moved the Vite
+output there. That was wrong, and it made things worse: with Root Directory
+set to `client`, Vercel looks *inside* `client`, so moving the build out of
+`client` guaranteed a miss. The output is back at Vite's default and the
+config is now expressed in the place Vercel actually reads.
 
 ## What vercel.json does
 
