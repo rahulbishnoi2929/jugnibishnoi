@@ -2,6 +2,10 @@ import { useMemo } from 'react'
 import { Line } from '@react-three/drei'
 import { useLoader } from '@react-three/fiber'
 import * as THREE from 'three'
+// India's outline, from real boundary data rather than points typed by hand.
+// scripts/gen-india.js documents whose boundary this is — it is the de-facto
+// line, not India's official claim.
+import indiaData from './india.json'
 
 // The ground is a small planet, and he is standing on Punjab.
 //
@@ -27,18 +31,6 @@ function onSphere(lon, lat, r) {
     r * Math.cos(la) * Math.cos(lo)
   )
 }
-
-// India, coarse. Roughly two dozen points clockwise from the Rann of
-// Kutch. Recognisable, not survey-grade.
-const INDIA = [
-  [68.2, 23.9], [70.0, 22.6], [72.6, 21.7], [72.8, 19.1], [73.5, 15.9],
-  [74.9, 13.0], [76.0, 10.3], [77.5, 8.1], [79.9, 10.3], [80.3, 13.1],
-  [82.3, 16.9], [84.8, 19.1], [86.9, 21.5], [88.1, 21.8], [89.1, 22.0],
-  [89.7, 25.3], [88.2, 26.4], [92.0, 26.0], [94.5, 27.3], [96.2, 27.6],
-  [92.0, 27.9], [88.7, 28.1], [85.0, 28.2], [81.0, 30.3], [79.0, 31.0],
-  [77.0, 32.5], [75.5, 34.5], [74.0, 34.4], [73.9, 32.5], [71.5, 29.5],
-  [70.5, 28.0], [69.5, 26.5],
-]
 
 export default function Globe({ radius = 1.35 }) {
   // Real coastlines, from world-atlas land-110m (Natural Earth, public
@@ -77,8 +69,11 @@ export default function Globe({ radius = 1.35 }) {
     return g
   }, [radius])
 
-  const india = useMemo(
-    () => INDIA.map(([lon, lat]) => onSphere(lon, lat, radius * 1.004)),
+  const indiaRings = useMemo(
+    () =>
+      indiaData.rings.map((r0) =>
+        r0.map(([lon, lat]) => onSphere(lon, lat, radius * 1.004))
+      ),
     [radius]
   )
 
@@ -109,14 +104,17 @@ export default function Globe({ radius = 1.35 }) {
             <lineBasicMaterial color="#4a5e56" transparent opacity={0.38} />
           </lineSegments>
 
-          <Line
-            points={india}
-            color="#d4a72c"
-            lineWidth={1.8}
-            transparent
-            opacity={0.85}
-            closed
-          />
+          {indiaRings.map((points, i) => (
+            <Line
+              key={i}
+              points={points}
+              color="#d4a72c"
+              lineWidth={1.8}
+              transparent
+              opacity={0.85}
+              closed
+            />
+          ))}
         </group>
       </group>
     </group>
