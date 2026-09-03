@@ -143,12 +143,18 @@ export default function Hub() {
 
           <Suspense fallback={null}>
             <Rig frozen={!!active} drag={drag} aim={aim}>
+              {/* The ground only exists at the hub — once you have
+                  travelled, the chapter's own artwork is the ground. It
+                  lives inside the rig so dragging spins the planet, and
+                  inside Suspense because its texture loads. */}
+              {!active && <Globe />}
+
               {/* Grounds him. The painted horizon in each scene does not line
                   up with the 3D floor, and without this he floats. */}
               <Shadow
                 position={[0, 0.015, 0]}
                 rotation={[-Math.PI / 2, 0, 0]}
-                scale={[0.85, 0.85, 1]}
+                scale={[0.32, 0.32, 1]}
                 opacity={0.55}
                 color="#000000"
               />
@@ -173,9 +179,6 @@ export default function Hub() {
             </Rig>
           </Suspense>
 
-          {/* The ground only exists at the hub. Once you have travelled, the
-              chapter's own artwork is the ground, and this drew across it. */}
-          {!active && <Globe />}
         </Canvas>
       </div>
 

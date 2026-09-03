@@ -22,7 +22,7 @@ const ring = (items, { r, y, phase }) =>
 
 // Chapters ride high and wide, in order, so spinning walks the years.
 export function placeNodes(chapters) {
-  return ring(chapters, { r: 3.0, y: 2.5, phase: 0 })
+  return ring(chapters, { r: 3.0, y: 2.25, phase: 0 })
 }
 
 // Rooms sit lower and tighter, offset half a step so one never hides
@@ -67,8 +67,8 @@ export function placeBranches(node, branches = []) {
 
 // Where the camera sits when nothing is selected.
 export const HOME_VIEW = {
-  pos: new THREE.Vector3(0, 2.35, 8.7),
-  look: new THREE.Vector3(0, 2.0, 0),
+  pos: new THREE.Vector3(0, 2.4, 9.4),
+  look: new THREE.Vector3(0, 0.95, 0),
 }
 
 const CHEST = new THREE.Vector3(0, 1.2, 0)

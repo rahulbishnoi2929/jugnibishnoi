@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Line } from '@react-three/drei'
+import { useLoader } from '@react-three/fiber'
 import * as THREE from 'three'
 
 // The ground is a small planet, and he is standing on Punjab.
@@ -39,7 +40,21 @@ const INDIA = [
   [70.5, 28.0], [69.5, 26.5],
 ]
 
-export default function Globe({ radius = 4.6 }) {
+export default function Globe({ radius = 1.35 }) {
+  // Real coastlines, from world-atlas land-110m (Natural Earth, public
+  // domain), baked into an equirectangular SVG by scripts/gen-earth.
+  //
+  // The offset is not a fudge: three's SphereGeometry puts u=0.25 at
+  // longitude 0 (its u=0 lands on -X), while the image puts longitude 0 at
+  // u=0.5. The quarter turn between those is exactly 0.25.
+  const earth = useLoader(THREE.TextureLoader, '/textures/earth.svg')
+  useMemo(() => {
+    earth.wrapS = THREE.RepeatWrapping
+    earth.offset.x = 0.25
+    earth.colorSpace = THREE.SRGBColorSpace
+    earth.anisotropy = 4
+  }, [earth])
+
   // Latitude and longitude lines as one geometry, so the whole graticule
   // is a single draw call instead of two dozen.
   const graticule = useMemo(() => {
@@ -75,8 +90,19 @@ export default function Globe({ radius = 4.6 }) {
       <group rotation={[-rad(90 - HOME_LAT), 0, 0]}>
         <group rotation={[0, -rad(HOME_LON), 0]}>
           <mesh>
-            <sphereGeometry args={[radius, 64, 48]} />
-            <meshStandardMaterial color="#080c0a" roughness={1} metalness={0} />
+            <sphereGeometry args={[radius, 96, 64]} />
+            {/* The planet sits below the lights, so most of it would be
+                in shadow. The map doubles as an emissive map at low
+                intensity: the continents stay readable everywhere while
+                the lit side still reads as lit. */}
+            <meshStandardMaterial
+              map={earth}
+              emissiveMap={earth}
+              emissive="#ffffff"
+              emissiveIntensity={0.42}
+              roughness={1}
+              metalness={0}
+            />
           </mesh>
 
           <lineSegments geometry={graticule}>
