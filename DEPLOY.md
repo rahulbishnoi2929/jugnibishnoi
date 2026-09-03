@@ -45,7 +45,7 @@ correct because of `vercel.json`.
 `npm run deploy:preview` puts up a throwaway preview URL instead of
 touching production.
 
-ISSUE HIT ON THE FIRST DEPLOY, AND THE FIX
+## The first deploy failed. Here is why, so it is not re-litigated
 
 The first attempt built fine and then failed with:
 
