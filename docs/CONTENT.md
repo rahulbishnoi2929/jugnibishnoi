@@ -165,14 +165,14 @@ Paste URLs. Delete rows you do not use — an empty link is worse than none.
 
 ## PHOTOS
 
-Drop files into  — soil, grit, campus,
-build or signal. That is the whole process: no JSON to edit, no upload
-form, no server. They appear in that chapter next time the page loads.
+Drop files into `client/src/photos/<chapter>/` — soil, grit, campus, build
+or signal. That is the whole process: no JSON to edit, no upload form, no
+server. They appear in that chapter next time the page loads.
 
 **The filename becomes the caption and the alt text**, so name them like
-sentences: , not .
-A leading number sets the order (, ). Full rules in
-.
+sentences: `wheat-harvest-at-4am.jpg`, not `IMG_20240817_093122.jpg`.
+A leading number sets the order (`01_`, `02_`). Full rules in
+`client/src/photos/README.md`.
 
 Add them one at a time as you dig them up — nothing breaks with a folder
 holding one file, or none.
@@ -187,8 +187,8 @@ What matters, in order:
 5. A photo of you. One. It can be bad.
 
 Rules: originals are fine up to about 2000px wide. Landscape beats
-portrait. Blurry and real beats sharp and stock. Clips work too (,
-) — keep them short. If a photo has other people in it, make sure
+portrait. Blurry and real beats sharp and stock. Clips work too (`.mp4`,
+`.webm`) — keep them short. If a photo has other people in it, make sure
 they would be fine with it being public.
 
 
