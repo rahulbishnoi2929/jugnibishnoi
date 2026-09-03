@@ -116,14 +116,16 @@
 @media (max-width: 900px) {
   .hub-copy {
     left: var(--s3);
-    bottom: var(--s6);
+    bottom: calc(var(--s6) + 44px);
     max-width: none;
   }
 
+  /* the escape hatch sits bottom-right on mobile, and at 375px wide the
+     two of them collided — stack this one above it */
   .hub-alt {
     right: auto;
     left: var(--s3);
-    bottom: var(--s3);
+    bottom: calc(var(--s3) + 46px);
   }
 }
 
@@ -344,4 +346,15 @@
 .sub-label.is-hot,
 .sub-label:hover {
   color: var(--node);
+}
+
+@media (max-width: 520px) {
+  /* Narrower labels mean the widest branch stops clipping the edge. */
+  .node-title {
+    font-size: 14px;
+  }
+
+  .node-years {
+    font-size: 9px;
+  }
 }

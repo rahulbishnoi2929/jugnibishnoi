@@ -298,9 +298,13 @@ function Travel({ view, zoom }) {
   const targetPos = useRef(new THREE.Vector3())
   const targetLook = useRef(new THREE.Vector3())
 
-  useFrame((_, dt) => {
+  useFrame((state, dt) => {
     const k = reduced ? 1 : 1 - Math.pow(0.0007, Math.min(dt, 0.1))
-    applyZoom(view, zoom.current, targetPos.current, targetLook.current)
+    // A phone is far too narrow for the ring at desktop framing — Soil and
+    // Grit fell off both edges. Pull back on narrow viewports. Read from
+    // the canvas each frame so rotating the phone is handled for free.
+    const fit = state.size.width < 520 ? 2.5 : state.size.width < 760 ? 1.5 : 1
+    applyZoom(view, zoom.current * fit, targetPos.current, targetLook.current)
     camera.position.lerp(targetPos.current, k)
     look.current.lerp(targetLook.current, k)
     camera.lookAt(look.current)
