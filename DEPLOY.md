@@ -45,6 +45,18 @@ correct because of `vercel.json`.
 `npm run deploy:preview` puts up a throwaway preview URL instead of
 touching production.
 
+ISSUE HIT ON THE FIRST DEPLOY, AND THE FIX
+
+The first attempt built fine and then failed with:
+
+    No Output Directory named "dist" found after the Build completed.
+
+Vercel detects the Vite preset when you import, and looks for dist/ at the
+project root. outputDirectory: "client/dist" in vercel.json did not
+override that. Rather than work out which setting wins, the Vite config
+now builds to dist/ at the repo root, which is where Vercel already looks.
+Nothing to change in the dashboard.
+
 ## What vercel.json does
 
 ```json
