@@ -75,6 +75,10 @@ export default function Hub() {
     setDragging(false)
   }
 
+  // How far his head is off its resting height this frame. Figure writes
+  // it, the branches read it.
+  const bob = useRef(0)
+
   // Where the turntable should settle. Set from the active branch rather
   // than from the click, so a pasted /c/soil link spins there too.
   const aim = useRef(null)
@@ -147,17 +151,24 @@ export default function Hub() {
                 opacity={0.55}
                 color="#000000"
               />
-              <Figure facing={active ? nodes.find((n) => n.id === active)?.pos : null} />
-              <Nodes nodes={nodes} active={active} onPick={go} />
+              <Figure
+                facing={active ? nodes.find((n) => n.id === active)?.pos : null}
+                bob={bob}
+              />
 
-              {branches.length > 0 && (
-                <SubNodes
-                  branches={branches}
-                  accent={activeNode.accent}
-                  active={sub}
-                  onPick={goSub}
-                />
-              )}
+              {/* Everything growing out of his head rides with it. */}
+              <Breathe bob={bob}>
+                <Nodes nodes={nodes} active={active} onPick={go} />
+
+                {branches.length > 0 && (
+                  <SubNodes
+                    branches={branches}
+                    accent={activeNode.accent}
+                    active={sub}
+                    onPick={goSub}
+                  />
+                )}
+              </Breathe>
             </Rig>
           </Suspense>
 
@@ -206,6 +217,17 @@ function Travel({ view }) {
   })
 
   return null
+}
+
+// Rides the figure's breathing exactly, so the point the branches spring
+// from stays on his head instead of hanging in the air above or below it
+// while he moves.
+function Breathe({ bob, children }) {
+  const g = useRef()
+  useFrame(() => {
+    g.current.position.y = bob.current
+  })
+  return <group ref={g}>{children}</group>
 }
 
 // The turntable. The figure and the branches turn together, because the

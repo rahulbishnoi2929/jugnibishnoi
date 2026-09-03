@@ -1,7 +1,9 @@
 import * as THREE from 'three'
 import { HEAD_Y } from './Figure.jsx'
 
-export const HEAD = new THREE.Vector3(0, HEAD_Y + 0.06, 0)
+// The crown, not the centre of the skull — 0.06 put the junction inside
+// his head, so the branches read as passing through his face.
+export const HEAD = new THREE.Vector3(0, HEAD_Y + 0.15, 0)
 
 // Two rings around him, each split evenly through a full circle.
 //

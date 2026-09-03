@@ -10,7 +10,7 @@ import * as THREE from 'three'
 // the rest of the scene needs from it.
 export const HEAD_Y = 1.78
 
-export default function Figure({ facing }) {
+export default function Figure({ facing, bob }) {
   const group = useRef()
   const chest = useRef()
   const armL = useRef()
@@ -22,7 +22,10 @@ export default function Figure({ facing }) {
 
     // Breathing. The old amplitude was 0.025 on a 1.8-unit figure, which
     // is invisible at any camera distance — this is the same idea, read.
-    group.current.position.y = Math.sin(t * 0.9) * 0.12
+    const rise = Math.sin(t * 0.9) * 0.12
+    group.current.position.y = rise
+    // The branches grow out of his head, so they need to know where it is.
+    if (bob) bob.current = rise
     chest.current.scale.y = 1 + Math.sin(t * 0.9) * 0.022
 
     // Turning with the cursor is the turntable's job now — he and the
