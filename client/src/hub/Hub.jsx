@@ -20,6 +20,7 @@ import {
   applyZoom,
   ZOOM_MIN,
   ZOOM_MAX,
+  fitFor,
 } from './layout.js'
 import { asset } from '../lib/asset.js'
 import '../styles/hub.css'
@@ -33,7 +34,21 @@ const reduced =
 export default function Hub() {
   const { id, sub } = useParams()
   const navigate = useNavigate()
-  const nodes = useMemo(() => [...placeNodes(chapters), ...placeRooms(rooms)], [])
+  // Breakpoint as state, not a one-off read, so rotating the phone
+  // re-lays the rings out instead of keeping portrait spacing.
+  const [narrow, setNarrow] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < 520
+  )
+  useEffect(() => {
+    const onResize = () => setNarrow(window.innerWidth < 520)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
+  const nodes = useMemo(
+    () => [...placeNodes(chapters, narrow), ...placeRooms(rooms, narrow)],
+    [narrow]
+  )
 
   // Rooms that only route away are never a destination here.
   const openable = nodes.filter((n) => n.kind !== 'link')
@@ -44,8 +59,8 @@ export default function Hub() {
   // A chapter's own branches, and which of them is open.
   const activeNode = nodes.find((n) => n.id === active)
   const branches = useMemo(
-    () => (activeNode ? placeBranches(activeNode, activeNode.branches) : []),
-    [activeNode]
+    () => (activeNode ? placeBranches(activeNode, activeNode.branches, narrow) : []),
+    [activeNode, narrow]
   )
   const openSub = branches.find((b) => b.id === sub) ?? null
 
@@ -232,7 +247,7 @@ export default function Hub() {
                   travelled, the chapter's own artwork is the ground. It
                   lives inside the rig so dragging spins the planet, and
                   inside Suspense because its texture loads. */}
-              {!active && <Globe />}
+              {!active && <Globe radius={narrow ? 0.95 : 1.35} />}
 
               {/* He and his branches shrink as you zoom into the planet.
                   The globe is outside this on purpose — it is the thing
@@ -304,7 +319,7 @@ function Travel({ view, zoom }) {
     // A phone is far too narrow for the ring at desktop framing — Soil and
     // Grit fell off both edges. Pull back on narrow viewports. Read from
     // the canvas each frame so rotating the phone is handled for free.
-    const fit = state.size.width < 520 ? 2.5 : state.size.width < 760 ? 1.5 : 1
+    const fit = fitFor(state.size.width)
     applyZoom(view, zoom.current * fit, targetPos.current, targetLook.current)
     camera.position.lerp(targetPos.current, k)
     look.current.lerp(targetLook.current, k)

@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Line, Html } from '@react-three/drei'
 import * as THREE from 'three'
-import { HEAD } from './layout.js'
+import { HEAD, fitFor } from './layout.js'
 
 const world = new THREE.Vector3()
 
@@ -57,15 +57,23 @@ function Node({ node, index, state, onPick, zoom }) {
     // Now that the rings are full circles, half the branches are behind him
     // at any moment. Fade them by distance or the labels pile up on top of
     // each other and it reads as noise rather than depth.
+    // Measured as a ratio of the camera's own distance, not in absolute
+    // units. The old constants were tuned to the desktop ring; on a phone,
+    // where the ring is smaller and the camera further back, every node
+    // landed at the near end and nothing dimmed at all.
     dot.current.getWorldPosition(world)
-    const depth = THREE.MathUtils.clamp(
-      (world.distanceTo(s.camera.position) - 4.7) / 6.2,
-      0,
-      1
-    )
+    const ratio = world.distanceTo(s.camera.position) / s.camera.position.length()
+    const depth = THREE.MathUtils.clamp((ratio - 0.78) / 0.42, 0, 1)
     // Zoomed close to the planet the ring ends up around the camera and
     // the labels blow up into nonsense, so they get out of the way.
-    const near = zoom ? THREE.MathUtils.clamp((zoom.current - 0.55) / 0.25, 0, 1) : 1
+    //
+    // This has to test the *effective* distance, zoom times the viewport
+    // fit, not zoom on its own. On a phone the fit already holds the
+    // camera back, so testing raw zoom made the branches vanish as soon as
+    // you pinched to a comfortable reading distance — nowhere near the
+    // planet.
+    const effective = (zoom?.current ?? 1) * fitFor(s.size.width)
+    const near = THREE.MathUtils.clamp((effective - 0.5) / 0.25, 0, 1)
     const byDepth = 1 - depth * 0.82
     const fade = byDepth * near
 

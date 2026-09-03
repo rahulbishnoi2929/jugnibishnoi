@@ -20,15 +20,29 @@ const ring = (items, { r, y, phase }) =>
     }
   })
 
+// How far back the camera sits for a given viewport width.
+//
+// A phone cannot take the desktop framing, but pulling back 2.5x to make
+// the ring fit left everything too small to read. The ring shrinks instead
+// and the pull-back is gentle.
+export const fitFor = (w) => (w < 520 ? 1.35 : w < 760 ? 1.15 : 1)
+
+const RING = {
+  wide: { chapters: { r: 3.0, y: 2.25 }, rooms: { r: 2.5, y: 1.1 } },
+  narrow: { chapters: { r: 1.5, y: 1.45 }, rooms: { r: 1.28, y: 0.72 } },
+}
+
 // Chapters ride high and wide, in order, so spinning walks the years.
-export function placeNodes(chapters) {
-  return ring(chapters, { r: 3.0, y: 2.25, phase: 0 })
+export function placeNodes(chapters, narrow) {
+  const { r, y } = (narrow ? RING.narrow : RING.wide).chapters
+  return ring(chapters, { r, y, phase: 0 })
 }
 
 // Rooms sit lower and tighter, offset half a step so one never hides
 // directly behind a chapter.
-export function placeRooms(rooms) {
-  return ring(rooms, { r: 2.5, y: 1.1, phase: Math.PI / 5 }).map((n) => ({
+export function placeRooms(rooms, narrow) {
+  const { r, y } = (narrow ? RING.narrow : RING.wide).rooms
+  return ring(rooms, { r, y, phase: Math.PI / 5 }).map((n) => ({
     ...n,
     ring: 'room',
   }))
@@ -48,7 +62,7 @@ const FAN = [
   [-0.06, -1.9, -0.1],
 ]
 
-export function placeBranches(node, branches = []) {
+export function placeBranches(node, branches = [], narrow) {
   // The offsets are what we want to see on screen, but these nodes live
   // inside the turntable, which is counter-rotated by the node's own angle
   // while its chapter is open. Pre-rotating by that angle cancels it out —
@@ -56,8 +70,9 @@ export function placeBranches(node, branches = []) {
   const spin = node.angle ?? 0
 
   return branches.map((b, i) => {
+    const k = narrow ? 0.68 : 1
     const [dx, dy, dz] = FAN[i % FAN.length]
-    const offset = new THREE.Vector3(dx, dy, dz).applyAxisAngle(
+    const offset = new THREE.Vector3(dx * k, dy * k, dz * k).applyAxisAngle(
       new THREE.Vector3(0, 1, 0),
       spin
     )

@@ -349,12 +349,13 @@
 }
 
 @media (max-width: 520px) {
-  /* Narrower labels mean the widest branch stops clipping the edge. */
+  /* The ring is smaller on a phone rather than further away, so the text
+     does not need shrinking as hard as it did. */
   .node-title {
-    font-size: 14px;
+    font-size: 16px;
   }
 
   .node-years {
-    font-size: 9px;
+    font-size: 10px;
   }
 }
