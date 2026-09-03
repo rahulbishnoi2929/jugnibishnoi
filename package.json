@@ -9,10 +9,10 @@
     "build": "npm run build -w client",
     "preview": "npm run preview -w client",
     "test": "node client/src/game/engine.test.mjs",
-    "deploy": "vercel --prod",
-    "deploy:preview": "vercel"
+    "deploy": "npx vercel --prod",
+    "deploy:preview": "npx vercel"
   },
-  "devDependencies": {
-    "vercel": "^59.11.2"
+  "engines": {
+    "node": ">=20"
   }
 }
