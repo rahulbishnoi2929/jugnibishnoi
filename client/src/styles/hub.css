@@ -319,6 +319,8 @@
 
 .hub-canvas {
   cursor: grab;
+  /* the canvas handles drag and pinch itself; let the browser do neither */
+  touch-action: none;
 }
 
 .hub-canvas.is-dragging {

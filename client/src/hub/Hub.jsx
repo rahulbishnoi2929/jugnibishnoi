@@ -64,17 +64,56 @@ export default function Hub() {
   const from = useRef(null)
   const [dragging, setDragging] = useState(false)
 
+  // Every pointer currently down, so two fingers can be told from one.
+  const pointers = useRef(new Map())
+  const pinch = useRef(null)
+
   const onDown = (e) => {
-    if (e.button !== 0) return
+    if (e.pointerType === 'mouse' && e.button !== 0) return
     // Capture, so the release reaches us even if the pointer ends up
     // outside the window. Without it a drag that left the page never
     // ended, and every later move kept turning the ring with no button
     // held down.
-    e.currentTarget.setPointerCapture?.(e.pointerId)
-    from.current = { x: e.clientX, y: e.clientY }
-    setDragging(true)
+    // Throws NotFoundError if the id is not a live pointer, and losing the
+    // handler to that would drop the gesture entirely.
+    try {
+      e.currentTarget.setPointerCapture?.(e.pointerId)
+    } catch {}
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+
+    if (pointers.current.size === 2) {
+      const [a, b] = [...pointers.current.values()]
+      pinch.current = { gap: Math.hypot(a.x - b.x, a.y - b.y), zoom: zoom.current }
+      // A pinch is not a drag. Drop the rotation anchor or the ring lurches
+      // as the second finger lands.
+      from.current = null
+      setDragging(false)
+    } else if (pointers.current.size === 1) {
+      from.current = { x: e.clientX, y: e.clientY }
+      setDragging(true)
+    }
   }
+
   const onMove = (e) => {
+    if (pointers.current.has(e.pointerId)) {
+      pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    }
+
+    // Pinch: fingers apart means zoom in, and zoom is a distance
+    // multiplier, so the ratio goes the other way up.
+    if (pinch.current && pointers.current.size >= 2) {
+      const [a, b] = [...pointers.current.values()]
+      const gap = Math.hypot(a.x - b.x, a.y - b.y)
+      if (gap > 0) {
+        zoom.current = THREE.MathUtils.clamp(
+          pinch.current.zoom * (pinch.current.gap / gap),
+          ZOOM_MIN,
+          ZOOM_MAX
+        )
+      }
+      return
+    }
+
     if (!from.current) return
     drag.current.x += (e.clientX - from.current.x) * 0.011
     // Tilt is clamped — past about 25° you are looking at the top of his
@@ -86,9 +125,19 @@ export default function Hub() {
     )
     from.current = { x: e.clientX, y: e.clientY }
   }
-  const onUp = () => {
-    from.current = null
-    setDragging(false)
+
+  const onUp = (e) => {
+    pointers.current.delete(e.pointerId)
+    if (pointers.current.size < 2) pinch.current = null
+    // One finger left after a pinch: re-anchor rather than resuming from a
+    // stale point, which would snap the ring round.
+    if (pointers.current.size === 1) {
+      const [only] = [...pointers.current.values()]
+      from.current = { ...only }
+    } else if (pointers.current.size === 0) {
+      from.current = null
+      setDragging(false)
+    }
   }
 
   // How far his head is off its resting height this frame. Figure writes
@@ -184,33 +233,38 @@ export default function Hub() {
                   inside Suspense because its texture loads. */}
               {!active && <Globe />}
 
-              {/* Grounds him. The painted horizon in each scene does not line
-                  up with the 3D floor, and without this he floats. */}
-              <Shadow
-                position={[0, 0.015, 0]}
-                rotation={[-Math.PI / 2, 0, 0]}
-                scale={[0.32, 0.32, 1]}
-                opacity={0.55}
-                color="#000000"
-              />
-              <Figure
-                facing={active ? nodes.find((n) => n.id === active)?.pos : null}
-                bob={bob}
-              />
+              {/* He and his branches shrink as you zoom into the planet.
+                  The globe is outside this on purpose — it is the thing
+                  you are zooming towards. */}
+              <Shrink zoom={zoom}>
+                {/* Grounds him. The painted horizon in each scene does not
+                    line up with the 3D floor, and without this he floats. */}
+                <Shadow
+                  position={[0, 0.015, 0]}
+                  rotation={[-Math.PI / 2, 0, 0]}
+                  scale={[0.32, 0.32, 1]}
+                  opacity={0.55}
+                  color="#000000"
+                />
+                <Figure
+                  facing={active ? nodes.find((n) => n.id === active)?.pos : null}
+                  bob={bob}
+                />
 
-              {/* Everything growing out of his head rides with it. */}
-              <Breathe bob={bob}>
-                <Nodes nodes={nodes} active={active} onPick={go} zoom={zoom} />
+                {/* Everything growing out of his head rides with it. */}
+                <Breathe bob={bob}>
+                  <Nodes nodes={nodes} active={active} onPick={go} zoom={zoom} />
 
-                {branches.length > 0 && (
-                  <SubNodes
-                    branches={branches}
-                    accent={activeNode.accent}
-                    active={sub}
-                    onPick={goSub}
-                  />
-                )}
-              </Breathe>
+                  {branches.length > 0 && (
+                    <SubNodes
+                      branches={branches}
+                      accent={activeNode.accent}
+                      active={sub}
+                      onPick={goSub}
+                    />
+                  )}
+                </Breathe>
+              </Shrink>
             </Rig>
           </Suspense>
 
@@ -253,6 +307,23 @@ function Travel({ view, zoom }) {
   })
 
   return null
+}
+
+// Scales him down as the camera closes on the planet.
+//
+// The camera distance already falls with zoom, so a scale of exactly zoom
+// would hold his on-screen size constant. The exponent above 1 is what
+// makes him actually shrink into the view rather than just stay put:
+// apparent size ends up proportional to zoom^0.6.
+function Shrink({ zoom, children }) {
+  const g = useRef()
+  useFrame((_, dt) => {
+    const k = 1 - Math.pow(0.000004, Math.min(dt, 0.1))
+    const target = Math.pow(THREE.MathUtils.clamp(zoom.current, 0.1, 1), 1.6)
+    const s = THREE.MathUtils.lerp(g.current.scale.x, target, k)
+    g.current.scale.setScalar(s)
+  })
+  return <group ref={g}>{children}</group>
 }
 
 // Rides the figure's breathing exactly, so the point the branches spring
