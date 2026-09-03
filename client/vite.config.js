@@ -1,14 +1,14 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-export default defineConfig({
-  plugins: [react()],
+// GitHub Pages serves a project site from /<repo>/, so the bundle has to
+// be built with that prefix. Overridable, so a future move to a root
+// domain is one env var rather than an edit:
+//
+//   BASE=/ npm run build
+const base = process.env.BASE ?? '/jugnibishnoi/'
 
-  // Output stays at client/dist, Vite's default.
-  //
-  // I briefly moved it to ../dist to satisfy a Vercel error, which was
-  // the wrong call: that project has its Root Directory set to client
-  // (hence the name jugnibishnoi-client), so Vercel looks for dist inside
-  // client and moving the build out of there guaranteed it would miss.
-  // See DEPLOY.md.
+export default defineConfig({
+  base,
+  plugins: [react()],
 })

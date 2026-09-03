@@ -1,3 +1,5 @@
+import { asset } from '../lib/asset.js'
+
 export default function Chapter({ chapter, index }) {
   const { id, title, years, place, lede, body, scene, artifacts = [] } = chapter
 
@@ -11,7 +13,7 @@ export default function Chapter({ chapter, index }) {
       style={{ '--chapter': chapter.accent }}
     >
       {scene && (
-        <div className="scene" style={{ backgroundImage: `url(${scene})` }} />
+        <div className="scene" style={{ backgroundImage: `url(${asset(scene)})` }} />
       )}
 
       <div className="chapter-inner">

@@ -21,6 +21,7 @@ import {
   ZOOM_MIN,
   ZOOM_MAX,
 } from './layout.js'
+import { asset } from '../lib/asset.js'
 import '../styles/hub.css'
 
 const chapters = data.chapters
@@ -197,7 +198,7 @@ export default function Hub() {
       <div
         className="hub-scene"
         style={{
-          backgroundImage: chapter?.scene ? `url(${chapter.scene})` : 'none',
+          backgroundImage: chapter?.scene ? `url(${asset(chapter.scene)})` : 'none',
           opacity: chapter ? 1 : 0,
         }}
       />

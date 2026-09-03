@@ -12,7 +12,9 @@ const Journey = lazy(() => import('./journey/Journey.jsx'))
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <BrowserRouter>
+    {/* Pages serves this under /jugnibishnoi/, so the router has to be
+        told or every route resolves one level too high. */}
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Suspense fallback={<div className="boot" />}>
         <Routes>
           <Route path="/" element={<Hub />} />

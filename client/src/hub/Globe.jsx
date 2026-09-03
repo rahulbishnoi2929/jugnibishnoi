@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Line } from '@react-three/drei'
 import { useLoader } from '@react-three/fiber'
 import * as THREE from 'three'
+import { asset } from '../lib/asset.js'
 // India's outline, from real boundary data rather than points typed by hand.
 // scripts/gen-india.js documents whose boundary this is — it is the de-facto
 // line, not India's official claim.
@@ -40,7 +41,7 @@ export default function Globe({ radius = 1.35 }) {
   // The offset is not a fudge: three's SphereGeometry puts u=0.25 at
   // longitude 0 (its u=0 lands on -X), while the image puts longitude 0 at
   // u=0.5. The quarter turn between those is exactly 0.25.
-  const earth = useLoader(THREE.TextureLoader, '/textures/earth.svg')
+  const earth = useLoader(THREE.TextureLoader, asset('/textures/earth.svg'))
   useMemo(() => {
     earth.wrapS = THREE.RepeatWrapping
     earth.offset.x = 0.25

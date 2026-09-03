@@ -6,11 +6,9 @@
   ],
   "scripts": {
     "dev": "npm run dev -w client",
-    "build": "npm run build -w client && node scripts/mirror-dist.js",
+    "build": "npm run build -w client && node scripts/post-build.js",
     "preview": "npm run preview -w client",
-    "test": "node client/src/game/engine.test.mjs",
-    "deploy": "npx vercel --prod",
-    "deploy:preview": "npx vercel"
+    "test": "node client/src/game/engine.test.mjs"
   },
   "engines": {
     "node": ">=20"
