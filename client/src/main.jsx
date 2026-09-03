@@ -18,6 +18,8 @@ createRoot(document.getElementById('root')).render(
           <Route path="/" element={<Hub />} />
           {/* a branch is a real URL, so it is shareable and Back works */}
           <Route path="/c/:id" element={<Hub />} />
+          {/* a chapter's own branch, e.g. /c/campus/hackathon */}
+          <Route path="/c/:id/:sub" element={<Hub />} />
           <Route path="/journey" element={<Journey />} />
           <Route path="/work" element={<Work />} />
         </Routes>

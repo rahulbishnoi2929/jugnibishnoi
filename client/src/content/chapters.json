@@ -73,7 +73,57 @@
         "What you actually studied vs what you actually learned",
         "Anything you started or ran at college besides the hackathons"
       ],
-      "scene": "/scenes/campus.svg"
+      "scene": "/scenes/campus.svg",
+      "branches": [
+        {
+          "id": "competition",
+          "title": "Competition",
+          "lede": "Collect garbage. Build something in three hours.",
+          "body": [
+            "The installation event, and the silver medal that came out of it. Before I knew the word hackathon, this was the format: a pile of waste, a clock, and whatever you can make."
+          ],
+          "todo": [
+            "Which competition, which year",
+            "What you actually built out of the garbage",
+            "Any other competitions worth naming"
+          ]
+        },
+        {
+          "id": "hackathon",
+          "title": "Hackathon",
+          "lede": "BFCET Hack 1.0, 2.0, and SIH — from the organiser side.",
+          "body": [
+            "Running one at your own college is different from attending one somewhere else. You are the person the wifi is blamed on."
+          ],
+          "todo": [
+            "Dates for 1.0 and 2.0",
+            "Head counts",
+            "What you learned running the second one that you did not know for the first"
+          ]
+        },
+        {
+          "id": "sports",
+          "title": "Sports",
+          "lede": "Inter-college medals in four of them.",
+          "body": [
+            "Basketball, athletics, volleyball, shooting ball — all of it played for BFCET rather than for school by this point."
+          ],
+          "todo": [
+            "Which one you represented the college in most",
+            "Any tournament worth naming"
+          ]
+        },
+        {
+          "id": "friends",
+          "title": "Friends",
+          "lede": "The part that is not on a certificate.",
+          "body": [],
+          "todo": [
+            "This one is yours entirely — who, and what you would actually want public",
+            "Whether they are happy being named or photographed"
+          ]
+        }
+      ]
     },
     {
       "id": "build",

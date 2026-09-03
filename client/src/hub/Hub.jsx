@@ -7,8 +7,9 @@ import data from '../content/chapters.json'
 import roomData from '../content/rooms.json'
 import Figure from './Figure.jsx'
 import Nodes from './Nodes.jsx'
+import SubNodes from './SubNodes.jsx'
 import Panel from './Panel.jsx'
-import { placeNodes, placeRooms, HOME_VIEW, BRANCH_VIEW, spinToFront } from './layout.js'
+import { placeNodes, placeRooms, placeBranches, HOME_VIEW, BRANCH_VIEW, spinToFront } from './layout.js'
 import '../styles/hub.css'
 
 const chapters = data.chapters
@@ -18,7 +19,7 @@ const reduced =
   matchMedia('(prefers-reduced-motion: reduce)').matches
 
 export default function Hub() {
-  const { id } = useParams()
+  const { id, sub } = useParams()
   const navigate = useNavigate()
   const nodes = useMemo(() => [...placeNodes(chapters), ...placeRooms(rooms)], [])
 
@@ -28,11 +29,21 @@ export default function Hub() {
   const chapter = openable.find((n) => n.id === active)
   const view = active ? BRANCH_VIEW : HOME_VIEW
 
+  // A chapter's own branches, and which of them is open.
+  const activeNode = nodes.find((n) => n.id === active)
+  const branches = useMemo(
+    () => (activeNode ? placeBranches(activeNode, activeNode.branches) : []),
+    [activeNode]
+  )
+  const openSub = branches.find((b) => b.id === sub) ?? null
+
   const go = (next) => {
     if (!next) return navigate('/')
     const node = nodes.find((n) => n.id === next)
     navigate(node?.kind === 'link' ? node.to : '/c/' + next)
   }
+  const goSub = (next) =>
+    navigate(next ? '/c/' + active + '/' + next : '/c/' + active)
 
   // Drag to turn him — both ways. Nothing happens on hover: the
   // constellation moves when you take hold of it and not before.
@@ -79,10 +90,13 @@ export default function Hub() {
   // Escape is how people leave things.
   useEffect(() => {
     if (!active) return
-    const onKey = (e) => e.key === 'Escape' && go(null)
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return
+      openSub ? goSub(null) : go(null)
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [active])
+  }, [active, openSub])
 
   return (
     <div className={'hub' + (active ? ' is-travelled' : '')}>
@@ -135,6 +149,15 @@ export default function Hub() {
               />
               <Figure facing={active ? nodes.find((n) => n.id === active)?.pos : null} />
               <Nodes nodes={nodes} active={active} onPick={go} />
+
+              {branches.length > 0 && (
+                <SubNodes
+                  branches={branches}
+                  accent={activeNode.accent}
+                  active={sub}
+                  onPick={goSub}
+                />
+              )}
             </Rig>
           </Suspense>
 
@@ -156,7 +179,11 @@ export default function Hub() {
         <p className="hub-line">Twenty-three years, in five parts. Pick one.</p>
       </header>
 
-      <Panel chapter={chapter} onBack={() => go(null)} />
+      <Panel
+        chapter={openSub ? { ...openSub, accent: activeNode.accent } : chapter}
+        onBack={() => (openSub ? goSub(null) : go(null))}
+        backLabel={openSub ? '← ' + chapter.title : '← All chapters'}
+      />
 
       <Link className="hub-alt" to="/journey" aria-hidden={!!active}>
         Or read it start to finish →

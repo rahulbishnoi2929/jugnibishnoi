@@ -7,7 +7,7 @@ const Board = lazy(() => import('../game/Board.jsx'))
 // The chapter, opened in place. It scrolls inside itself and nothing
 // follows it — that is the point: a branch is a destination, not a
 // section you fall out of the bottom of into the next one.
-export default function Panel({ chapter, onBack }) {
+export default function Panel({ chapter, onBack, backLabel = '← All chapters' }) {
   if (!chapter) return null
 
   const media = mediaFor(chapter.id)
@@ -32,7 +32,7 @@ export default function Panel({ chapter, onBack }) {
     >
       <div className="panel-scroll">
         <button className="panel-back" onClick={onBack}>
-          ← All chapters
+          {backLabel}
         </button>
 
         <p className="panel-years">{years}</p>

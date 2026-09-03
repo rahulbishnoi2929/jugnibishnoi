@@ -324,3 +324,22 @@
 .hub-canvas.is-dragging {
   cursor: grabbing;
 }
+
+/* a chapter's own branch labels — smaller than a chapter's */
+.sub-label {
+  background: none;
+  border: 0;
+  padding: var(--s1) var(--s2);
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: var(--display);
+  font-size: 15px;
+  line-height: 1;
+  color: var(--ink);
+  transform: translateY(-16px);
+}
+
+.sub-label.is-hot,
+.sub-label:hover {
+  color: var(--node);
+}

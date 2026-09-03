@@ -32,6 +32,37 @@ export function placeRooms(rooms) {
   }))
 }
 
+// A chapter's own branches, fanned out from its node. They open to the
+// right because the reading panel owns the left half of the screen.
+//
+// Offsets are from the node, in world space — the ring is frozen at a
+// known angle while a chapter is open, so this needs no extra maths.
+// Down and to the right of the node: above it is off the top of the frame,
+// and left of it is under the reading panel.
+const FAN = [
+  [0.34, -0.3, 0.1],
+  [0.4, -0.9, -0.05],
+  [0.26, -1.45, 0.15],
+  [-0.06, -1.9, -0.1],
+]
+
+export function placeBranches(node, branches = []) {
+  // The offsets are what we want to see on screen, but these nodes live
+  // inside the turntable, which is counter-rotated by the node's own angle
+  // while its chapter is open. Pre-rotating by that angle cancels it out —
+  // without this the fan swung round and opened behind the panel.
+  const spin = node.angle ?? 0
+
+  return branches.map((b, i) => {
+    const [dx, dy, dz] = FAN[i % FAN.length]
+    const offset = new THREE.Vector3(dx, dy, dz).applyAxisAngle(
+      new THREE.Vector3(0, 1, 0),
+      spin
+    )
+    return { ...b, parent: node.pos, pos: node.pos.clone().add(offset) }
+  })
+}
+
 // Where the camera sits when nothing is selected.
 export const HOME_VIEW = {
   pos: new THREE.Vector3(0, 2.35, 8.7),
