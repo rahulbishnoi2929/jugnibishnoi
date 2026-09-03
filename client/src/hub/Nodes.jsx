@@ -80,9 +80,9 @@ function Node({ node, index, state, onPick }) {
       )
     }
     if (label.current) {
-      label.current.style.opacity = state === 'off' ? 0 : fade.toFixed(3)
-      // a branch round the back should not be clickable through him
-      label.current.style.pointerEvents = fade < 0.45 ? 'none' : 'auto'
+      // Dimmed, but still clickable: clicking a branch round the back is
+      // how you bring it round to the front.
+      label.current.style.opacity = state === 'off' ? 0 : Math.max(0.3, fade).toFixed(3)
     }
   })
 

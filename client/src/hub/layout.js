@@ -41,12 +41,14 @@ export const HOME_VIEW = {
 const CHEST = new THREE.Vector3(0, 1.2, 0)
 const UP = new THREE.Vector3(0, 1, 0)
 
-// Travelling swings the camera round to the branch's own side of the ring,
-// so each chapter is genuinely a different viewpoint rather than the same
-// shot with different art. He stays on screen, turning to face it.
-export function viewFor(node) {
-  const az = node.angle ?? Math.atan2(node.pos.x, node.pos.z)
-  const pos = new THREE.Vector3(Math.sin(az) * 5.6, 2.2, Math.cos(az) * 5.6)
+// Travelling holds one camera position and turns the world instead: the
+// branch you picked spins round to the front, the way a carousel brings
+// the thing you asked for to face you.
+//
+// The camera used to swing round to the branch's own side of the ring,
+// which meant a branch behind him stayed behind him.
+export const BRANCH_VIEW = (() => {
+  const pos = new THREE.Vector3(0, 2.25, 6.4)
 
   // Aim left of him, so he sits in the right half and the panel gets the
   // left half to itself.
@@ -55,4 +57,12 @@ export function viewFor(node) {
   const look = CHEST.clone().addScaledVector(right, -1.85)
 
   return { pos, look }
+})()
+
+// The turntable angle that puts a node at the front of the ring, chosen as
+// the equivalent nearest the current angle so it takes the short way round
+// instead of unwinding several turns.
+export function spinToFront(node, current) {
+  const want = -(node.angle ?? 0)
+  return want + Math.round((current - want) / (Math.PI * 2)) * Math.PI * 2
 }

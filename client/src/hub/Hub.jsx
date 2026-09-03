@@ -8,7 +8,7 @@ import roomData from '../content/rooms.json'
 import Figure from './Figure.jsx'
 import Nodes from './Nodes.jsx'
 import Panel from './Panel.jsx'
-import { placeNodes, placeRooms, HOME_VIEW, viewFor } from './layout.js'
+import { placeNodes, placeRooms, HOME_VIEW, BRANCH_VIEW, spinToFront } from './layout.js'
 import '../styles/hub.css'
 
 const chapters = data.chapters
@@ -26,7 +26,7 @@ export default function Hub() {
   const openable = nodes.filter((n) => n.kind !== 'link')
   const active = openable.some((n) => n.id === id) ? id : null
   const chapter = openable.find((n) => n.id === active)
-  const view = active ? viewFor(nodes.find((n) => n.id === active)) : HOME_VIEW
+  const view = active ? BRANCH_VIEW : HOME_VIEW
 
   const go = (next) => {
     if (!next) return navigate('/')
@@ -63,6 +63,18 @@ export default function Hub() {
     from.current = null
     setDragging(false)
   }
+
+  // Where the turntable should settle. Set from the active branch rather
+  // than from the click, so a pasted /c/soil link spins there too.
+  const aim = useRef(null)
+  useEffect(() => {
+    if (!active) {
+      aim.current = null
+      return
+    }
+    const node = nodes.find((n) => n.id === active)
+    if (node) aim.current = spinToFront(node, drag.current.x)
+  }, [active])
 
   // Escape is how people leave things.
   useEffect(() => {
@@ -111,7 +123,7 @@ export default function Hub() {
           <Travel view={view} />
 
           <Suspense fallback={null}>
-            <Rig frozen={!!active} drag={drag}>
+            <Rig frozen={!!active} drag={drag} aim={aim}>
               {/* Grounds him. The painted horizon in each scene does not line
                   up with the 3D floor, and without this he floats. */}
               <Shadow
@@ -173,16 +185,21 @@ function Travel({ view }) {
 // branches grow out of his head — rotating him alone made him swivel
 // inside them.
 //
-// It returns to neutral once you travel, so the node positions the camera
-// aims at are the ones layout.js computed.
-function Rig({ children, frozen, drag }) {
+// Travelling spins it to put the branch you picked at the front, rather
+// than returning it to neutral — otherwise picking something behind him
+// left it behind him.
+function Rig({ children, frozen, drag, aim }) {
   const g = useRef()
   useFrame((_, dt) => {
     const k = 1 - Math.pow(0.002, Math.min(dt, 0.1))
-    const ty = frozen ? 0 : drag.current.x
+    const spun = frozen && aim.current !== null
+    const ty = spun ? aim.current : drag.current.x
     const tx = frozen ? 0 : drag.current.y
     g.current.rotation.y = THREE.MathUtils.lerp(g.current.rotation.y, ty, k)
     g.current.rotation.x = THREE.MathUtils.lerp(g.current.rotation.x, tx, k)
+    // Keep the drag value on the animated angle, so going back to the hub
+    // carries on from where the spin left it instead of snapping.
+    if (spun) drag.current.x = g.current.rotation.y
   })
   return <group ref={g}>{children}</group>
 }
