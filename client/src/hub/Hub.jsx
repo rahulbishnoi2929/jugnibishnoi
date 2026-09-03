@@ -191,7 +191,9 @@ function Travel({ view }) {
 function Rig({ children, frozen, drag, aim }) {
   const g = useRef()
   useFrame((_, dt) => {
-    const k = 1 - Math.pow(0.002, Math.min(dt, 0.1))
+    // The base is the fraction of the gap still left after one second, so
+    // squaring it exactly doubles the rate. 0.002 -> 0.000004.
+    const k = 1 - Math.pow(0.000004, Math.min(dt, 0.1))
     const spun = frozen && aim.current !== null
     const ty = spun ? aim.current : drag.current.x
     const tx = frozen ? 0 : drag.current.y
