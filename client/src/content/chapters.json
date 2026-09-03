@@ -1,5 +1,5 @@
 {
-  "_note": "Chapter copy for the journey. Lives in the repo, not the DB — see docs/ARCHITECTURE.md §3. Voice: plain and understated (docs/CONTENT.md). `todo` entries are gaps Rahul still needs to fill; they render nowhere.",
+  "_note": "Chapter copy for the journey. Lives in the repo, not the DB — see docs/ARCHITECTURE.md §3. Voice: plain and understated (docs/CONTENT.md). Photos and clips are NOT listed here — drop them in src/photos/<id>/ and they appear (see src/photos/README.md). `todo` entries are gaps Rahul still needs to fill; they render nowhere.",
   "chapters": [
     {
       "id": "soil",
@@ -16,12 +16,6 @@
         "Farming is not a chapter that closed when I left for college. I went to Bathinda and I kept coming back for the seasons that need hands. It is still going on underneath everything below this."
       ],
       "artifacts": [
-        {
-          "type": "photo",
-          "src": "/photos/soil-1.jpg",
-          "alt": "TODO",
-          "caption": ""
-        },
         {
           "type": "quote",
           "text": "Twenty-nine principles. Nine of them about animals and trees.",
@@ -50,24 +44,6 @@
       ],
       "artifacts": [
         {
-          "type": "photo",
-          "src": "/photos/grit-basketball.jpg",
-          "alt": "TODO",
-          "caption": "Basketball"
-        },
-        {
-          "type": "photo",
-          "src": "/photos/grit-volleyball.jpg",
-          "alt": "TODO",
-          "caption": "Volleyball"
-        },
-        {
-          "type": "photo",
-          "src": "/photos/grit-athletics.jpg",
-          "alt": "TODO",
-          "caption": "Athletics"
-        },
-        {
           "type": "stat",
           "value": "4",
           "label": "sports, inter-college medals"
@@ -92,14 +68,6 @@
         "I went home for the seasons. Most of my class did not have a second job waiting for them at the end of term; I did, and it had nothing to do with computers.",
         "This is where the input started outrunning the output — where reading stopped being a syllabus and became a habit."
       ],
-      "artifacts": [
-        {
-          "type": "photo",
-          "src": "/photos/campus-1.jpg",
-          "alt": "TODO",
-          "caption": ""
-        }
-      ],
       "todo": [
         "Three books that changed something, one line each on what they changed",
         "What you actually studied vs what you actually learned",
@@ -121,12 +89,6 @@
         "One of those is for people in the worst hour of their life. The other is for my neighbours."
       ],
       "artifacts": [
-        {
-          "type": "photo",
-          "src": "/photos/build-1.jpg",
-          "alt": "TODO",
-          "caption": "IIT Ropar, iHub AWaDH"
-        },
         {
           "type": "stat",
           "value": "1 month",
@@ -162,12 +124,6 @@
           "type": "stat",
           "value": "100–300",
           "label": "people through the door, each"
-        },
-        {
-          "type": "photo",
-          "src": "/photos/signal-1.jpg",
-          "alt": "TODO",
-          "caption": ""
         }
       ],
       "todo": [

@@ -165,24 +165,32 @@ Paste URLs. Delete rows you do not use — an empty link is worse than none.
 
 ## PHOTOS
 
-Drop files in `client/public/photos/`. Name them by chapter so I can wire
-them up without asking: `soil-1.jpg`, `grit-1.jpg`, `campus-1.jpg`,
-`build-1.jpg`, `signal-1.jpg`, and so on.
+Drop files into  — soil, grit, campus,
+build or signal. That is the whole process: no JSON to edit, no upload
+form, no server. They appear in that chapter next time the page loads.
+
+**The filename becomes the caption and the alt text**, so name them like
+sentences: , not .
+A leading number sets the order (, ). Full rules in
+.
+
+Add them one at a time as you dig them up — nothing breaks with a folder
+holding one file, or none.
 
 What matters, in order:
 
-1. **Farming / fields / village.** These are the most valuable images on
-   this entire site. Nobody else has them. Even bad phone photos work.
+1. **Farming / fields / village.** The most valuable images on this entire
+   site. Nobody else has them. Even bad phone photos work.
 2. **You playing your sport.**
 3. **The three hackathons** — crowd shots, stage, whiteboards, 3am.
 4. **Anything from the IIT training.**
 5. A photo of you. One. It can be bad.
 
-Rules: originals are fine, I will compress them. Landscape beats portrait
-for full-bleed. Blurry and real beats sharp and stock. If a photo has
-other people in it, make sure they would be fine with it being public.
+Rules: originals are fine up to about 2000px wide. Landscape beats
+portrait. Blurry and real beats sharp and stock. Clips work too (,
+) — keep them short. If a photo has other people in it, make sure
+they would be fine with it being public.
 
----
 
 ## RESUME
 

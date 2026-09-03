@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react'
+import { mediaFor } from '../lib/media.js'
 
 // The game only loads if you go and play it.
 const Board = lazy(() => import('../game/Board.jsx'))
@@ -8,6 +9,8 @@ const Board = lazy(() => import('../game/Board.jsx'))
 // section you fall out of the bottom of into the next one.
 export default function Panel({ chapter, onBack }) {
   if (!chapter) return null
+
+  const media = mediaFor(chapter.id)
 
   const {
     title,
@@ -51,6 +54,18 @@ export default function Panel({ chapter, onBack }) {
 
         {artifacts.map((a, i) => (
           <Artifact key={i} {...a} />
+        ))}
+
+        {/* Whatever is sitting in src/photos/<id>/ right now. */}
+        {media.map((m) => (
+          <figure className="panel-photo" key={m.url}>
+            {m.video ? (
+              <video src={m.url} controls muted loop preload="metadata" />
+            ) : (
+              <img src={m.url} alt={m.label} loading="lazy" decoding="async" />
+            )}
+            {m.label && <figcaption>{m.label}</figcaption>}
+          </figure>
         ))}
       </div>
     </aside>
