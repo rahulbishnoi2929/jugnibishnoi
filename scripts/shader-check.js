@@ -30,11 +30,19 @@ async function main() {
     },
     planet: {
       m: shaders.planetMaterial('#d4a72c', [0.1, 0, 0.2]),
-      uniforms: ['uColor', 'uCentre', 'uOpacity'],
+      uniforms: ['uColor', 'uCentre', 'uAxis', 'uBands', 'uOpacity'],
     },
     ring: {
       m: shaders.ringMaterial('#d8c68f', [0.1, 0, 0.2], 0.04, 0.08),
       uniforms: ['uColor', 'uInner', 'uOuter', 'uOpacity'],
+    },
+    ellipticalStar: {
+      m: shaders.starMaterial({ elliptical: true }),
+      uniforms: ['uScale', 'uSize', 'uOpacity'],
+    },
+    orbit: {
+      m: shaders.orbitMaterial('#8ea6c4', 1),
+      uniforms: ['uColor', 'uRadius', 'uOpacity'],
     },
   }
 
@@ -44,6 +52,10 @@ async function main() {
       vs: m.vertexShader,
       fs: m.fragmentShader,
       color: !!m.vertexColors,
+      // A material's own defines have to go into the prefix, or the
+      // elliptical variant compiles without ELLIPTICAL and its two extra
+      // attributes silently vanish.
+      defines: Object.keys(m.defines || {}),
       uniforms,
     }
   }

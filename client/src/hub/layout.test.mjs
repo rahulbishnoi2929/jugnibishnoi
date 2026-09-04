@@ -34,7 +34,15 @@ import {
   shrinkFor,
   stagePlacement,
 } from './layout.js'
-import { PLANETS, galaxy, orbitOf, solarSystem, starfield, universe } from './cosmos.js'
+import {
+  PLANETS,
+  blackbody,
+  galaxy,
+  orbitOf,
+  solarSystem,
+  starfield,
+  universe,
+} from './cosmos.js'
 
 let passed = 0
 const test = (name, fn) => {
@@ -704,6 +712,187 @@ test('the galaxy is four populations, not one', () => {
     )
   }
   assert.ok(maxR < GALAXY.radius * 0.5, `the bulge reaches ${maxR.toFixed(2)} — that is a disc`)
+})
+
+// ---------- realism ----------
+//
+// Things that are true of a photograph and were not true of the first few
+// versions of this. All of them are checkable because all of them come
+// from a model rather than from a palette.
+
+test('star colour follows temperature, not taste', () => {
+  // The Planckian locus, checked at stars whose colours are known. If this
+  // drifts, every population out here drifts with it.
+  const at = (K) => blackbody(K).map((v) => Math.round(v * 255))
+  const sun = at(5778)
+  assert.ok(sun[0] === 255 && sun[1] > 235 && sun[2] > 220, `the sun came out ${sun}`)
+  const proxima = at(3050)
+  assert.ok(proxima[0] === 255 && proxima[2] < 140, `an M dwarf came out ${proxima}`)
+  const sirius = at(9940)
+  assert.ok(sirius[2] === 255 && sirius[0] < 220, `an A star came out ${sirius}`)
+
+  // Monotone: hotter is bluer, all the way up.
+  let prev = -1
+  for (let K = 2000; K <= 30000; K += 500) {
+    const c = blackbody(K)
+    const blueness = c[2] / c[0]
+    assert.ok(blueness > prev, `blueness went backwards at ${K}K`)
+    prev = blueness
+  }
+})
+
+test('the galaxy is a population, not a gradient', () => {
+  // A real disc runs from orange dwarfs through white to a few blue
+  // giants, and the big ones are the bright ones. The first version lerped
+  // one colour by radius, which is a gradient.
+  const disc = GALAXY.layers.disc
+  const ratio = []
+  for (let i = 0; i < disc.count; i++) {
+    ratio.push(disc.col[i * 3] / Math.max(1e-6, disc.col[i * 3 + 2]))
+  }
+  ratio.sort((a, b) => a - b)
+  const q = (f) => ratio[Math.floor(f * (ratio.length - 1))]
+  assert.ok(q(0.02) < 0.85, `the bluest stars are only ${q(0.02).toFixed(2)} red/blue`)
+  assert.ok(q(0.98) > 1.5, `the reddest stars are only ${q(0.98).toFixed(2)} red/blue`)
+
+  // Size and brightness go together, because temperature drives both.
+  let bigSum = 0
+  let bigN = 0
+  let smallSum = 0
+  let smallN = 0
+  for (let i = 0; i < disc.count; i++) {
+    const lum = (disc.col[i * 3] + disc.col[i * 3 + 1] + disc.col[i * 3 + 2]) / 3
+    if (disc.siz[i] > 2) {
+      bigSum += lum
+      bigN++
+    } else if (disc.siz[i] < 1) {
+      smallSum += lum
+      smallN++
+    }
+  }
+  assert.ok(bigN > 10 && smallN > 10, 'not enough of each to compare')
+  assert.ok(
+    bigSum / bigN > (smallSum / smallN) * 1.5,
+    'the big stars are not the bright ones'
+  )
+})
+
+test('the sky has a Milky Way in it', () => {
+  // From inside a spiral galaxy the sky has a band across it. This was
+  // simply missing, and it is the most recognisable thing about a real
+  // night sky.
+  const pole = SKY.pole
+  const sinLat = (l, i) =>
+    (l.pos[i * 3] * pole[0] + l.pos[i * 3 + 1] * pole[1] + l.pos[i * 3 + 2] * pole[2]) /
+    SKY.radius
+
+  const share = (l, limit) => {
+    let n = 0
+    for (let i = 0; i < l.count; i++) if (Math.abs(sinLat(l, i)) < limit) n++
+    return n / l.count
+  }
+
+  // Resolved stars: denser towards the plane, but everywhere. Equal
+  // sampling of a sphere would put 17% of them inside ten degrees.
+  const stars10 = share(SKY, Math.sin((10 * Math.PI) / 180))
+  assert.ok(stars10 > 0.28, `only ${(stars10 * 100).toFixed(0)}% of stars near the plane`)
+  assert.ok(stars10 < 0.7, `${(stars10 * 100).toFixed(0)}% near the plane — that is a disc, not a sky`)
+
+  // The band of unresolved light: a bright core a few degrees wide, and a
+  // glow carrying out to twenty. At a tighter concentration it came out
+  // knife-edged, with nothing at all past seventeen degrees.
+  const band20 = share(SKY.band, Math.sin((20 * Math.PI) / 180))
+  const band6 = share(SKY.band, Math.sin((6 * Math.PI) / 180))
+  assert.ok(band20 > 0.9, `only ${(band20 * 100).toFixed(0)}% of the band is within 20 degrees`)
+  assert.ok(band6 > 0.4 && band6 < 0.85, `${(band6 * 100).toFixed(0)}% of the band is inside 6 degrees`)
+  // And it must be on the same plane as the star density, or there are two
+  // Milky Ways.
+  let bandMean = 0
+  for (let i = 0; i < SKY.band.count; i++) bandMean += Math.abs(sinLat(SKY.band, i))
+  assert.ok(bandMean / SKY.band.count < 0.12, 'the band is not on the galactic plane')
+})
+
+test('the deep field is galaxies, not stars', () => {
+  // Every point out there is a galaxy, and a galaxy is a disc at some
+  // angle — so most of them are ellipses. Round dots read as stars, which
+  // is exactly the wrong thing at that scale.
+  const asp = [...UNIVERSE.layers.gal.asp].sort((a, b) => a - b)
+  const ang = UNIVERSE.layers.gal.ang
+  assert.equal(asp.length, UNIVERSE.layers.gal.count)
+  const slivers = asp.filter((v) => v < 0.5).length / asp.length
+  assert.ok(slivers > 0.2, `only ${(slivers * 100).toFixed(0)}% are edge-on enough to read as discs`)
+  const round = asp.filter((v) => v > 0.95).length / asp.length
+  assert.ok(round < 0.2, `${(round * 100).toFixed(0)}% are round — that is a star field`)
+  assert.ok(asp.every((v) => v > 0.05 && v <= 1), 'an aspect ratio is out of range')
+
+  // Turned every which way, not all lying the same direction.
+  let sin = 0
+  let cos = 0
+  for (let i = 0; i < ang.length; i++) {
+    sin += Math.sin(2 * ang[i])
+    cos += Math.cos(2 * ang[i])
+  }
+  const aligned = Math.hypot(sin, cos) / ang.length
+  assert.ok(aligned < 0.12, `the galaxies are ${(aligned * 100).toFixed(0)}% aligned to one axis`)
+})
+
+test('the planets lean the way they really lean', () => {
+  // Obliquity is real data, and it is what the banding and Saturn's rings
+  // are both built from — so it has to survive the trip into the scene.
+  for (let i = 0; i < SOLAR.planets.length; i++) {
+    const p = SOLAR.planets[i]
+    const el = PLANETS[i]
+    const axis = p.axis
+    assert.ok(
+      Math.abs(Math.hypot(axis[0], axis[1], axis[2]) - 1) < 1e-9,
+      `${p.name}'s axis is not a unit vector`
+    )
+    // The angle from the orbital pole is the obliquity, or its supplement
+    // for the two that spin backwards.
+    const lean = (Math.acos(Math.max(-1, Math.min(1, axis[1]))) * 180) / Math.PI
+    const want = el.tilt
+    assert.ok(
+      Math.abs(lean - want) < 0.5,
+      `${p.name} leans ${lean.toFixed(1)} degrees, the table says ${want}`
+    )
+  }
+
+  // The two famous ones, stated as facts rather than as numbers.
+  const uranus = SOLAR.planets[6]
+  assert.ok(
+    Math.abs(uranus.axis[1]) < 0.2,
+    'Uranus should be lying on its side, axis nearly in its own orbital plane'
+  )
+  const venus = SOLAR.planets[1]
+  assert.ok(venus.axis[1] < -0.9, 'Venus should be upside down')
+
+  // Only the giants are banded.
+  for (const p of SOLAR.planets) {
+    const giant = ['Jupiter', 'Saturn', 'Uranus', 'Neptune'].includes(p.name)
+    assert.ok(giant ? p.bands > 0.3 : p.bands === 0, `${p.name} has bands ${p.bands}`)
+  }
+
+  // And Saturn's rings sit in its equator, which is the plane at right
+  // angles to its axis — so the 26.7 degrees lives in one place only.
+  const saturn = SOLAR.planets[5]
+  const ringTilt = (Math.acos(Math.abs(saturn.axis[1])) * 180) / Math.PI
+  assert.ok(
+    Math.abs(ringTilt - 26.73) < 0.5,
+    `Saturn's rings would sit at ${ringTilt.toFixed(1)} degrees`
+  )
+})
+
+test('the galaxy has a nucleus', () => {
+  // A small very bright core on top of the bulge. Without it the middle of
+  // this was just more disc.
+  const n = GALAXY.layers.nucleus
+  assert.equal(n.count, 1)
+  assert.ok(Math.hypot(n.pos[0], n.pos[1], n.pos[2]) < 1e-9, 'the nucleus is off centre')
+  // Brighter than anything in the bulge around it.
+  let brightest = 0
+  for (const v of GALAXY.layers.bulge.col) brightest = Math.max(brightest, v)
+  assert.ok(n.col[0] > brightest * 0.85, 'the nucleus is not brighter than its bulge')
+  assert.ok(n.col[0] > n.col[2], 'the nucleus should be warm')
 })
 
 // ---------- smoothness ----------

@@ -3,7 +3,13 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { cosmicScale, cosmicStage, fitRadius, stagePlacement } from './layout.js'
 import { galaxy, solarSystem, starfield, universe } from './cosmos.js'
-import { planetMaterial, ringMaterial, starMaterial, tuneStars } from './shaders.js'
+import {
+  orbitMaterial,
+  planetMaterial,
+  ringMaterial,
+  starMaterial,
+  tuneStars,
+} from './shaders.js'
 
 // What you find when you keep zooming out.
 //
@@ -27,6 +33,11 @@ import { planetMaterial, ringMaterial, starMaterial, tuneStars } from './shaders
 const SPIN = { solar: 0.02, galaxy: 0.008, universe: 0.003 }
 
 const SHOWN = 0.004 // below this a stage is skipped entirely
+
+const smooth = (x, a, b) => {
+  const t = THREE.MathUtils.clamp((x - a) / (b - a), 0, 1)
+  return t * t * (3 - 2 * t)
+}
 
 // Scratch, so the frame loop allocates nothing.
 const _place = {
@@ -56,6 +67,7 @@ export default function Cosmos({ zoom }) {
   const sky = built?.sky
   const groups = useRef([])
   const skyRef = useRef()
+  const bandRef = useRef()
 
   useFrame((state, dt) => {
     if (!data) return
@@ -119,6 +131,9 @@ export default function Cosmos({ zoom }) {
       // stops being the subject.
       const x = THREE.MathUtils.clamp((t - 0.05) / 0.45, 0, 1)
       const on = x * x * (3 - 2 * x)
+      // Past the galaxy you are outside it, so the local sky should thin
+      // out rather than stay as dense as it looks from Punjab.
+      const local = 1 - 0.72 * smooth(t, 1.4, 2.2)
       skyRef.current.visible = on > 0.01
       tuneStars(skyRef.current.material, {
         px: 1.15,
@@ -126,8 +141,23 @@ export default function Cosmos({ zoom }) {
         height,
         dpr,
         size: 1,
-        opacity: on * 0.95,
+        opacity: on * 0.95 * local,
       })
+
+      // And the Milky Way's own band is something you can only see from
+      // inside the Milky Way, so it goes as you leave.
+      if (bandRef.current) {
+        const inside = on * (1 - smooth(t, 1.0, 1.9))
+        bandRef.current.visible = inside > 0.01
+        tuneStars(bandRef.current.material, {
+          px: 1.0,
+          dist: sky.radius,
+          height,
+          dpr,
+          size: 1,
+          opacity: inside * 0.05,
+        })
+      }
     }
   })
 
@@ -140,6 +170,14 @@ export default function Cosmos({ zoom }) {
   return (
     <group>
       <Stars ref={skyRef} layer={sky} px={1.15} base={0.95} visible={false} />
+      <Stars
+        ref={bandRef}
+        layer={sky.band}
+        px={1.0}
+        base={0.05}
+        falloff={1.5}
+        visible={false}
+      />
 
       <group ref={hold(0)} visible={false}>
         <Solar data={data[0]} />
@@ -171,10 +209,14 @@ function Solar({ data }) {
     }, [data])
   )
 
+  const orbitLines = useMemo(() => orbitMaterial('#8ea6c4', data.radius), [data])
+
   // One material per planet, built once. Each carries its own centre so the
-  // shader knows which way its sun is.
+  // shader knows which way its sun is, and its own spin axis so the banding
+  // runs the right way — across Jupiter's equator, and pole to pole on
+  // Uranus, which is tipped ninety-eight degrees.
   const lit = useMemo(
-    () => data.planets.map((p) => planetMaterial(p.color, p.pos)),
+    () => data.planets.map((p) => planetMaterial(p.color, p.pos, p.axis, p.bands)),
     [data]
   )
   const saturn = data.planets[5]
@@ -182,12 +224,21 @@ function Solar({ data }) {
     () => ringMaterial('#d8c68f', saturn.pos, saturn.size * 1.11, saturn.size * 2.27),
     [saturn]
   )
+  // The rings lie in Saturn's equatorial plane, so their normal is its own
+  // axis. Derived rather than typed, which is how the 26.7 degrees ends up
+  // living in exactly one place.
+  const ringTurn = useMemo(
+    () =>
+      new THREE.Quaternion().setFromUnitVectors(
+        new THREE.Vector3(0, 0, 1),
+        new THREE.Vector3(saturn.axis[0], saturn.axis[1], saturn.axis[2]).normalize()
+      ),
+    [saturn]
+  )
 
   return (
     <group>
-      <lineSegments geometry={orbits} userData={{ base: 0.3 }}>
-        <lineBasicMaterial color="#7188a3" transparent opacity={0.3} />
-      </lineSegments>
+      <lineSegments geometry={orbits} material={orbitLines} userData={{ base: 0.42 }} />
 
       {/* The main belt at its real 2.1 to 3.3 AU, and the Kuiper belt
           beyond Neptune, running deliberately off the frame. */}
@@ -213,7 +264,7 @@ function Solar({ data }) {
           banded in the shader so the Cassini division is in there. */}
       <mesh
         position={saturn.pos}
-        rotation={[Math.PI / 2 - 0.466, 0, 0]}
+        quaternion={ringTurn}
         material={rings}
         userData={{ base: 0.9 }}
       >
@@ -234,6 +285,7 @@ function Galaxy({ data }) {
   return (
     <group>
       <Stars layer={data.layers.haze} px={1.0} base={0.05} falloff={1.6} />
+      <Stars layer={data.layers.nucleus} px={26} base={0.42} falloff={1.9} />
       <Stars layer={data.layers.bulge} px={1.5} base={0.5} />
       <Stars layer={data.layers.disc} px={1.5} base={0.8} />
       <Stars layer={data.layers.hii} px={1.5} base={0.45} />
@@ -252,7 +304,7 @@ function Universe({ data }) {
       <lineSegments geometry={useGeo(data.web)} userData={{ base: 0.06 }}>
         <lineBasicMaterial color="#5b8dbe" transparent opacity={0.06} />
       </lineSegments>
-      <Stars layer={data.layers.gal} px={1.6} base={0.9} />
+      <Stars layer={data.layers.gal} px={1.9} base={0.9} elliptical />
       <Marker at={data.home} r={0.085} />
     </group>
   )
@@ -262,7 +314,7 @@ function Universe({ data }) {
 
 // A cloud of soft round points, each with its own size.
 const Stars = forwardRef(function Stars(
-  { layer, px, base, falloff, visible = true },
+  { layer, px, base, falloff, elliptical = false, visible = true },
   ref
 ) {
   const geo = useMemo(() => {
@@ -270,9 +322,16 @@ const Stars = forwardRef(function Stars(
     g.setAttribute('position', new THREE.BufferAttribute(layer.pos, 3))
     g.setAttribute('color', new THREE.BufferAttribute(layer.col, 3))
     g.setAttribute('aSize', new THREE.BufferAttribute(layer.siz, 1))
+    if (elliptical) {
+      g.setAttribute('aAspect', new THREE.BufferAttribute(layer.asp, 1))
+      g.setAttribute('aAngle', new THREE.BufferAttribute(layer.ang, 1))
+    }
     return g
-  }, [layer])
-  const mat = useMemo(() => starMaterial({ falloff }), [falloff])
+  }, [layer, elliptical])
+  const mat = useMemo(
+    () => starMaterial({ falloff, elliptical }),
+    [falloff, elliptical]
+  )
 
   return (
     <points

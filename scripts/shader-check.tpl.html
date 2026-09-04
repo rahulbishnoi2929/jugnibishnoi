@@ -59,8 +59,13 @@
 
     let failures = 0
     for (const [name, m] of Object.entries(S)) {
-      const vsrc = VERT_PREFIX + '\n' + (m.color ? COLOR_ATTR + '\n' : '') + m.vs
-      const fsrc = FRAG_PREFIX + '\n' + m.fs
+      // three puts a material's defines at the top of both shaders, and so
+      // must this, or a variant compiles without them and the attributes
+      // it needs go quietly missing.
+      const defs = (m.defines || []).map((d) => '#define ' + d).join('\n')
+      const vsrc =
+        VERT_PREFIX + '\n' + defs + '\n' + (m.color ? COLOR_ATTR + '\n' : '') + m.vs
+      const fsrc = FRAG_PREFIX + '\n' + defs + '\n' + m.fs
 
       const v = compile(gl.VERTEX_SHADER, vsrc)
       const f = compile(gl.FRAGMENT_SHADER, fsrc)

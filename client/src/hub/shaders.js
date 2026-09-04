@@ -23,8 +23,10 @@ import * as THREE from 'three'
 export function starMaterial({
   blending = THREE.AdditiveBlending,
   falloff = 3.4,
+  elliptical = false,
 } = {}) {
   return new THREE.ShaderMaterial({
+    defines: elliptical ? { ELLIPTICAL: '' } : {},
     uniforms: {
       uScale: { value: 400 }, // half the canvas height, times the pixel ratio
       uSize: { value: 0.05 }, // world units per unit of aSize
@@ -36,8 +38,19 @@ export function starMaterial({
       uniform float uSize;
       varying vec3 vColor;
 
+      #ifdef ELLIPTICAL
+        attribute float aAspect;
+        attribute float aAngle;
+        varying float vAspect;
+        varying float vAngle;
+      #endif
+
       void main() {
         vColor = color;
+        #ifdef ELLIPTICAL
+          vAspect = aAspect;
+          vAngle = aAngle;
+        #endif
         vec4 mv = modelViewMatrix * vec4(position, 1.0);
         // Clamped, because a few drivers cap gl_POINT_SIZE_RANGE as low as
         // 63 and the haze layer is deliberately made of big soft blobs.
@@ -49,8 +62,23 @@ export function starMaterial({
       uniform float uOpacity;
       varying vec3 vColor;
 
+      #ifdef ELLIPTICAL
+        varying float vAspect;
+        varying float vAngle;
+      #endif
+
       void main() {
         vec2 d = gl_PointCoord - 0.5;
+
+        #ifdef ELLIPTICAL
+          // A galaxy is a disc seen at some angle, so squash and turn the
+          // falloff. Round dots read as stars, which is exactly the wrong
+          // thing when every point is supposed to be a galaxy.
+          float c = cos(vAngle);
+          float s = sin(vAngle);
+          d = vec2(d.x * c - d.y * s, (d.x * s + d.y * c) / max(vAspect, 0.08));
+        #endif
+
         float r2 = dot(d, d) * 4.0;
         // A gaussian core, then a hard taper to nothing at the edge of the
         // quad so there is never a visible square boundary.
@@ -75,6 +103,51 @@ export function tuneStars(material, { px, dist, height, dpr, size, opacity }) {
   u.uOpacity.value = opacity
 }
 
+// ---------- orbits ----------
+
+// An orbit line that dims on its far side.
+//
+// A ring drawn at one brightness all the way round is a flat wire: nothing
+// tells you which half is behind the sun. Fading the far half is the whole
+// difference between eight ellipses and eight orbits, and it costs one
+// varying — the fragment's depth relative to the middle of the stage,
+// normalised by the stage's own radius so it works at any zoom.
+export function orbitMaterial(color, radius) {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uColor: { value: new THREE.Color(color) },
+      uRadius: { value: radius },
+      uOpacity: { value: 1 },
+    },
+    vertexShader: /* glsl */ `
+      uniform float uRadius;
+      varying float vBehind;
+
+      void main() {
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vec4 middle = modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+        // The view matrix is orthonormal, so a column of modelViewMatrix is
+        // as long as the model's own scale — which is how this stays right
+        // while the stage scales through four orders of magnitude.
+        float scale = length(modelViewMatrix[0].xyz);
+        vBehind = clamp((middle.z - mv.z) / (2.0 * uRadius * scale) + 0.5, 0.0, 1.0);
+        gl_Position = projectionMatrix * mv;
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uColor;
+      uniform float uOpacity;
+      varying float vBehind;
+
+      void main() {
+        gl_FragColor = vec4(uColor, mix(1.0, 0.16, vBehind) * uOpacity);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+  })
+}
+
 // ---------- planets ----------
 
 // A planet lit by its own sun, and by nothing else.
@@ -90,11 +163,13 @@ export function tuneStars(material, { px, dist, height, dpr, size, opacity }) {
 // the surface normal is the sphere-local position and the direction to the
 // sun is the way back to the origin. No light object, no uniform to keep in
 // step with the stage's rotation.
-export function planetMaterial(color, centre) {
+export function planetMaterial(color, centre, axis = [0, 1, 0], bands = 0) {
   return new THREE.ShaderMaterial({
     uniforms: {
       uColor: { value: new THREE.Color(color) },
       uCentre: { value: new THREE.Vector3(centre[0], centre[1], centre[2]) },
+      uAxis: { value: new THREE.Vector3(axis[0], axis[1], axis[2]).normalize() },
+      uBands: { value: bands },
       uOpacity: { value: 1 },
     },
     vertexShader: /* glsl */ `
@@ -107,6 +182,8 @@ export function planetMaterial(color, centre) {
     fragmentShader: /* glsl */ `
       uniform vec3 uColor;
       uniform vec3 uCentre;
+      uniform vec3 uAxis;
+      uniform float uBands;
       uniform float uOpacity;
       varying vec3 vLocal;
 
@@ -118,6 +195,12 @@ export function planetMaterial(color, centre) {
         // on the night side: at two pixels across, a true shadow is just a
         // black bite taken out of the dot.
         float lit = pow(d, 0.6) * 0.88 + 0.12;
+
+        // Banding about the planet's own axis, not about the ecliptic. The
+        // inner sine makes the stripes uneven widths rather than a barcode.
+        float lat = dot(N, uAxis);
+        lit *= 1.0 + uBands * 0.17 * sin(lat * 19.0 + sin(lat * 6.0) * 1.7);
+
         gl_FragColor = vec4(uColor * lit, uOpacity);
       }
     `,

@@ -63,15 +63,20 @@ const rotX = (p, t) => {
 // compressed logarithmically and the bodies by a power law — see orbitOf
 // and bodyOf, which both say why. Every printed diagram of the solar system
 // breaks scale somewhere; this one says where.
+// `tilt` is the real axial tilt in degrees and `bands` how strongly the
+// planet is striped — the four gas and ice giants are, the rocky four are
+// not. Together they are why Jupiter comes out banded across its equator
+// and Uranus, tipped 98 degrees, comes out banded from pole to pole, which
+// is the single oddest true fact about the solar system.
 export const PLANETS = [
-  { name: 'Mercury', a: 0.3871, e: 0.2056, inc: 7.00, node: 48.33, peri: 77.46, lon: 252.25, r: 0.383, color: '#9c8f83' },
-  { name: 'Venus',   a: 0.7233, e: 0.0068, inc: 3.39, node: 76.68, peri: 131.60, lon: 181.98, r: 0.949, color: '#d9b57e' },
-  { name: 'Earth',   a: 1.0000, e: 0.0167, inc: 0.00, node: 0.00,  peri: 102.95, lon: 100.46, r: 1.000, color: '#d4a72c' },
-  { name: 'Mars',    a: 1.5237, e: 0.0934, inc: 1.85, node: 49.56, peri: 336.04, lon: 355.43, r: 0.532, color: '#c1552f' },
-  { name: 'Jupiter', a: 5.2044, e: 0.0489, inc: 1.30, node: 100.46, peri: 14.75, lon: 34.35,  r: 10.97, color: '#c9a882' },
-  { name: 'Saturn',  a: 9.5826, e: 0.0565, inc: 2.49, node: 113.66, peri: 92.43, lon: 50.08,  r: 9.140, color: '#d8c68f' },
-  { name: 'Uranus',  a: 19.201, e: 0.0472, inc: 0.77, node: 74.00, peri: 170.96, lon: 314.06, r: 3.981, color: '#96c7cd' },
-  { name: 'Neptune', a: 30.047, e: 0.0086, inc: 1.77, node: 131.78, peri: 44.97, lon: 304.35, r: 3.865, color: '#5b7fd4' },
+  { name: 'Mercury', a: 0.3871, e: 0.2056, inc: 7.00, node: 48.33, peri: 77.46, lon: 252.25, r: 0.383, tilt: 0.03, bands: 0, color: '#9c8f83' },
+  { name: 'Venus',   a: 0.7233, e: 0.0068, inc: 3.39, node: 76.68, peri: 131.60, lon: 181.98, r: 0.949, tilt: 177.36, bands: 0, color: '#d9b57e' },
+  { name: 'Earth',   a: 1.0000, e: 0.0167, inc: 0.00, node: 0.00,  peri: 102.95, lon: 100.46, r: 1.000, tilt: 23.44, bands: 0, color: '#5b8dbe' },
+  { name: 'Mars',    a: 1.5237, e: 0.0934, inc: 1.85, node: 49.56, peri: 336.04, lon: 355.43, r: 0.532, tilt: 25.19, bands: 0, color: '#c1552f' },
+  { name: 'Jupiter', a: 5.2044, e: 0.0489, inc: 1.30, node: 100.46, peri: 14.75, lon: 34.35,  r: 10.97, tilt: 3.13, bands: 1.0, color: '#c9a882' },
+  { name: 'Saturn',  a: 9.5826, e: 0.0565, inc: 2.49, node: 113.66, peri: 92.43, lon: 50.08,  r: 9.140, tilt: 26.73, bands: 0.8, color: '#d8c68f' },
+  { name: 'Uranus',  a: 19.201, e: 0.0472, inc: 0.77, node: 74.00, peri: 170.96, lon: 314.06, r: 3.981, tilt: 97.77, bands: 0.4, color: '#96c7cd' },
+  { name: 'Neptune', a: 30.047, e: 0.0086, inc: 1.77, node: 131.78, peri: 44.97, lon: 304.35, r: 3.865, tilt: 28.32, bands: 0.5, color: '#5b7fd4' },
 ]
 
 const AU_MAX = 30.047 // Neptune, which defines the stage's unit radius
@@ -174,9 +179,7 @@ function belt({ from, to, count, thickness, incSpread, tint, seed }) {
   return out
 }
 
-// Saturn's rings: 1.11 to 2.27 Saturn radii, tilted 26.7 degrees, drawn as
-// concentric circles because a ring of line work matches everything else
-// here and a textured annulus would not.
+// Kept for the geometry that no longer uses it.
 function saturnRings(planet, at) {
   const body = bodyOf(planet.r)
   const out = []
@@ -202,6 +205,16 @@ export function solarSystem() {
     orbit: orbitOf(p.a),
     pos: planetAt(p),
     path: orbitPath(p),
+    bands: p.bands,
+    // The spin axis, tipped from the orbital pole by the real obliquity and
+    // swung round by the planet's own node so the eight are not all leaning
+    // the same way. The shader stripes the planet about this, and Saturn's
+    // rings lie in the plane perpendicular to it.
+    axis: (() => {
+      const e = rad(p.tilt)
+      const l = rad(p.node)
+      return [Math.sin(e) * Math.cos(l), Math.cos(e), Math.sin(e) * Math.sin(l)]
+    })(),
   }))
 
   const earth = planets[PLANETS.findIndex((p) => p.name === 'Earth')]
@@ -240,6 +253,55 @@ export function solarSystem() {
       put(g, 0, 0, 0, 0, [1.0, 0.86, 0.62], 1)
       return g
     })(),
+  }
+}
+
+// ---------- star colour ----------
+
+// Stars are blackbodies, so their colour follows from one number: their
+// temperature. Picking hex codes by eye — which is what the last version
+// did — gets you a palette. This gets you a star field, and it is the
+// single change that most makes one look photographed: a real field runs
+// from orange dwarfs through white to a handful of blue-white giants, and
+// the correlation between colour, size and brightness is what the eye
+// reads as depth in a population.
+//
+// Tanner Helland's approximation of the Planckian locus, in sRGB. Checked
+// against known stars: Proxima at 3050K comes out 255,179,113, the sun at
+// 5778K comes out 255,242,231, Sirius at 9940K comes out 202,218,255.
+export function blackbody(kelvin) {
+  const t = Math.max(1000, Math.min(40000, kelvin)) / 100
+  const r = t <= 66 ? 255 : 329.698727446 * Math.pow(t - 60, -0.1332047592)
+  const g =
+    t <= 66
+      ? 99.4708025861 * Math.log(t) - 161.1195681661
+      : 288.1221695283 * Math.pow(t - 60, -0.0755148492)
+  const b = t >= 66 ? 255 : t <= 19 ? 0 : 138.5177312231 * Math.log(t - 10) - 305.0447927307
+  return [clamp01(r / 255), clamp01(g / 255), clamp01(b / 255)]
+}
+
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v)
+
+// One draw from a stellar population.
+//
+// `heavy` is the magnitude draw — a Pareto tail, so most stars are small
+// and a few are much larger. Temperature rises with it, because on the main
+// sequence the big ones are the hot ones, and so does brightness. Tying all
+// three to one number is what stops the field looking like coloured
+// confetti: the blue ones are also the big bright ones, as they are in
+// every photograph.
+function star(rand, { floor = 3000, spread = 1030, curve = 1.66, hot = 0 }) {
+  const heavy = Math.min(5, 0.8 * Math.pow(1 - rand(), -0.32))
+  const kelvin = floor + spread * Math.pow(heavy, curve) + hot
+  // Over one at the top end on purpose: these layers are additive, so the
+  // brightest stars saturating early is how they bloom.
+  const bright = 0.42 + 0.93 * Math.min(1, Math.max(0, (heavy - 0.8) / 3.5))
+  const c = blackbody(kelvin)
+  const jitter = 0.92 + rand() * 0.16
+  return {
+    size: heavy,
+    kelvin,
+    col: [c[0] * bright * jitter, c[1] * bright * jitter, c[2] * bright],
   }
 }
 
@@ -343,12 +405,10 @@ function discSample(rand) {
   return { r, theta: rand() * Math.PI * 2, arm: 1 }
 }
 
-// Star colour by population: the arms are where new blue stars are, the
-// spaces between them hold the old yellow ones. Real, and it is also the
-// difference between a galaxy and a pinwheel of one colour.
-const ARM_BLUE = [0.72, 0.82, 1.0]
-const DISC_WARM = [1.0, 0.9, 0.72]
-const BULGE_GOLD = [1.0, 0.82, 0.55]
+// Where the new hot stars are. The arms hold them; the spaces between and
+// the bulge hold the old cool ones. This is a temperature bias rather than
+// two hand-picked colours, so the whole population comes out of blackbody.
+const ARM_HEAT = 7200 // extra kelvin at the middle of an arm
 
 export function galaxy({ seed = 7, radius = 1, stars = 24000 } = {}) {
   const rand = rng(seed)
@@ -360,19 +420,8 @@ export function galaxy({ seed = 7, radius = 1, stars = 24000 } = {}) {
     const young = Math.min(1, Math.max(0, (arm - 1) / 1.2))
     const z = gauss(rand) * DISC_Z * radius * (1.25 - 0.6 * young)
 
-    // A heavy tail, so a handful of stars are much bigger and brighter than
-    // the rest. This one line is most of the difference between a star
-    // field and a texture.
-    const size = Math.min(5, 0.8 * Math.pow(1 - rand(), -0.32))
-    const bright = 0.42 + 0.58 * Math.min(1, (size - 0.5) / 2.2)
-
-    const warm = mix(DISC_WARM, ARM_BLUE, young * 0.85)
-    const jitter = 0.88 + rand() * 0.24
-    put(disc, i, r * radius * Math.cos(theta), z, r * radius * Math.sin(theta), [
-      warm[0] * bright * jitter,
-      warm[1] * bright * jitter,
-      warm[2] * bright,
-    ], size)
+    const s = star(rand, { hot: young * ARM_HEAT })
+    put(disc, i, r * radius * Math.cos(theta), z, r * radius * Math.sin(theta), s.col, s.size)
   }
 
   // The unresolved light. Few points, enormous and nearly transparent; it
@@ -385,7 +434,9 @@ export function galaxy({ seed = 7, radius = 1, stars = 24000 } = {}) {
   for (let i = 0; i < hazeCount; i++) {
     const { r, theta, arm } = discSample(rand)
     const young = Math.min(1, Math.max(0, (arm - 1) / 1.2))
-    const c = mix(DISC_WARM, ARM_BLUE, young * 0.6)
+    // Unresolved light is the sum of a population, so it sits near the
+    // middle of one: warm, and a little bluer inside an arm.
+    const c = blackbody(4200 + young * 2600)
     put(
       haze,
       i,
@@ -434,17 +485,17 @@ export function galaxy({ seed = 7, radius = 1, stars = 24000 } = {}) {
     const r = discRadius(rand, 0.055, 0.4) * radius
     const theta = rand() * Math.PI * 2
     const phi = Math.acos(2 * rand() - 1)
-    const size = Math.min(4, 0.7 * Math.pow(1 - rand(), -0.3))
-    const bright = 0.5 + 0.5 * Math.min(1, (size - 0.5) / 2)
-    const j = 0.9 + rand() * 0.2
+    // Old and cool: no hot young stars left in a bulge, so the curve is
+    // flatter and the floor lower than the disc's.
+    const s = star(rand, { floor: 2900, spread: 620, curve: 1.3 })
     put(
       bulge,
       i,
       r * Math.sin(phi) * Math.cos(theta),
       r * Math.cos(phi) * 0.58, // flattened, as bulges are
       r * Math.sin(phi) * Math.sin(theta),
-      [BULGE_GOLD[0] * bright * j, BULGE_GOLD[1] * bright * j, BULGE_GOLD[2] * bright],
-      size
+      s.col,
+      s.size
     )
   }
 
@@ -458,11 +509,17 @@ export function galaxy({ seed = 7, radius = 1, stars = 24000 } = {}) {
     sunR * Math.sin(sunTheta),
   ]
 
+  // The nucleus. Every spiral has a small very bright core on top of its
+  // bulge, and without one the middle of this just looked like more disc.
+  // One large soft point, the same trick as the sun's glow.
+  const nucleus = layer(1)
+  put(nucleus, 0, 0, 0, 0, blackbody(4600).map((v) => v * 1.25), 1)
+
   return {
     id: 'galaxy',
     radius,
     tilt: [0.46, 0, 0.12],
-    layers: { haze, bulge, disc, hii },
+    layers: { haze, nucleus, bulge, disc, hii },
     sun,
     anchor: sun,
     // Kept for the tests, which measure the resolved stars.
@@ -506,15 +563,26 @@ export function universe({
 
   const count = clusters * perCluster + field
   const gal = layer(count)
+  // A galaxy is a disc seen at some random angle, so most of them are
+  // ellipses. Round dots — the last version — read as stars, which is
+  // exactly the wrong thing at this scale. These two go to the shader,
+  // which squashes and turns each point's falloff.
+  gal.asp = new Float32Array(count)
+  gal.ang = new Float32Array(count)
   let n = 0
 
   const add = (x, y, z) => {
     // Heavy tail again: most are specks, a few are obviously galaxies.
     const size = Math.min(6, 0.9 * Math.pow(1 - rand(), -0.33))
     const bright = 0.4 + 0.6 * Math.min(1, (size - 0.6) / 2.5)
-    // Redder the fainter, which is both roughly true and stops the field
-    // reading as one flat grey.
+    // Fainter means further means redder, which is both roughly true and
+    // what stops the field reading as one flat grey.
     const warmth = 1 - bright
+    // cos of a uniformly random inclination: face-on is rare, edge-on is
+    // common, which is why deep fields are full of slivers.
+    const aspect = 0.22 + 0.78 * Math.abs(Math.cos(Math.acos(2 * rand() - 1)))
+    gal.asp[n] = aspect
+    gal.ang[n] = rand() * Math.PI
     put(gal, n++, x, y, z, [
       (0.78 + warmth * 0.22) * bright,
       (0.8 - warmth * 0.06) * bright,
@@ -578,34 +646,69 @@ const dist2 = (a, b) => (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) 
 // Halfway out from his planet the solar system is a quarter of the frame
 // and the galaxy has not arrived; without a sky behind it, that reads as a
 // bug rather than as distance.
-export function starfield({ count = 2200, radius = 320, seed = 31 } = {}) {
+// The galactic plane, as a unit normal. Tilted so the band does not line
+// up with any stage's own tilt.
+const GALACTIC_POLE = (() => {
+  const y = Math.cos(rad(28))
+  const x = Math.sin(rad(28)) * Math.cos(rad(35))
+  const z = Math.sin(rad(28)) * Math.sin(rad(35))
+  return [x, y, z]
+})()
+
+// How much more likely a star is to sit near the plane than at the poles.
+// The exponential in galactic latitude is what makes it a band rather than
+// a smear.
+const BAND_FLOOR = 0.22
+const BAND_WIDTH = 0.16 // in sine of galactic latitude
+
+const bandWeight = (sinLat) =>
+  BAND_FLOOR + (1 - BAND_FLOOR) * Math.exp(-((sinLat / BAND_WIDTH) ** 2))
+
+// A direction on the sphere, drawn towards the galactic plane.
+function skyDirection(rand, concentrate) {
+  for (let i = 0; i < 40; i++) {
+    const theta = rand() * Math.PI * 2
+    const phi = Math.acos(2 * rand() - 1)
+    const d = [
+      Math.sin(phi) * Math.cos(theta),
+      Math.sin(phi) * Math.sin(theta),
+      Math.cos(phi),
+    ]
+    const sinLat =
+      d[0] * GALACTIC_POLE[0] + d[1] * GALACTIC_POLE[1] + d[2] * GALACTIC_POLE[2]
+    const w = bandWeight(sinLat)
+    if (rand() < Math.pow(w, concentrate)) return { d, sinLat, w }
+  }
+  return { d: [0, 0, 1], sinLat: 1, w: BAND_FLOOR }
+}
+
+export function starfield({ count = 2600, radius = 320, seed = 31 } = {}) {
   const rand = rng(seed)
   const sky = layer(count)
   for (let i = 0; i < count; i++) {
-    const theta = rand() * Math.PI * 2
-    const phi = Math.acos(2 * rand() - 1)
-    // Same magnitude distribution as everywhere else.
-    const size = Math.min(4, 0.75 * Math.pow(1 - rand(), -0.3))
-    const b = 0.3 + 0.7 * Math.min(1, (size - 0.5) / 2)
-    // A little colour: most stars are white-ish, some orange, a few blue.
-    const hue = rand()
-    const c =
-      hue < 0.62
-        ? [1, 0.97, 0.92]
-        : hue < 0.86
-          ? [1, 0.86, 0.7]
-          : [0.82, 0.88, 1]
-    put(
-      sky,
-      i,
-      radius * Math.sin(phi) * Math.cos(theta),
-      radius * Math.sin(phi) * Math.sin(theta),
-      radius * Math.cos(phi),
-      [c[0] * b, c[1] * b, c[2] * b],
-      size
-    )
+    const { d, sinLat } = skyDirection(rand, 1)
+    // Nearer the plane means looking through more of the disc, so through
+    // more young hot stars; out of the plane you are seeing the old halo.
+    const s = star(rand, { floor: 3100, spread: 900, hot: (1 - Math.abs(sinLat)) * 2600 })
+    put(sky, i, radius * d[0], radius * d[1], radius * d[2], s.col, s.size)
   }
-  return { ...sky, radius }
+
+  // And the band itself: the unresolved light of the disc seen edge on from
+  // inside it, which is the most recognisable thing in a real night sky and
+  // was simply missing. Large faint blobs, packed hard onto the plane.
+  const bandCount = Math.round(count * 0.55)
+  const band = layer(bandCount)
+  for (let i = 0; i < bandCount; i++) {
+    // 3.5, not 6: at 6 the band was knife-edged, with 87 per cent of it
+    // inside six degrees of the plane and nothing at all past seventeen.
+    // The real one has a bright core a few degrees wide and a glow that
+    // carries out to twenty.
+    const { d } = skyDirection(rand, 3.5)
+    const c = blackbody(4300)
+    put(band, i, radius * d[0], radius * d[1], radius * d[2], c, 6 + rand() * 14)
+  }
+
+  return { ...sky, band, radius, pole: GALACTIC_POLE }
 }
 
 // ---------- layer plumbing ----------
