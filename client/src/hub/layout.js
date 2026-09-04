@@ -158,10 +158,39 @@ export function fitRadius(camera, distance) {
 // like, and it closes the gap that 1.6 left: from the hub to the solar
 // system there were four fifths of a ladder step with nothing on screen at
 // all. At 2.8 the visible bands overlap and something is always there.
-const SEEN = 2.8 // first shows here, nearly three times the frame
-const FULL = 1.15 // fully itself from here
-const LEAVING = 0.1 // starts to go once it is this small
-const GONE = 0.03 // a speck, and then nothing
+// These four are the fade windows, and how wide they are is what decides
+// how fast an opacity can change while you are moving. Wider is smoother:
+// the steepest an opacity can move is 1.5 / ln(SEEN/FULL) per unit of
+// log-size, so widening that ratio from 2.4 to 3.2 took the worst frame of
+// a hard flick from a fifth of the way through a fade to a tenth.
+const SEEN = 3.4 // first shows here, three times the frame and closing
+const FULL = 1.05 // fully itself from here
+const LEAVING = 0.13 // starts to go once it is this small
+const GONE = 0.025 // a speck, and then nothing
+
+// The fastest the zoom may travel, in log-zoom per second.
+//
+// Easing alone is proportional, so a big gap gives a big *first* step: a
+// flick from the hub to the galaxy moved a stage a fifth of the way
+// through its fade in a single frame. A speed limit turns the long
+// journeys into a steady fly-out and leaves the short ones to the easing,
+// which is where proportional response belongs. The whole way out takes
+// about three seconds.
+//
+// 1.8 rather than 2 for a measured reason: at 2 the worst frame of a hard
+// flick moved a stage's opacity by 0.121, and 0.12 is the bound the
+// smoothness test holds it to.
+export const ZOOM_RATE = 1.8
+export const ZOOM_EASE = 0.0005 // fraction of the gap left after a second
+export const ZOOM_SNAP = 0.004 // close enough in log-zoom to just land
+
+// The longest frame the zoom will integrate, in seconds.
+//
+// A dropped frame should make the journey take longer, not skip part of
+// it. At the old tenth of a second a half-second stall jumped a stage
+// through more than half its fade in one frame; at a twentieth it is a
+// quarter, and nothing above twenty frames a second is affected at all.
+export const ZOOM_DT_MAX = 0.05
 
 export function cosmicStage(t, i) {
   const size = Math.pow(NEST, t - i)
@@ -229,9 +258,15 @@ function smoothstep(x, min, max) {
 // does have to shrink when you leave, so this is separate from shrinkFor.
 export const nestFor = (zoom) => cosmicStage(cosmicScale(zoom), 0).size
 
-// Past this his planet is a speck of a speck and unmounting it costs
-// nothing but takes its DOM labels with it.
-export const HUB_GONE = 1.1
+// The hub's own opacity on the ladder, so his planet and its branches fade
+// out on the same curve every stage uses rather than simply vanishing.
+export const hubOpacity = (zoom) => cosmicStage(cosmicScale(zoom), 0).opacity
+
+// And it only unmounts well after that fade has finished. At 1.55 the whole
+// branch ring is under two pixels across, so pulling the subtree — which is
+// what takes the DOM labels with it — cannot be seen. It used to happen at
+// 1.1, where the thing was still four pixels and visibly popped.
+export const HUB_GONE = 1.55
 
 // Camera position and aim for a given zoom factor. 1 is the framing the
 // view was authored at; below that the aim slides down to the planet so you

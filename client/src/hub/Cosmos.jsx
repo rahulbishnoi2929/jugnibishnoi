@@ -1,4 +1,4 @@
-import { forwardRef, useMemo, useRef } from 'react'
+import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { cosmicScale, cosmicStage, fitRadius, stagePlacement } from './layout.js'
@@ -36,12 +36,29 @@ const _place = {
 }
 
 export default function Cosmos({ zoom }) {
-  const data = useMemo(() => [solarSystem(), galaxy(), universe()], [])
-  const sky = useMemo(() => starfield(), [])
+  // Built after the first paint, not during it. Sampling the galaxy's forty
+  // thousand points takes about a tenth of a second on a desktop and three
+  // times that on a phone, and none of it is on screen at the hub — doing
+  // it inline froze the home page on load for something invisible.
+  const [built, setBuilt] = useState(null)
+  useEffect(() => {
+    let live = true
+    const id = setTimeout(() => {
+      if (live) setBuilt({ stages: [solarSystem(), galaxy(), universe()], sky: starfield() })
+    }, 0)
+    return () => {
+      live = false
+      clearTimeout(id)
+    }
+  }, [])
+
+  const data = built?.stages
+  const sky = built?.sky
   const groups = useRef([])
   const skyRef = useRef()
 
   useFrame((state, dt) => {
+    if (!data) return
     const t = cosmicScale(zoom.current)
     const cam = state.camera
     // The camera aims at the origin once you are past the hub, so its own
@@ -97,7 +114,11 @@ export default function Cosmos({ zoom }) {
     // The sky is behind everything and belongs to no stage, so it never
     // scales. It fades in as you leave his planet and then simply stays.
     if (skyRef.current) {
-      const on = THREE.MathUtils.clamp((t - 0.05) / 0.45, 0, 1)
+      // Smoothstep, not a straight ramp: a linear fade has a visible corner
+      // at each end, and this one runs right across the moment his planet
+      // stops being the subject.
+      const x = THREE.MathUtils.clamp((t - 0.05) / 0.45, 0, 1)
+      const on = x * x * (3 - 2 * x)
       skyRef.current.visible = on > 0.01
       tuneStars(skyRef.current.material, {
         px: 1.15,
@@ -113,6 +134,8 @@ export default function Cosmos({ zoom }) {
   const hold = (i) => (el) => {
     if (el) groups.current[i] = el
   }
+
+  if (!data) return null
 
   return (
     <group>

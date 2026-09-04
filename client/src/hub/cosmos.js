@@ -278,8 +278,11 @@ const DISC_H = 0.26 // exponential scale length
 const DISC_Z = 0.021 // scale height, thin
 
 // A logarithmic spiral: r = R0 * exp(theta * tan(pitch)). Inverted, this is
-// the azimuth an arm has reached by a given radius.
-const armPhase = (r) => Math.log(r / ARM_R0) / Math.tan(PITCH)
+// the azimuth an arm has reached by a given radius. Called a few hundred
+// thousand times while sampling, so the tangent is not recomputed each
+// time — that alone was a fifth of the build.
+const TAN_PITCH = Math.tan(PITCH)
+const armPhase = (r) => Math.log(r / ARM_R0) / TAN_PITCH
 
 // Surface density at a point, as a multiple of the smooth disc.
 //
@@ -298,15 +301,18 @@ const armPhase = (r) => Math.log(r / ARM_R0) / Math.tan(PITCH)
 const DUST_LAG = 0.34
 const INTER_ARM = 0.18 // the disc between the arms is dim, not empty
 
-function armDensity(r, theta) {
-  const p = armPhase(r)
-  // No arms inside the bulge, and they fade out at the rim.
-  const w = smoothstep(r, 0.05, 0.2) * (1 - smoothstep(r, 0.85, 1.25))
-  const major = 0.8 * Math.cos(2 * (theta - p))
-  const minor = 0.28 * Math.cos(4 * (theta - p) + 1.1)
+// Split in two so the parts that only depend on the radius — a logarithm
+// and two smoothsteps — are computed once per sample rather than once per
+// rejected azimuth.
+const armWeight = (r) => smoothstep(r, 0.05, 0.2) * (1 - smoothstep(r, 0.85, 1.25))
+
+function armDensity(w, p, theta) {
+  const a = theta - p
+  const major = 0.8 * Math.cos(2 * a)
+  const minor = 0.28 * Math.cos(4 * a + 1.1)
   const arms = Math.max(INTER_ARM, 1 + w * (major + minor))
-  const lane =
-    1 - w * 0.62 * Math.pow(Math.max(0, Math.cos(2 * (theta - p - DUST_LAG))), 3)
+  const c = Math.max(0, Math.cos(2 * (a - DUST_LAG)))
+  const lane = 1 - w * 0.62 * c * c * c
   return arms * lane
 }
 const ARM_MAX = 2.1 // ceiling of the above, for rejection sampling
@@ -322,15 +328,19 @@ function discRadius(rand, h, ceiling = 1.25) {
   return h
 }
 
-// A point in the disc, drawn from the density above.
+// A point in the disc, drawn from the density above. The radius is drawn
+// once and only the azimuth is rejection-sampled, which is where all of
+// the rejections happen anyway.
 function discSample(rand) {
-  for (let i = 0; i < 60; i++) {
-    const r = discRadius(rand, DISC_H)
+  const r = discRadius(rand, DISC_H)
+  const w = armWeight(r)
+  const p = armPhase(r)
+  for (let i = 0; i < 32; i++) {
     const theta = rand() * Math.PI * 2
-    const d = armDensity(r, theta)
+    const d = armDensity(w, p, theta)
     if (rand() * ARM_MAX < d) return { r, theta, arm: d }
   }
-  return { r: DISC_H, theta: rand() * Math.PI * 2, arm: 1 }
+  return { r, theta: rand() * Math.PI * 2, arm: 1 }
 }
 
 // Star colour by population: the arms are where new blue stars are, the
@@ -340,7 +350,7 @@ const ARM_BLUE = [0.72, 0.82, 1.0]
 const DISC_WARM = [1.0, 0.9, 0.72]
 const BULGE_GOLD = [1.0, 0.82, 0.55]
 
-export function galaxy({ seed = 7, radius = 1, stars = 34000 } = {}) {
+export function galaxy({ seed = 7, radius = 1, stars = 24000 } = {}) {
   const rand = rng(seed)
 
   const disc = layer(stars)

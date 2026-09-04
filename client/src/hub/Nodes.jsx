@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Line, Html } from '@react-three/drei'
 import * as THREE from 'three'
-import { HEAD, depthFade, labelScaleFor } from './layout.js'
+import { HEAD, depthFade, hubOpacity, labelScaleFor } from './layout.js'
 
 const world = new THREE.Vector3()
 
@@ -54,17 +54,21 @@ function Node({ node, index, state, onPick, zoom }) {
     group.current.position.y = state === 'idle' ? Math.sin(t * 0.5) * 0.06 : 0
     const wobble = state === 'idle' && !hover ? Math.sin(t * 1.6) * 0.08 : 0
 
-    // Depth is the only thing that fades a branch now.
+    // Two things fade a branch, and they are kept apart because they need
+    // different floors.
     //
-    // There used to be a second factor that dimmed everything as you zoomed
-    // in, because close to the planet the ring ended up around the camera
-    // and the labels blew up into nonsense. Scaling the labels by labelScaleFor
-    // fixed that at the source — they now recede with the ring instead of
-    // swelling — so the fade was left dimming the branches for no reason.
-    // On a phone it reached 0.16 at full pinch: the whole lower half of the
-    // pinch range washed out.
+    // Depth: half the ring is behind him at any moment, and a branch round
+    // the back stays dimmed *but clickable* — that is how you bring it to
+    // the front — so its label never goes under 0.3.
+    //
+    // The ladder: his whole planet recedes when you zoom out past it, and
+    // that one has no floor, or the labels would sit at 0.3 over the solar
+    // system until the subtree unmounted and they popped. It is exactly 1
+    // across the hub's own zoom range, so nothing about zooming in changes.
     dot.current.getWorldPosition(world)
-    const fade = depthFade(world, s.camera.position)
+    const depth = depthFade(world, s.camera.position)
+    const hub = hubOpacity(zoom?.current ?? 1)
+    const fade = depth * hub
 
     dot.current.scale.setScalar(
       THREE.MathUtils.lerp(dot.current.scale.x, targetScale + wobble, k)
@@ -82,10 +86,8 @@ function Node({ node, index, state, onPick, zoom }) {
       )
     }
     if (label.current) {
-      // A branch round the back stays dimmed but clickable — that is how
-      // you bring it to the front — so the depth floor is 0.3.
       label.current.style.opacity =
-        state === 'off' ? 0 : Math.max(0.3, fade).toFixed(3)
+        state === 'off' ? 0 : (Math.max(0.3, depth) * hub).toFixed(3)
 
       // Shrink the text by exactly what the model shrinks by. Html sizes
       // itself from camera distance only, so on its own the labels grew as

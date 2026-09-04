@@ -21,6 +21,12 @@ import {
   depthFade,
   fitFor,
   fitRadius,
+  hubOpacity,
+  HUB_GONE,
+  ZOOM_EASE,
+  ZOOM_RATE,
+  ZOOM_SNAP,
+  ZOOM_DT_MAX,
   labelScaleFor,
   nestFor,
   placeNodes,
@@ -330,7 +336,7 @@ test('a stage is only ever fully shown at a size that fits the screen', () => {
         )
       }
       assert.ok(
-        opacity < 0.01 || size < 3.2,
+        opacity < 0.01 || size < 3.6,
         `${STAGES[i - 1]} visible at ${size.toFixed(1)}x the frame (zoom ${z.toFixed(1)})`
       )
     }
@@ -513,7 +519,7 @@ test('the sky is behind everything and dense enough to read', () => {
   assert.ok(finite(SKY.col))
   assert.ok(SKY.col.every((c) => c >= 0 && c < 1.6))
   // Outside every stage at its largest, so it never punches through one.
-  const biggest = Math.max(...VIEWPORTS.map((vp) => outsideCamera(vp).fit)) * 3.2
+  const biggest = Math.max(...VIEWPORTS.map((vp) => outsideCamera(vp).fit)) * 3.6
   assert.ok(SKY.radius > biggest, `sky at ${SKY.radius} is inside a stage at ${biggest.toFixed(0)}`)
   assert.ok(SKY.pos.length / 3 > 800, 'too few stars to read as a sky')
   // Every star on the shell, or fading it in would reveal a lumpy sphere.
@@ -698,6 +704,139 @@ test('the galaxy is four populations, not one', () => {
     )
   }
   assert.ok(maxR < GALAXY.radius * 0.5, `the bulge reaches ${maxR.toFixed(2)} — that is a disc`)
+})
+
+// ---------- smoothness ----------
+//
+// Everything out here is paced by one thing: Ease, which pulls the real
+// zoom towards the one the gesture asked for. So the question "are the
+// transitions smooth" has an exact answer — step that easing at a frame
+// rate, and look at how much anything on screen can change between two
+// frames.
+//
+// Nothing else may smooth anything. Nest and Shrink used to lerp towards
+// their own targets at their own rate while Cosmos read the zoom directly,
+// so his planet lagged behind the solar system arriving around it: two
+// things animating one gesture at two speeds, which is most of what made
+// this feel rough.
+
+// Ease, exactly as Hub runs it: proportional in log-zoom, with a ceiling
+// on the rate.
+function ease(zoom, want, dt) {
+  const step = Math.min(dt, ZOOM_DT_MAX)
+  const gap = Math.log(want / zoom)
+  if (Math.abs(gap) < ZOOM_SNAP) return want
+  const k = 1 - Math.pow(ZOOM_EASE, step)
+  const move = Math.sign(gap) * Math.min(Math.abs(gap) * k, ZOOM_RATE * step)
+  return zoom * Math.exp(move)
+}
+
+// The worst per-frame change in anything visible, over a whole gesture.
+function roughest({ from, to, dt = 1 / 60, frames = 600 }) {
+  let zoom = from
+  let worst = { opacity: 0, size: 0, hub: 0, at: from }
+  for (let f = 0; f < frames; f++) {
+    const before = zoom
+    zoom = ease(zoom, to, dt)
+    if (zoom === before) break
+
+    const t0 = cosmicScale(before)
+    const t1 = cosmicScale(zoom)
+    for (const i of STAGE_IDS) {
+      const a = cosmicStage(t0, i)
+      const b = cosmicStage(t1, i)
+      const dOp = Math.abs(a.opacity - b.opacity)
+      // Size is geometric, so compare it as a ratio.
+      const dSize = Math.abs(Math.log(b.size / a.size))
+      if (dOp > worst.opacity) worst = { ...worst, opacity: dOp, at: zoom }
+      if (dSize > worst.size) worst = { ...worst, size: dSize }
+    }
+    const dHub = Math.abs(hubOpacity(before) - hubOpacity(zoom))
+    if (dHub > worst.hub) worst = { ...worst, hub: dHub }
+  }
+  return worst
+}
+
+test('no frame of the way out jumps', () => {
+  // Two gestures, each about as violent as the input allows: a hard flick
+  // of a trackpad, and a full two-finger spread released in one go.
+  const gestures = [
+    ['a flick out from the hub', 1, 12],
+    ['a flick further out', 12, 72.1],
+    ['the whole way out at once', 1, 72.1],
+    ['back to Earth in one press', 72.1, 1],
+    ['a pinch inside the hub range', 1, 0.4],
+  ]
+  for (const [what, from, to] of gestures) {
+    const w = roughest({ from, to })
+    assert.ok(
+      w.opacity < 0.12,
+      `${what}: a stage's opacity moved ${w.opacity.toFixed(3)} in one frame`
+    )
+    assert.ok(
+      w.size < 0.09,
+      `${what}: a stage's size moved ${(Math.exp(w.size) * 100 - 100).toFixed(1)}% in one frame`
+    )
+    assert.ok(
+      w.hub < 0.12,
+      `${what}: his planet's own fade moved ${w.hub.toFixed(3)} in one frame`
+    )
+  }
+})
+
+test('a slow frame is no rougher than a fast one', () => {
+  // The easing is exponential on delta time, so 30fps has to take the same
+  // wall-clock time as 120fps rather than the same number of steps — and
+  // the per-frame jump at 30fps must still be small enough not to read as
+  // a step. dt is clamped at 0.1, which is what stops a stall from
+  // teleporting the whole ladder.
+  const fast = roughest({ from: 1, to: 72.1, dt: 1 / 120 })
+  const slow = roughest({ from: 1, to: 72.1, dt: 1 / 30 })
+  const stalled = roughest({ from: 1, to: 72.1, dt: 0.5, frames: 40 })
+
+  assert.ok(fast.opacity < slow.opacity, 'more frames should mean smaller steps')
+  assert.ok(slow.opacity < 0.24, `30fps jumps ${slow.opacity.toFixed(3)} per frame`)
+  // A dropped frame is a visible hitch whatever we do; the bound that
+  // matters is that it must not skip a whole transition. A third of a fade
+  // is the line. Without the dt clamp the same stall jumped 0.58 — over
+  // half a fade — which is what the clamp is there to stop.
+  assert.ok(
+    stalled.opacity < 0.35,
+    `a stalled frame jumps ${stalled.opacity.toFixed(3)} — over a third of a fade`
+  )
+
+  // And the same gesture takes the same time whatever the frame rate.
+  const settle = (dt) => {
+    let z = 1
+    let n = 0
+    while (z !== 72.1 && n < 100000) {
+      z = ease(z, 72.1, dt)
+      n++
+    }
+    return n * dt
+  }
+  const a = settle(1 / 120)
+  const b = settle(1 / 30)
+  assert.ok(
+    Math.abs(a - b) / a < 0.15,
+    `settling took ${a.toFixed(2)}s at 120fps and ${b.toFixed(2)}s at 30fps`
+  )
+  // Long enough to read as a journey, short enough not to be a wait.
+  assert.ok(a > 0.6 && a < 4, `the whole way out settles in ${a.toFixed(2)}s`)
+})
+
+test('his planet is gone before the subtree is pulled', () => {
+  // The pop this replaces: the hub used to unmount at t = 1.1 while its
+  // branch ring was still four pixels across and at full brightness.
+  const zoomAt = (t) => ZOOM_HUB_MAX * Math.pow(ZOOM_MAX / ZOOM_HUB_MAX, t / STAGES.length)
+  assert.ok(
+    hubOpacity(zoomAt(HUB_GONE)) < 0.001,
+    `his planet is still at ${hubOpacity(zoomAt(HUB_GONE)).toFixed(3)} opacity when it unmounts`
+  )
+  // And it is fully there for the whole of its own zoom range.
+  for (let z = ZOOM_MIN; z <= ZOOM_HUB_MAX; z += 0.05) {
+    assert.ok(Math.abs(hubOpacity(z) - 1) < 1e-9, `his planet dimmed at zoom ${z.toFixed(2)}`)
+  }
 })
 
 // ---------- the two big ones ----------

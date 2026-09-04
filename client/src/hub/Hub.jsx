@@ -22,6 +22,10 @@ import {
   ZOOM_MIN,
   ZOOM_MAX,
   ZOOM_HUB_MAX,
+  ZOOM_RATE,
+  ZOOM_EASE,
+  ZOOM_SNAP,
+  ZOOM_DT_MAX,
   HUB_GONE,
   STAGES,
   cosmicScale,
@@ -269,8 +273,10 @@ export default function Hub() {
           <directionalLight position={[-4, 5, -6]} intensity={2.6} color="#d4a72c" />
           <directionalLight position={[5, 3, 4]} intensity={0.5} color="#5b8dbe" />
 
-          <Travel view={view} zoom={zoom} />
+          {/* Ease first, so everything else in the frame reads the zoom it
+              has just settled rather than the previous frame's. */}
           <Ease zoom={zoom} want={want} />
+          <Travel view={view} zoom={zoom} />
           <Hud
             zoom={zoom}
             caption={caption}
@@ -410,13 +416,26 @@ function Travel({ view, zoom }) {
 // straight line would crawl at the near end and lurch at the far one.
 function Ease({ zoom, want }) {
   useFrame((_, dt) => {
-    const k = reduced ? 1 : 1 - Math.pow(0.0004, Math.min(dt, 0.1))
-    zoom.current *= Math.pow(want.current / zoom.current, k)
-    // Land exactly, or a long tail of 1.0001 keeps the frame loop busy and
-    // the caption flickering at a threshold.
-    if (Math.abs(zoom.current / want.current - 1) < 0.0005) {
+    if (reduced) {
       zoom.current = want.current
+      return
     }
+    const step = Math.min(dt, ZOOM_DT_MAX)
+    // Worked in log-zoom throughout, because zoom is a multiplier: the same
+    // easing then feels the same at 0.5 as it does at 400.
+    const gap = Math.log(want.current / zoom.current)
+    if (Math.abs(gap) < ZOOM_SNAP) {
+      // Land exactly, or a long tail keeps the frame loop busy and the
+      // caption flickering at a threshold.
+      zoom.current = want.current
+      return
+    }
+    const k = 1 - Math.pow(ZOOM_EASE, step)
+    // Proportional, but never faster than the speed limit. The easing gives
+    // small gestures a direct feel; the limit stops a long flick covering a
+    // whole stage in one frame.
+    const move = Math.sign(gap) * Math.min(Math.abs(gap) * k, ZOOM_RATE * step)
+    zoom.current *= Math.exp(move)
   })
   return null
 }
@@ -427,11 +446,13 @@ function Ease({ zoom, want }) {
 // it is what you zoom towards — but it does have to leave with him.
 function Nest({ zoom, children }) {
   const g = useRef()
-  useFrame((_, dt) => {
-    const k = 1 - Math.pow(0.000004, Math.min(dt, 0.1))
-    g.current.scale.setScalar(
-      THREE.MathUtils.lerp(g.current.scale.x, nestFor(zoom.current), k)
-    )
+  useFrame(() => {
+    // Straight from the eased zoom, with no second smoothing of its own.
+    // It used to lerp towards the target at its own rate while Cosmos read
+    // the zoom directly, so his planet lagged behind the solar system
+    // arriving around it — two things animating the same gesture at
+    // different speeds, which is most of what made this feel rough.
+    g.current.scale.setScalar(nestFor(zoom.current))
   })
   return <group ref={g}>{children}</group>
 }
@@ -452,7 +473,10 @@ function Hud({ zoom, caption, title, legend, back, away, setAway }) {
     // caption fades out between two of them rather than snapping over.
     const i = Math.round(t)
     const name = STAGES[i - 1]
-    const near = 1 - Math.min(1, Math.abs(t - i) / 0.5)
+    // Smoothstep rather than a straight ramp: a linear fade has a visible
+    // corner where it starts and where it stops.
+    const x = 1 - Math.min(1, Math.abs(t - i) / 0.5)
+    const near = x * x * (3 - 2 * x)
 
     if (caption.current) {
       caption.current.style.opacity = (name ? near : 0).toFixed(3)
@@ -489,10 +513,9 @@ function Hud({ zoom, caption, title, legend, back, away, setAway }) {
 // apparent size ends up proportional to zoom^0.6.
 function Shrink({ zoom, children }) {
   const g = useRef()
-  useFrame((_, dt) => {
-    const k = 1 - Math.pow(0.000004, Math.min(dt, 0.1))
-    const s = THREE.MathUtils.lerp(g.current.scale.x, shrinkFor(zoom.current), k)
-    g.current.scale.setScalar(s)
+  useFrame(() => {
+    // Also straight from the eased zoom, for the same reason as Nest.
+    g.current.scale.setScalar(shrinkFor(zoom.current))
   })
   return <group ref={g}>{children}</group>
 }
