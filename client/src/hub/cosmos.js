@@ -153,11 +153,11 @@ function planetAt(planet) {
 // The main belt is genuinely 2.1 to 3.3 AU, which under the same
 // compression lands exactly in the gap between Mars and Jupiter. Nothing
 // here is placed by eye.
-function belt({ from, to, count, thickness, incSpread, seed }) {
+function belt({ from, to, count, thickness, incSpread, tint, seed }) {
   const rand = rng(seed)
   const inner = orbitOf(from)
   const outer = orbitOf(to)
-  const pos = new Float32Array(count * 3)
+  const out = layer(count)
   for (let i = 0; i < count; i++) {
     const r = inner + (outer - inner) * rand()
     const theta = rand() * Math.PI * 2
@@ -165,11 +165,13 @@ function belt({ from, to, count, thickness, incSpread, seed }) {
       [Math.cos(theta) * r, gauss(rand) * thickness, Math.sin(theta) * r],
       gauss(rand) * rad(incSpread)
     )
-    pos[i * 3] = p[0]
-    pos[i * 3 + 1] = p[1]
-    pos[i * 3 + 2] = p[2]
+    // The same heavy tail as everywhere else: a belt of identical specks
+    // is the flattest thing you can draw.
+    const size = Math.min(4, 0.7 * Math.pow(1 - rand(), -0.3))
+    const b = 0.45 + 0.55 * Math.min(1, (size - 0.5) / 2)
+    put(out, i, p[0], p[1], p[2], [tint[0] * b, tint[1] * b, tint[2] * b], size)
   }
-  return pos
+  return out
 }
 
 // Saturn's rings: 1.11 to 2.27 Saturn radii, tilted 26.7 degrees, drawn as
@@ -222,86 +224,258 @@ export function solarSystem() {
     rings: saturnRings(PLANETS.find((p) => p.name === 'Saturn'), saturn.pos),
     // 2.1-3.3 AU, the real main belt.
     asteroids: belt({
-      from: 2.1, to: 3.3, count: 900, thickness: 0.004, incSpread: 9, seed: 11,
+      from: 2.1, to: 3.3, count: 1600, thickness: 0.004, incSpread: 9,
+      tint: [0.86, 0.8, 0.7], seed: 11,
     }),
     // 30-50 AU, beyond Neptune, thicker and more inclined as it really is.
     kuiper: belt({
-      from: 30, to: 50, count: 700, thickness: 0.02, incSpread: 16, seed: 23,
+      from: 30, to: 50, count: 1100, thickness: 0.02, incSpread: 16,
+      tint: [0.72, 0.78, 0.9], seed: 23,
     }),
+    // The sun's glow: one very large soft point, which is what a bright
+    // source looks like through any lens. Two nested spheres — the first
+    // attempt — read as two flat discs, because that is what they were.
+    glow: (() => {
+      const g = layer(1)
+      put(g, 0, 0, 0, 0, [1.0, 0.86, 0.62], 1)
+      return g
+    })(),
   }
 }
 
 // ============================================================
 // the galaxy
 // ============================================================
+//
+// Rebuilt because the first one read as a logo, and it is worth being exact
+// about why. It was sixteen thousand identical dots: one size, one
+// brightness, four arms of equal strength wound at the same loose angle, a
+// hard outer edge, and no dust. That is a decal of a galaxy. A photograph
+// of one is mostly *unresolved* light — a smooth haze with a few resolved
+// stars in front of it — cut by dark dust lanes and dotted with pink
+// star-forming knots, fading out with no edge at all.
+//
+// So this builds four layers instead of one, from a real surface-density
+// model rather than from a shape:
+//
+//   haze    a few thousand very large, very faint points. Additive, they
+//           stack into the nebulosity that makes it look photographed.
+//   stars   forty thousand small ones with a heavy-tailed size and
+//           brightness distribution, because a star field is a magnitude
+//           distribution and not a constant.
+//   hii     pink knots along the arm ridges: star-forming regions, the
+//           most recognisable single feature after the arms themselves.
+//   bulge   a separate flattened spheroid, older and yellower, with the
+//           core concentration on top of it.
 
-// A four-armed log spiral with a bulge. The colour runs warm at the core to
-// blue-white at the rim, which is both roughly true and this site's two
-// accents at their extremes.
-export function galaxy({ count = 16000, arms = 4, radius = 1, seed = 7 } = {}) {
+// The Milky Way's own numbers, near enough: a pitch angle of about twelve
+// degrees, two major arms with two weaker ones between them, and a disc
+// whose light falls off exponentially with a scale length of about a
+// quarter of the visible radius.
+const PITCH = rad(12.5)
+const ARM_R0 = 0.055 // where the arms are born, in stage radii
+const DISC_H = 0.26 // exponential scale length
+const DISC_Z = 0.021 // scale height, thin
+
+// A logarithmic spiral: r = R0 * exp(theta * tan(pitch)). Inverted, this is
+// the azimuth an arm has reached by a given radius.
+const armPhase = (r) => Math.log(r / ARM_R0) / Math.tan(PITCH)
+
+// Surface density at a point, as a multiple of the smooth disc.
+//
+// Two major arms and two minor ones at different phases, so the thing is
+// not two-fold symmetric — symmetry is most of what made it look drawn.
+//
+// Then dust, trailing each major arm by a third of a radian. On a black
+// background the only way to draw dust without a depth-sorted dark pass is
+// as missing emission, and the way to do that is *multiplicatively*, the
+// way extinction actually works. Subtracting it — the first attempt —
+// drove the density straight through zero and cut two empty wedges out of
+// the disc: measured, the lanes came out at three per cent of the arm peak
+// when a real lane is a half to four-fifths dimming, and a hole reads as
+// artificial in the other direction. Cubing the cosine narrows it from
+// half the disc into an actual lane.
+const DUST_LAG = 0.34
+const INTER_ARM = 0.18 // the disc between the arms is dim, not empty
+
+function armDensity(r, theta) {
+  const p = armPhase(r)
+  // No arms inside the bulge, and they fade out at the rim.
+  const w = smoothstep(r, 0.05, 0.2) * (1 - smoothstep(r, 0.85, 1.25))
+  const major = 0.8 * Math.cos(2 * (theta - p))
+  const minor = 0.28 * Math.cos(4 * (theta - p) + 1.1)
+  const arms = Math.max(INTER_ARM, 1 + w * (major + minor))
+  const lane =
+    1 - w * 0.62 * Math.pow(Math.max(0, Math.cos(2 * (theta - p - DUST_LAG))), 3)
+  return arms * lane
+}
+const ARM_MAX = 2.1 // ceiling of the above, for rejection sampling
+
+// Gamma(2, h) has probability density r*exp(-r/h), which is exactly an
+// exponential disc seen face on — and it comes out of two uniforms with no
+// rejection step and, more to the point, with no outer edge.
+function discRadius(rand, h, ceiling = 1.25) {
+  for (let i = 0; i < 40; i++) {
+    const r = -h * (Math.log(1 - rand()) + Math.log(1 - rand()))
+    if (r > 0.008 && r < ceiling) return r
+  }
+  return h
+}
+
+// A point in the disc, drawn from the density above.
+function discSample(rand) {
+  for (let i = 0; i < 60; i++) {
+    const r = discRadius(rand, DISC_H)
+    const theta = rand() * Math.PI * 2
+    const d = armDensity(r, theta)
+    if (rand() * ARM_MAX < d) return { r, theta, arm: d }
+  }
+  return { r: DISC_H, theta: rand() * Math.PI * 2, arm: 1 }
+}
+
+// Star colour by population: the arms are where new blue stars are, the
+// spaces between them hold the old yellow ones. Real, and it is also the
+// difference between a galaxy and a pinwheel of one colour.
+const ARM_BLUE = [0.72, 0.82, 1.0]
+const DISC_WARM = [1.0, 0.9, 0.72]
+const BULGE_GOLD = [1.0, 0.82, 0.55]
+
+export function galaxy({ seed = 7, radius = 1, stars = 34000 } = {}) {
   const rand = rng(seed)
-  const pos = new Float32Array(count * 3)
-  const col = new Float32Array(count * 3)
 
-  const core = [0.94, 0.82, 0.52]
-  const rim = [0.58, 0.71, 0.92]
+  const disc = layer(stars)
+  for (let i = 0; i < stars; i++) {
+    const { r, theta, arm } = discSample(rand)
+    // Young stars sit closer to the mid-plane than old ones.
+    const young = Math.min(1, Math.max(0, (arm - 1) / 1.2))
+    const z = gauss(rand) * DISC_Z * radius * (1.25 - 0.6 * young)
 
-  for (let i = 0; i < count; i++) {
-    // A fifth of the stars are the bulge, packed into the middle.
-    const bulge = i % 5 === 0
-    let x, y, z, f
+    // A heavy tail, so a handful of stars are much bigger and brighter than
+    // the rest. This one line is most of the difference between a star
+    // field and a texture.
+    const size = Math.min(5, 0.8 * Math.pow(1 - rand(), -0.32))
+    const bright = 0.42 + 0.58 * Math.min(1, (size - 0.5) / 2.2)
 
-    if (bulge) {
-      const r = radius * 0.13 * Math.pow(rand(), 0.55)
-      const theta = rand() * Math.PI * 2
-      const phi = Math.acos(2 * rand() - 1)
-      x = r * Math.sin(phi) * Math.cos(theta)
-      z = r * Math.sin(phi) * Math.sin(theta)
-      y = r * Math.cos(phi) * 0.45 // squashed, not a ball
-      f = r / radius
-    } else {
-      const r = radius * Math.pow(rand(), 0.62)
-      f = r / radius
-      const arm = Math.floor(rand() * arms) * ((Math.PI * 2) / arms)
-      // The twist is what makes it a spiral rather than a starfish.
-      const theta = arm + f * 3.4 + gauss(rand) * 0.16 * (1.1 - f)
-      const spread = radius * 0.023 * (1 - f * 0.6)
-      x = Math.cos(theta) * r + gauss(rand) * spread
-      z = Math.sin(theta) * r + gauss(rand) * spread
-      // The disc is thin, and thinner further out.
-      y = gauss(rand) * radius * 0.022 * (1 - f * 0.65)
-    }
-
-    pos[i * 3] = x
-    pos[i * 3 + 1] = y
-    pos[i * 3 + 2] = z
-
-    const m = Math.min(1, f * 1.5)
-    col[i * 3] = core[0] + (rim[0] - core[0]) * m
-    col[i * 3 + 1] = core[1] + (rim[1] - core[1]) * m
-    col[i * 3 + 2] = core[2] + (rim[2] - core[2]) * m
+    const warm = mix(DISC_WARM, ARM_BLUE, young * 0.85)
+    const jitter = 0.88 + rand() * 0.24
+    put(disc, i, r * radius * Math.cos(theta), z, r * radius * Math.sin(theta), [
+      warm[0] * bright * jitter,
+      warm[1] * bright * jitter,
+      warm[2] * bright,
+    ], size)
   }
 
-  // The sun sits about two thirds out, on the inner edge of an arm. Marking
-  // it is the point of the whole stage, and it is the anchor.
-  const r = radius * 0.62
-  const theta = 0.62 + 0.62 * 3.4
-  const sun = [Math.cos(theta) * r, 0, Math.sin(theta) * r]
+  // The unresolved light. Few points, enormous and nearly transparent; it
+  // is the additive stack of them that reads as a photograph.
+  // More, smaller blobs rather than fewer huge ones: the huge ones ran
+  // into the 63-pixel cap some drivers put on gl_PointSize, and they cost
+  // a fortune in overdraw for a layer that is barely visible.
+  const hazeCount = Math.round(stars * 0.18)
+  const haze = layer(hazeCount)
+  for (let i = 0; i < hazeCount; i++) {
+    const { r, theta, arm } = discSample(rand)
+    const young = Math.min(1, Math.max(0, (arm - 1) / 1.2))
+    const c = mix(DISC_WARM, ARM_BLUE, young * 0.6)
+    put(
+      haze,
+      i,
+      r * radius * Math.cos(theta),
+      gauss(rand) * DISC_Z * radius * 1.4,
+      r * radius * Math.sin(theta),
+      [c[0], c[1], c[2]],
+      // Bigger further out, where the light is more diffuse.
+      4 + rand() * 7 + r * 9
+    )
+  }
 
-  return { id: 'galaxy', radius, tilt: [0.42, 0, 0.1], pos, col, sun, anchor: sun }
+  // Star-forming regions, packed onto the arm ridges rather than spread
+  // through the disc — the pink knots in every galaxy photograph.
+  const hiiCount = Math.round(stars * 0.014)
+  const hii = layer(hiiCount)
+  for (let i = 0; i < hiiCount; i++) {
+    let s = discSample(rand)
+    // Take the strongest of a few tries, which concentrates them on the
+    // ridge lines without needing a separate density function.
+    for (let k = 0; k < 5; k++) {
+      const t = discSample(rand)
+      if (t.arm > s.arm) s = t
+    }
+    // Star-forming regions vary enormously in size — 30 Doradus against
+    // the small ones — so they get a tail like everything else. A uniform
+    // range made them a row of identical pink beads.
+    const heat = 0.6 + rand() * 0.4
+    put(
+      hii,
+      i,
+      s.r * radius * Math.cos(s.theta),
+      gauss(rand) * DISC_Z * radius * 0.5,
+      s.r * radius * Math.sin(s.theta),
+      [1.0 * heat, 0.42 * heat, 0.52 * heat],
+      Math.min(7, 1.8 * Math.pow(1 - rand(), -0.28))
+    )
+  }
+
+  // The bulge: older, rounder, yellower, and much more concentrated.
+  const bulgeCount = Math.round(stars * 0.22)
+  const bulge = layer(bulgeCount)
+  for (let i = 0; i < bulgeCount; i++) {
+    // Capped, or the exponential tail scatters bulge stars out to two
+    // thirds of the disc and the "bulge" is just a second disc.
+    const r = discRadius(rand, 0.055, 0.4) * radius
+    const theta = rand() * Math.PI * 2
+    const phi = Math.acos(2 * rand() - 1)
+    const size = Math.min(4, 0.7 * Math.pow(1 - rand(), -0.3))
+    const bright = 0.5 + 0.5 * Math.min(1, (size - 0.5) / 2)
+    const j = 0.9 + rand() * 0.2
+    put(
+      bulge,
+      i,
+      r * Math.sin(phi) * Math.cos(theta),
+      r * Math.cos(phi) * 0.58, // flattened, as bulges are
+      r * Math.sin(phi) * Math.sin(theta),
+      [BULGE_GOLD[0] * bright * j, BULGE_GOLD[1] * bright * j, BULGE_GOLD[2] * bright],
+      size
+    )
+  }
+
+  // The sun: two thirds out, on the inner edge of an arm, which is where it
+  // actually is. Marking it is the point of the whole stage.
+  const sunR = radius * 0.63
+  const sunTheta = armPhase(0.63) + 0.24
+  const sun = [
+    sunR * Math.cos(sunTheta),
+    0.004 * radius,
+    sunR * Math.sin(sunTheta),
+  ]
+
+  return {
+    id: 'galaxy',
+    radius,
+    tilt: [0.46, 0, 0.12],
+    layers: { haze, bulge, disc, hii },
+    sun,
+    anchor: sun,
+    // Kept for the tests, which measure the resolved stars.
+    pos: disc.pos,
+    col: disc.col,
+  }
 }
 
 // ============================================================
 // the observable universe
 // ============================================================
 
-// Galaxies are not scattered evenly, they hang in a web, so this places
-// clusters first and then hangs members off them, with faint filaments
-// between neighbours. Without the clustering it reads as television static.
+// Galaxies hang in a web, so this places clusters first and hangs members
+// off them, with faint filaments between neighbours. Without the clustering
+// it reads as television static.
+//
+// Each galaxy also gets its own size and brightness, because at this scale
+// what you are looking at is a magnitude distribution too — a few nearby
+// bright ones over a haze of faint distant ones.
 export function universe({
-  clusters = 110,
-  perCluster = 16,
-  field = 320,
+  clusters = 130,
+  perCluster = 18,
+  field = 420,
   radius = 1,
   seed = 19,
 } = {}) {
@@ -321,25 +495,27 @@ export function universe({
   }
 
   const count = clusters * perCluster + field
-  const pos = new Float32Array(count * 3)
-  const col = new Float32Array(count * 3)
+  const gal = layer(count)
   let n = 0
 
-  const put = (x, y, z, warmth) => {
-    pos[n * 3] = x
-    pos[n * 3 + 1] = y
-    pos[n * 3 + 2] = z
-    // A little variation so it does not read as one flat grey.
-    col[n * 3] = 0.72 + warmth * 0.26
-    col[n * 3 + 1] = 0.74 + warmth * 0.1
-    col[n * 3 + 2] = 0.82 - warmth * 0.12
-    n++
+  const add = (x, y, z) => {
+    // Heavy tail again: most are specks, a few are obviously galaxies.
+    const size = Math.min(6, 0.9 * Math.pow(1 - rand(), -0.33))
+    const bright = 0.4 + 0.6 * Math.min(1, (size - 0.6) / 2.5)
+    // Redder the fainter, which is both roughly true and stops the field
+    // reading as one flat grey.
+    const warmth = 1 - bright
+    put(gal, n++, x, y, z, [
+      (0.78 + warmth * 0.22) * bright,
+      (0.8 - warmth * 0.06) * bright,
+      (0.9 - warmth * 0.24) * bright,
+    ], size)
   }
 
   for (const [cx, cy, cz] of centres) {
-    const spread = radius * (0.03 + rand() * 0.05)
+    const spread = radius * (0.028 + rand() * 0.05)
     for (let i = 0; i < perCluster; i++) {
-      put(cx + gauss(rand) * spread, cy + gauss(rand) * spread, cz + gauss(rand) * spread, rand())
+      add(cx + gauss(rand) * spread, cy + gauss(rand) * spread, cz + gauss(rand) * spread)
     }
   }
   // A thin scatter between the clusters, so the voids are not empty.
@@ -347,11 +523,10 @@ export function universe({
     const r = radius * Math.cbrt(rand())
     const theta = rand() * Math.PI * 2
     const phi = Math.acos(2 * rand() - 1)
-    put(
+    add(
       r * Math.sin(phi) * Math.cos(theta),
       r * Math.sin(phi) * Math.sin(theta) * 0.7,
-      r * Math.cos(phi),
-      rand()
+      r * Math.cos(phi)
     )
   }
 
@@ -371,11 +546,12 @@ export function universe({
     id: 'universe',
     radius,
     tilt: [0.2, 0, 0],
-    pos,
-    col,
+    layers: { gal },
     web: new Float32Array(web),
     home: centres[0],
     anchor: centres[0],
+    pos: gal.pos,
+    col: gal.col,
   }
 }
 
@@ -389,26 +565,71 @@ const dist2 = (a, b) => (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) 
 // scaled by one.
 //
 // This is what stops the space between two scales being an empty screen.
-// Halfway between the solar system and the galaxy the solar system is a
-// quarter of the frame and the galaxy has not arrived; without a sky behind
-// it, that reads as a bug rather than as distance.
-export function starfield({ count = 1600, radius = 320, seed = 31 } = {}) {
+// Halfway out from his planet the solar system is a quarter of the frame
+// and the galaxy has not arrived; without a sky behind it, that reads as a
+// bug rather than as distance.
+export function starfield({ count = 2200, radius = 320, seed = 31 } = {}) {
   const rand = rng(seed)
-  const pos = new Float32Array(count * 3)
-  const col = new Float32Array(count * 3)
+  const sky = layer(count)
   for (let i = 0; i < count; i++) {
     const theta = rand() * Math.PI * 2
     const phi = Math.acos(2 * rand() - 1)
-    pos[i * 3] = radius * Math.sin(phi) * Math.cos(theta)
-    pos[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta)
-    pos[i * 3 + 2] = radius * Math.cos(phi)
-    // Most stars are faint; a few are not. Squaring the roll does that.
-    const b = 0.35 + 0.65 * Math.pow(rand(), 2)
-    col[i * 3] = b
-    col[i * 3 + 1] = b * 0.97
-    col[i * 3 + 2] = b * 0.9
+    // Same magnitude distribution as everywhere else.
+    const size = Math.min(4, 0.75 * Math.pow(1 - rand(), -0.3))
+    const b = 0.3 + 0.7 * Math.min(1, (size - 0.5) / 2)
+    // A little colour: most stars are white-ish, some orange, a few blue.
+    const hue = rand()
+    const c =
+      hue < 0.62
+        ? [1, 0.97, 0.92]
+        : hue < 0.86
+          ? [1, 0.86, 0.7]
+          : [0.82, 0.88, 1]
+    put(
+      sky,
+      i,
+      radius * Math.sin(phi) * Math.cos(theta),
+      radius * Math.sin(phi) * Math.sin(theta),
+      radius * Math.cos(phi),
+      [c[0] * b, c[1] * b, c[2] * b],
+      size
+    )
   }
-  return { pos, col, radius }
+  return { ...sky, radius }
+}
+
+// ---------- layer plumbing ----------
+
+// Every point cloud out here is positions, colours and a per-point size
+// multiplier. The size is what the first version was missing.
+function layer(count) {
+  return {
+    pos: new Float32Array(count * 3),
+    col: new Float32Array(count * 3),
+    siz: new Float32Array(count),
+    count,
+  }
+}
+
+function put(l, i, x, y, z, col, size) {
+  l.pos[i * 3] = x
+  l.pos[i * 3 + 1] = y
+  l.pos[i * 3 + 2] = z
+  l.col[i * 3] = col[0]
+  l.col[i * 3 + 1] = col[1]
+  l.col[i * 3 + 2] = col[2]
+  l.siz[i] = size
+}
+
+const mix = (a, b, t) => [
+  a[0] + (b[0] - a[0]) * t,
+  a[1] + (b[1] - a[1]) * t,
+  a[2] + (b[2] - a[2]) * t,
+]
+
+function smoothstep(x, min, max) {
+  const t = Math.max(0, Math.min(1, (x - min) / (max - min)))
+  return t * t * (3 - 2 * t)
 }
 
 // What each stage calls itself on the way out.

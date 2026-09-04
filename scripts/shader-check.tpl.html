@@ -1,0 +1,101 @@
+<meta charset="utf-8" />
+<canvas id="c" width="8" height="8"></canvas>
+<pre id="out">running</pre>
+<title>hub shader check</title>
+<script type="module">
+  // Compiles and links the real shader sources from shaders.js against
+  // three's own prefix for a non-raw ShaderMaterial. Compiling GLSL is a
+  // synchronous call, so this works in a pane that never renders a frame.
+  const out = document.getElementById('out')
+  const lines = []
+  const say = (s) => {
+    lines.push(s)
+    out.textContent = lines.join('\n')
+  }
+
+  try {
+    const S = /*SHADERS*/null
+    const canvas = document.getElementById('c')
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl')
+    if (!gl) throw new Error('no WebGL context')
+
+    say('GL: ' + gl.getParameter(gl.VERSION))
+    say('point size range: ' + Array.from(gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE)).join(' to '))
+
+    const VERT_PREFIX = [
+      'precision highp float;',
+      'precision highp int;',
+      'uniform mat4 modelMatrix;',
+      'uniform mat4 modelViewMatrix;',
+      'uniform mat4 projectionMatrix;',
+      'uniform mat4 viewMatrix;',
+      'uniform mat3 normalMatrix;',
+      'uniform vec3 cameraPosition;',
+      'uniform bool isOrthographic;',
+      'attribute vec3 position;',
+      'attribute vec3 normal;',
+      'attribute vec2 uv;',
+    ].join('\n')
+
+    const COLOR_ATTR = 'attribute vec3 color;'
+
+    const FRAG_PREFIX = [
+      'precision highp float;',
+      'precision highp int;',
+      'uniform mat4 viewMatrix;',
+      'uniform vec3 cameraPosition;',
+      'uniform bool isOrthographic;',
+    ].join('\n')
+
+    const compile = (type, src) => {
+      const sh = gl.createShader(type)
+      gl.shaderSource(sh, src)
+      gl.compileShader(sh)
+      if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+        return { err: gl.getShaderInfoLog(sh) }
+      }
+      return { sh }
+    }
+
+    let failures = 0
+    for (const [name, m] of Object.entries(S)) {
+      const vsrc = VERT_PREFIX + '\n' + (m.color ? COLOR_ATTR + '\n' : '') + m.vs
+      const fsrc = FRAG_PREFIX + '\n' + m.fs
+
+      const v = compile(gl.VERTEX_SHADER, vsrc)
+      const f = compile(gl.FRAGMENT_SHADER, fsrc)
+      say(name + ' vertex:   ' + (v.err ? 'FAIL ' + v.err : 'ok'))
+      say(name + ' fragment: ' + (f.err ? 'FAIL ' + f.err : 'ok'))
+      if (v.err || f.err) {
+        failures++
+        continue
+      }
+
+      const p = gl.createProgram()
+      gl.attachShader(p, v.sh)
+      gl.attachShader(p, f.sh)
+      gl.linkProgram(p)
+      const linked = gl.getProgramParameter(p, gl.LINK_STATUS)
+      say(name + ' link:     ' + (linked ? 'ok' : 'FAIL ' + gl.getProgramInfoLog(p)))
+      if (!linked) {
+        failures++
+        continue
+      }
+
+      // Every uniform the code sets each frame must actually exist in the
+      // linked program, or it is being written into a void.
+      const wanted = m.uniforms || []
+      const missing = wanted.filter((u) => gl.getUniformLocation(p, u) === null)
+      say(
+        name + ' uniforms: ' +
+          (missing.length ? 'MISSING ' + missing.join(', ') : 'all ' + wanted.length + ' present')
+      )
+      if (missing.length) failures++
+    }
+
+    say('')
+    say(failures ? 'RESULT: ' + failures + ' problem(s)' : 'RESULT: all shaders compile, link and expose their uniforms')
+  } catch (e) {
+    say('THREW: ' + (e && e.message))
+  }
+</script>

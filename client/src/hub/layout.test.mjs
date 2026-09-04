@@ -511,7 +511,7 @@ test('every planet is a visible dot, clear of its neighbours', () => {
 test('the sky is behind everything and dense enough to read', () => {
   assert.ok(finite(SKY.pos))
   assert.ok(finite(SKY.col))
-  assert.ok(SKY.col.every((c) => c >= 0 && c <= 1))
+  assert.ok(SKY.col.every((c) => c >= 0 && c < 1.6))
   // Outside every stage at its largest, so it never punches through one.
   const biggest = Math.max(...VIEWPORTS.map((vp) => outsideCamera(vp).fit)) * 3.2
   assert.ok(SKY.radius > biggest, `sky at ${SKY.radius} is inside a stage at ${biggest.toFixed(0)}`)
@@ -523,37 +523,181 @@ test('the sky is behind everything and dense enough to read', () => {
 })
 
 test('point clouds render at a size you can see', () => {
-  // three sizes points by gl_PointSize = size * (height/2) / -z. There is
-  // no field of view in it at all, which is the trap: converting with the
-  // usual tan(fov/2) is correct for geometry and makes every point cloud
-  // out here 2.7 times smaller than asked for. These are the numbers that
-  // rule produces from the constants the components actually pass.
-  const renders = (worldSize, distance, h) => (worldSize * (h / 2)) / distance
+  // The shader works out to gl_PointSize = aSize * px * dpr, because uSize
+  // carries the camera distance and uScale carries the half-height. In CSS
+  // pixels that is aSize * px, independent of device and viewport — which
+  // is the property worth pinning, since two earlier versions got it wrong
+  // in opposite directions: once by leaving out the scale entirely (a
+  // hundredth of a pixel) and once by converting with tan(fov/2), which is
+  // right for geometry and 2.7x too small for points.
+  const cssPx = (aSize, px) => aSize * px
 
-  for (const vp of VIEWPORTS) {
-    const view = outsideCamera(vp)
-    const pointUnit = view.dist / (vp.h / 2)
-    for (const [what, wanted] of [
-      ['asteroids', 1.3],
-      ['galaxy stars', 1.8],
-      ['universe galaxies', 2.0],
-    ]) {
-      const got = renders(wanted * pointUnit, view.dist, vp.h)
-      assert.ok(
-        Math.abs(got - wanted) < 0.05,
-        `${vp.name}: ${what} asked for ${wanted}px, would render at ${got.toFixed(2)}px`
-      )
-    }
-
-    // The sky is never scaled by a stage and sits at a fixed radius, so its
-    // world size is a bare constant in the component and has to be checked
-    // against the rule directly.
-    const sky = renders(1.2, SKY.radius, vp.h)
-    assert.ok(sky > 1, `${vp.name}: sky stars render at only ${sky.toFixed(2)}px`)
-    // And it must stay under the galaxy's stars, or the backdrop reads as
-    // the brighter object and the galaxy sits behind its own background.
-    assert.ok(sky < 1.8, `${vp.name}: sky stars outshine the galaxy's`)
+  const spread = (siz) => {
+    const s = [...siz].sort((a, b) => a - b)
+    return { median: s[Math.floor(s.length / 2)], p99: s[Math.floor(s.length * 0.99)] }
   }
+
+  // px values are the ones Cosmos passes each cloud.
+  const clouds = [
+    ['galaxy stars', GALAXY.layers.disc.siz, 1.5, 1.0, 3.2, 4, 12],
+    ['galaxy bulge', GALAXY.layers.bulge.siz, 1.5, 1.0, 3.2, 3, 12],
+    ['star-forming knots', GALAXY.layers.hii.siz, 1.5, 3.0, 9.0, 4, 14],
+    ['galaxies', UNIVERSE.layers.gal.siz, 1.6, 1.0, 3.5, 4, 14],
+    ['asteroids', SOLAR.asteroids.siz, 1.25, 0.8, 2.5, 2, 9],
+    ['the sky', SKY.siz, 1.15, 0.8, 2.5, 2, 9],
+  ]
+
+  for (const [what, siz, px, medLo, medHi, tailLo, tailHi] of clouds) {
+    const { median, p99 } = spread(siz)
+    const m = cssPx(median, px)
+    const t = cssPx(p99, px)
+    assert.ok(
+      m >= medLo && m <= medHi,
+      `${what}: the typical one renders at ${m.toFixed(1)}px, wanted ${medLo}-${medHi}`
+    )
+    assert.ok(
+      t >= tailLo && t <= tailHi,
+      `${what}: the brightest render at ${t.toFixed(1)}px, wanted ${tailLo}-${tailHi}`
+    )
+    // A cloud where every point is the same size is a texture, not a sky.
+    assert.ok(
+      p99 / median > 2,
+      `${what} has no magnitude spread: p99 is only ${(p99 / median).toFixed(1)}x the median`
+    )
+  }
+
+  // The haze is deliberately huge and faint, but it has to stay under the
+  // 63-pixel cap some drivers put on gl_PointSize.
+  const haze = spread(GALAXY.layers.haze.siz)
+  assert.ok(cssPx(haze.p99, 1.0) < 40, `haze blobs reach ${cssPx(haze.p99, 1.0).toFixed(0)}px`)
+})
+
+// ---------- the galaxy, as a picture ----------
+//
+// The complaint was that it looked like a logo. These are the measurable
+// differences between a photograph of a spiral galaxy and a decal of one.
+
+// Light per unit area in radial bins, using size squared times brightness,
+// which is what a point actually contributes.
+function surfaceBrightness(l, bins = 12, rmax = 1.1) {
+  const out = new Float64Array(bins)
+  for (let i = 0; i < l.count; i++) {
+    const r = Math.hypot(l.pos[i * 3], l.pos[i * 3 + 2])
+    if (r >= rmax) continue
+    const b = (l.col[i * 3] + l.col[i * 3 + 1] + l.col[i * 3 + 2]) / 3
+    out[Math.floor((r / rmax) * bins)] += l.siz[i] * l.siz[i] * b
+  }
+  return [...out].map((v, k) => {
+    const r0 = (k / bins) * rmax
+    const r1 = ((k + 1) / bins) * rmax
+    return v / (Math.PI * (r1 * r1 - r0 * r0))
+  })
+}
+
+test('the galaxy fades out instead of having an edge', () => {
+  // The first one cut off at a fixed radius, which is the single clearest
+  // tell of a drawn spiral. A real disc falls off exponentially and just
+  // keeps going.
+  const sb = surfaceBrightness(GALAXY.layers.disc)
+  for (let i = 1; i < sb.length; i++) {
+    assert.ok(sb[i] < sb[i - 1], `surface brightness rose again in bin ${i}`)
+  }
+  // Exponential, near enough: each bin a roughly constant fraction of the
+  // last, rather than flat then falling off a cliff.
+  const ratios = sb.slice(1).map((v, i) => v / sb[i])
+  for (const r of ratios) {
+    assert.ok(r > 0.45 && r < 0.92, `a bin fell by ${r.toFixed(2)}x, which is a cliff or a plateau`)
+  }
+  // And there are still stars past the nominal radius.
+  const beyond = [...Array(GALAXY.layers.disc.count).keys()].filter((i) => {
+    const p = GALAXY.layers.disc.pos
+    return Math.hypot(p[i * 3], p[i * 3 + 2]) > GALAXY.radius
+  })
+  assert.ok(beyond.length > 20, 'nothing at all beyond the nominal radius')
+})
+
+// Azimuthal profile with the spiral unwound, so arms become straight bands.
+function armProfile(l, bins = 48, rIn = 0.35, rOut = 0.65) {
+  const out = new Float64Array(bins)
+  const pitch = Math.tan((12.5 * Math.PI) / 180)
+  for (let i = 0; i < l.count; i++) {
+    const x = l.pos[i * 3]
+    const z = l.pos[i * 3 + 2]
+    const r = Math.hypot(x, z)
+    if (r < rIn || r > rOut) continue
+    const p = Math.log(r / 0.055) / pitch
+    let th = Math.atan2(z, x) - p
+    th = ((th % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)
+    out[Math.floor((th / (Math.PI * 2)) * bins)]++
+  }
+  return [...out]
+}
+
+test('the galaxy has arms, and dust lanes that dim rather than delete', () => {
+  const az = armProfile(GALAXY.layers.disc)
+  const mean = az.reduce((a, b) => a + b) / az.length
+  const peak = Math.max(...az)
+  const trough = Math.min(...az)
+
+  assert.ok(peak / mean > 1.8, `arms are only ${(peak / mean).toFixed(2)}x the mean — too faint to read`)
+  // The dark lanes have to be dark. But not empty: subtracting dust instead
+  // of attenuating with it drove the density through zero and cut two blank
+  // wedges out of the disc, measured at 3% of the arm peak.
+  assert.ok(trough / peak < 0.3, `the darkest lane is ${(trough / peak).toFixed(2)} of the peak — no lanes`)
+  assert.ok(trough / mean > 0.1, `the darkest lane is ${(trough / mean).toFixed(3)} of the mean — a hole, not dust`)
+
+  // Two major arms: two clear maxima half a turn apart.
+  const half = az.length / 2
+  let best = 0
+  let bestAt = 0
+  for (let k = 0; k < half; k++) {
+    const paired = az[k] + az[k + half]
+    if (paired > best) {
+      best = paired
+      bestAt = k
+    }
+  }
+  assert.ok(
+    az[bestAt] / mean > 1.6 && az[bestAt + half] / mean > 1.6,
+    'the two major arms are not both there'
+  )
+  // And not two-fold symmetric, or it reads as a pinwheel: the two arms
+  // must differ, and there must be structure between them.
+  const asym = Math.abs(az[bestAt] - az[bestAt + half]) / Math.max(az[bestAt], az[bestAt + half])
+  assert.ok(asym > 0.01, 'the two arms are identical — that is a pinwheel')
+})
+
+test('the galaxy is four populations, not one', () => {
+  // Young blue stars in the arms, old yellow ones between them and in the
+  // bulge, pink knots where stars are forming. One flat colour ramp by
+  // radius — the first version — is a gradient, not a galaxy.
+  const meanCol = (l) => {
+    let r = 0
+    let g = 0
+    let b = 0
+    for (let i = 0; i < l.count; i++) {
+      r += l.col[i * 3]
+      g += l.col[i * 3 + 1]
+      b += l.col[i * 3 + 2]
+    }
+    return [r / l.count, g / l.count, b / l.count]
+  }
+  const bulge = meanCol(GALAXY.layers.bulge)
+  const hii = meanCol(GALAXY.layers.hii)
+
+  // The bulge is warmer than it is blue.
+  assert.ok(bulge[0] > bulge[2] * 1.2, 'the bulge is not the warm old population')
+  // The knots are pink: strong red, weak green.
+  assert.ok(hii[0] > hii[1] * 1.6, 'the star-forming knots are not pink')
+  // And the bulge really is a separate, flattened, concentrated thing.
+  let maxR = 0
+  for (let i = 0; i < GALAXY.layers.bulge.count; i++) {
+    maxR = Math.max(
+      maxR,
+      Math.hypot(GALAXY.layers.bulge.pos[i * 3], GALAXY.layers.bulge.pos[i * 3 + 2])
+    )
+  }
+  assert.ok(maxR < GALAXY.radius * 0.5, `the bulge reaches ${maxR.toFixed(2)} — that is a disc`)
 })
 
 // ---------- the two big ones ----------
@@ -569,7 +713,9 @@ test('the galaxy is a disc, not a ball or a cloud of NaN', () => {
   }
   assert.ok(maxR < GALAXY.radius * 1.35, `galaxy reached ${maxR.toFixed(2)}`)
   assert.ok(maxY < maxR * 0.25, `thickness ${maxY.toFixed(3)} vs radius ${maxR.toFixed(2)}`)
-  assert.ok(GALAXY.col.every((c) => c >= 0 && c <= 1))
+  // Over one is allowed and wanted: these layers are additive, so a bright
+  // star saturating early is the point. What is not allowed is a runaway.
+  assert.ok(GALAXY.col.every((c) => c >= 0 && c < 1.6))
   const sunR = Math.hypot(GALAXY.sun[0], GALAXY.sun[2])
   assert.ok(sunR > GALAXY.radius * 0.4 && sunR < GALAXY.radius * 0.8)
 })

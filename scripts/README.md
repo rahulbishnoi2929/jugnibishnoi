@@ -107,3 +107,23 @@ tens of thousands of points and the recursive form overflows the stack.
 The five chapter scenes in `client/public/scenes/` were generated the same
 way. Those scripts live in the scratchpad rather than here; the SVGs are
 the source of truth now and are edited directly if needed.
+
+## shader-check.js
+
+Compiles and links the hub's shaders and reports what the driver says.
+
+```
+node scripts/shader-check.js
+```
+
+Then open the `scripts/shader-check.html` it writes. It is self-contained —
+no server, no build step.
+
+This exists because the pane this was built in pauses
+requestAnimationFrame, so nothing in the 3D scene ever renders there. A
+shader that failed to compile looked exactly like one that worked: an
+invisible layer and a silent frame loop. Compiling GLSL, unlike drawing
+with it, is synchronous, so it can be checked without a single frame.
+
+It also reports the driver's `ALIASED_POINT_SIZE_RANGE`, which is why the
+star shader clamps `gl_PointSize` at 56 — some drivers cap it at 63.
