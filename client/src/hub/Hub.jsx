@@ -8,6 +8,7 @@ import roomData from '../content/rooms.json'
 import Figure from './Figure.jsx'
 import Globe from './Globe.jsx'
 import Nodes from './Nodes.jsx'
+import Cosmos from './Cosmos.jsx'
 import SubNodes from './SubNodes.jsx'
 import Panel from './Panel.jsx'
 import {
@@ -20,9 +21,14 @@ import {
   applyZoom,
   ZOOM_MIN,
   ZOOM_MAX,
+  ZOOM_HUB_MAX,
+  STAGES,
+  cosmicScale,
   fitFor,
+  nestFor,
   shrinkFor,
 } from './layout.js'
+import { CAPTIONS } from './cosmos.js'
 import { asset } from '../lib/asset.js'
 import '../styles/hub.css'
 
@@ -85,6 +91,24 @@ export default function Hub() {
   const pointers = useRef(new Map())
   const pinch = useRef(null)
 
+  // Two zoom values, not one: `want` is where the gesture asked to be and
+  // `zoom` eases towards it. Everything downstream reads the eased one,
+  // which is what lets "back to Earth" be a button rather than a minute of
+  // pinching back down the ladder.
+  const zoom = useRef(1)
+  const want = useRef(1)
+
+  // How far out on the ladder of scales we are, as a flag rather than a
+  // number: past the solar system his planet is a speck, and unmounting it
+  // takes its DOM labels with it. Only ever flips, so one render.
+  const [away, setAway] = useState(false)
+
+  // Written every frame by Hud, read by nobody but the DOM.
+  const caption = useRef(null)
+  const title = useRef(null)
+  const legend = useRef(null)
+  const back = useRef(null)
+
   const onDown = (e) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return
     // Capture, so the release reaches us even if the pointer ends up
@@ -100,7 +124,7 @@ export default function Hub() {
 
     if (pointers.current.size === 2) {
       const [a, b] = [...pointers.current.values()]
-      pinch.current = { gap: Math.hypot(a.x - b.x, a.y - b.y), zoom: zoom.current }
+      pinch.current = { gap: Math.hypot(a.x - b.x, a.y - b.y), zoom: want.current }
       // A pinch is not a drag. Drop the rotation anchor or the ring lurches
       // as the second finger lands.
       from.current = null
@@ -122,10 +146,10 @@ export default function Hub() {
       const [a, b] = [...pointers.current.values()]
       const gap = Math.hypot(a.x - b.x, a.y - b.y)
       if (gap > 0) {
-        zoom.current = THREE.MathUtils.clamp(
+        want.current = THREE.MathUtils.clamp(
           pinch.current.zoom * (pinch.current.gap / gap),
           ZOOM_MIN,
-          ZOOM_MAX
+          active ? ZOOM_HUB_MAX : ZOOM_MAX
         )
       }
       return
@@ -161,24 +185,23 @@ export default function Hub() {
   // it, the branches read it.
   const bob = useRef(0)
 
-  // Wheel to zoom. Attached by hand rather than with onWheel so it can be
-  // non-passive and stop the page reacting to the same gesture.
-  const zoom = useRef(1)
   const canvasBox = useRef(null)
   useEffect(() => {
     const el = canvasBox.current
     if (!el) return
     const onWheel = (e) => {
       e.preventDefault()
-      zoom.current = THREE.MathUtils.clamp(
-        zoom.current * (1 + e.deltaY * 0.0012),
+      want.current = THREE.MathUtils.clamp(
+        want.current * (1 + e.deltaY * 0.0012),
         ZOOM_MIN,
-        ZOOM_MAX
+        // Leaving the planet only makes sense from the hub. Inside a
+        // chapter the camera is somewhere else entirely.
+        active ? ZOOM_HUB_MAX : ZOOM_MAX
       )
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [])
+  }, [active])
 
   // Where the turntable should settle. Set from the active branch rather
   // than from the click, so a pasted /c/soil link spins there too.
@@ -188,15 +211,20 @@ export default function Hub() {
       aim.current = null
       return
     }
+    // Opening a chapter from out on the ladder would leave his planet
+    // unmounted and the chapter view empty, so come back in first. Only the
+    // gestures were clamped, and they do not run retroactively.
+    want.current = Math.min(want.current, ZOOM_HUB_MAX)
     const node = nodes.find((n) => n.id === active)
     if (node) aim.current = spinToFront(node, drag.current.x)
   }, [active])
 
   // Escape is how people leave things.
   useEffect(() => {
-    if (!active) return
     const onKey = (e) => {
       if (e.key !== 'Escape') return
+      if (want.current > ZOOM_HUB_MAX) return void (want.current = 1)
+      if (!active) return
       openSub ? goSub(null) : go(null)
     }
     window.addEventListener('keydown', onKey)
@@ -241,53 +269,92 @@ export default function Hub() {
           <directionalLight position={[5, 3, 4]} intensity={0.5} color="#5b8dbe" />
 
           <Travel view={view} zoom={zoom} />
+          <Ease zoom={zoom} want={want} />
+          <Hud
+            zoom={zoom}
+            caption={caption}
+            title={title}
+            legend={legend}
+            back={back}
+            away={away}
+            setAway={setAway}
+          />
 
           <Suspense fallback={null}>
             <Rig frozen={!!active} drag={drag} aim={aim}>
-              {/* The ground only exists at the hub — once you have
-                  travelled, the chapter's own artwork is the ground. It
-                  lives inside the rig so dragging spins the planet, and
-                  inside Suspense because its texture loads. */}
-              {!active && <Globe radius={narrow ? 0.95 : 1.35} />}
+              {/* Keep pulling back and his planet is not the subject any
+                  more. Inside the rig, so dragging turns the sky too. */}
+              {!active && <Cosmos zoom={zoom} />}
 
-              {/* He and his branches shrink as you zoom into the planet.
-                  The globe is outside this on purpose — it is the thing
-                  you are zooming towards. */}
-              <Shrink zoom={zoom}>
-                {/* Grounds him. The painted horizon in each scene does not
-                    line up with the 3D floor, and without this he floats. */}
-                <Shadow
-                  position={[0, 0.015, 0]}
-                  rotation={[-Math.PI / 2, 0, 0]}
-                  scale={[0.32, 0.32, 1]}
-                  opacity={0.55}
-                  color="#000000"
-                />
-                <Figure
-                  facing={active ? nodes.find((n) => n.id === active)?.pos : null}
-                  bob={bob}
-                />
+              {/* Everything of his, nested inside the scale above it.
+                  The ground only exists at the hub — once you have
+                  travelled, the chapter's own artwork is the ground.
 
-                {/* Everything growing out of his head rides with it. */}
-                <Breathe bob={bob}>
-                  <Nodes nodes={nodes} active={active} onPick={go} zoom={zoom} />
+                  Past the first stage out there is nothing here worth
+                  drawing, so it unmounts rather than fading: that takes the
+                  branch labels with it, which are DOM and would otherwise
+                  hang around over the sky. */}
+              {!away && (
+                <Nest zoom={zoom}>
+                  {!active && <Globe radius={narrow ? 0.95 : 1.35} />}
 
-                  {branches.length > 0 && (
-                    <SubNodes
-                      branches={branches}
-                      accent={activeNode.accent}
-                      active={sub}
-                      zoom={zoom}
-                      onPick={goSub}
+                  {/* He and his branches shrink as you zoom into the
+                      planet. The globe is outside this on purpose — it is
+                      the thing you are zooming towards. */}
+                  <Shrink zoom={zoom}>
+                    {/* Grounds him. The painted horizon in each scene does
+                        not line up with the 3D floor, and without this he
+                        floats. */}
+                    <Shadow
+                      position={[0, 0.015, 0]}
+                      rotation={[-Math.PI / 2, 0, 0]}
+                      scale={[0.32, 0.32, 1]}
+                      opacity={0.55}
+                      color="#000000"
                     />
-                  )}
-                </Breathe>
-              </Shrink>
+                    <Figure
+                      facing={active ? nodes.find((n) => n.id === active)?.pos : null}
+                      bob={bob}
+                    />
+
+                    {/* Everything growing out of his head rides with it. */}
+                    <Breathe bob={bob}>
+                      <Nodes nodes={nodes} active={active} onPick={go} zoom={zoom} />
+
+                      {branches.length > 0 && (
+                        <SubNodes
+                          branches={branches}
+                          accent={activeNode.accent}
+                          active={sub}
+                          zoom={zoom}
+                          onPick={goSub}
+                        />
+                      )}
+                    </Breathe>
+                  </Shrink>
+                </Nest>
+              )}
             </Rig>
           </Suspense>
 
         </Canvas>
       </div>
+
+      {/* Named as you pass it, rather than labelled in 3D — at these
+          scales a label in the scene is either a speck or the whole sky. */}
+      <div className="cosmos-caption" ref={caption} aria-live="polite">
+        <strong className="cosmos-name" ref={title} />
+        <span className="cosmos-legend" ref={legend} />
+      </div>
+
+      <button
+        type="button"
+        className="cosmos-back"
+        ref={back}
+        onClick={() => (want.current = 1)}
+      >
+        ↓ Back to Earth
+      </button>
 
       <header className="hub-copy" aria-hidden={!!active}>
         <p className="hub-eyebrow">Mehrajpur, Fazilka — Punjab</p>
@@ -322,10 +389,92 @@ function Travel({ view, zoom }) {
     // Grit fell off both edges. Pull back on narrow viewports. Read from
     // the canvas each frame so rotating the phone is handled for free.
     const fit = fitFor(state.size.width)
-    applyZoom(view, zoom.current * fit, targetPos.current, targetLook.current)
+    // Capped: past the hub's own range the camera stays put and the world
+    // shrinks instead. Nine thousand units of pull-back would be numerically
+    // miserable and would look identical.
+    const z = Math.min(zoom.current, ZOOM_HUB_MAX) * fit
+    applyZoom(view, z, targetPos.current, targetLook.current)
     camera.position.lerp(targetPos.current, k)
     look.current.lerp(targetLook.current, k)
     camera.lookAt(look.current)
+  })
+
+  return null
+}
+
+// Eases the real zoom towards the one the gesture asked for.
+//
+// Geometrically, not linearly: zoom is a multiplier, so the same easing has
+// to feel the same whether you are at 0.5 or at 400. Lerping it in a
+// straight line would crawl at the near end and lurch at the far one.
+function Ease({ zoom, want }) {
+  useFrame((_, dt) => {
+    const k = reduced ? 1 : 1 - Math.pow(0.0004, Math.min(dt, 0.1))
+    zoom.current *= Math.pow(want.current / zoom.current, k)
+    // Land exactly, or a long tail of 1.0001 keeps the frame loop busy and
+    // the caption flickering at a threshold.
+    if (Math.abs(zoom.current / want.current - 1) < 0.0005) {
+      zoom.current = want.current
+    }
+  })
+  return null
+}
+
+// His planet becoming a dot in the thing that contains it.
+//
+// Separate from Shrink because the globe is deliberately outside that one —
+// it is what you zoom towards — but it does have to leave with him.
+function Nest({ zoom, children }) {
+  const g = useRef()
+  useFrame((_, dt) => {
+    const k = 1 - Math.pow(0.000004, Math.min(dt, 0.1))
+    g.current.scale.setScalar(
+      THREE.MathUtils.lerp(g.current.scale.x, nestFor(zoom.current), k)
+    )
+  })
+  return <group ref={g}>{children}</group>
+}
+
+// Names the scale you are at and offers the way back.
+//
+// Lives inside the canvas because it needs the frame loop, and writes to
+// DOM nodes outside it — the same trick the branch labels use. The only
+// thing it puts through React is the one flag that unmounts his planet,
+// and only when it changes.
+function Hud({ zoom, caption, title, legend, back, away, setAway }) {
+  const shown = useRef(null)
+
+  useFrame(() => {
+    const t = cosmicScale(zoom.current)
+
+    // Which stage you are nearest, and how squarely you are on it. The
+    // caption fades out between two of them rather than snapping over.
+    const i = Math.round(t)
+    const name = STAGES[i - 1]
+    const near = 1 - Math.min(1, Math.abs(t - i) / 0.5)
+
+    if (caption.current) {
+      caption.current.style.opacity = (name ? near : 0).toFixed(3)
+      if (name && shown.current !== name) {
+        shown.current = name
+        const [heading, sub] = CAPTIONS[name]
+        title.current.textContent = heading
+        legend.current.textContent = sub
+      }
+    }
+
+    if (back.current) {
+      // Appears as soon as you have left, not once you have arrived
+      // somewhere: the worst moment to be stranded is between two scales.
+      const out = THREE.MathUtils.clamp((t - 0.08) / 0.25, 0, 1)
+      back.current.style.opacity = out.toFixed(3)
+      back.current.style.pointerEvents = out > 0.5 ? 'auto' : 'none'
+      back.current.tabIndex = out > 0.5 ? 0 : -1
+    }
+
+    // Hysteresis, so a jitter around the threshold cannot thrash the tree.
+    if (!away && t > 0.95) setAway(true)
+    else if (away && t < 0.85) setAway(false)
   })
 
   return null

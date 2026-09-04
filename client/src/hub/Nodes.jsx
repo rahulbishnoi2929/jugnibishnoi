@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Line, Html } from '@react-three/drei'
 import * as THREE from 'three'
-import { HEAD, depthFade, shrinkFor } from './layout.js'
+import { HEAD, depthFade, labelScaleFor } from './layout.js'
 
 const world = new THREE.Vector3()
 
@@ -58,7 +58,7 @@ function Node({ node, index, state, onPick, zoom }) {
     //
     // There used to be a second factor that dimmed everything as you zoomed
     // in, because close to the planet the ring ended up around the camera
-    // and the labels blew up into nonsense. Scaling the labels by shrinkFor
+    // and the labels blew up into nonsense. Scaling the labels by labelScaleFor
     // fixed that at the source — they now recede with the ring instead of
     // swelling — so the fade was left dimming the branches for no reason.
     // On a phone it reached 0.16 at full pinch: the whole lower half of the
@@ -92,7 +92,7 @@ function Node({ node, index, state, onPick, zoom }) {
       // you zoomed in while the ring under them contracted — the words ran
       // together over a model that was getting away from them. Written as
       // `scale` rather than `transform` so the CSS translateY survives.
-      label.current.style.scale = shrinkFor(zoom?.current ?? 1).toFixed(3)
+      label.current.style.scale = labelScaleFor(zoom?.current ?? 1).toFixed(3)
     }
   })
 

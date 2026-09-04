@@ -103,7 +103,51 @@ const UP = new THREE.Vector3(0, 1, 0)
 // the point of zooming here is to get close to the planet.
 export const ZOOM_TARGET = new THREE.Vector3(0, -0.1, 0)
 export const ZOOM_MIN = 0.4
-export const ZOOM_MAX = 2.2
+
+// ---------- the way out ----------
+//
+// Zooming out does not stop at his little planet. Past it the view steps
+// through nested scales — the solar system, the galaxy, the observable
+// universe — each one the small bright thing at the middle of the next.
+//
+// Real distances span thirty orders of magnitude and no single scene
+// survives that in float32. So each stage is modelled at a comfortable
+// local size and nested by NEST: a stage is NEST times the size of the one
+// outside it, and the ladder position decides which two you can see. That
+// is the whole trick, and it is why none of these numbers are in metres.
+export const ZOOM_HUB_MAX = 2.2 // the camera stops pulling back here
+export const STAGES = ['solar', 'galaxy', 'universe']
+const STAGE_STEP = 6 // zoom factor from one stage to the next
+const NEST = 0.06
+
+export const ZOOM_MAX = ZOOM_HUB_MAX * Math.pow(STAGE_STEP, STAGES.length)
+
+// Where a zoom lands on the ladder: 0 the hub, 1 the solar system, 2 the
+// galaxy, 3 the universe. Flat at 0 for the whole of the hub's own range,
+// so nothing about zooming in changes.
+export const cosmicScale = (zoom) =>
+  Math.log(Math.max(zoom, ZOOM_HUB_MAX) / ZOOM_HUB_MAX) / Math.log(STAGE_STEP)
+
+// How stage i should be drawn when the ladder is at t.
+//
+// It shrinks to a dot as you pull away from it, and fades twice over: once
+// when it is too small to be anything, and again when you are so far inside
+// it that it is only a wash across the frame.
+export function cosmicStage(t, i) {
+  const d = t - i
+  return {
+    scale: Math.pow(NEST, d),
+    opacity: Math.min(
+      1 - THREE.MathUtils.smoothstep(d, 0.45, 0.95),
+      THREE.MathUtils.smoothstep(d, -0.95, -0.4)
+    ),
+  }
+}
+
+// The hub's own place on that ladder. His planet is not inside the group
+// that shrinks when you zoom in — it is the thing you zoom towards — but it
+// does have to shrink when you leave, so this is separate from shrinkFor.
+export const nestFor = (zoom) => cosmicStage(cosmicScale(zoom), 0).scale
 
 // Camera position and aim for a given zoom factor. 1 is the framing the
 // view was authored at; below that the aim slides down to the planet so you
@@ -118,6 +162,11 @@ const scratch = new THREE.Vector3()
 // zoom in and the labels swelled into each other while the model receded.
 export const shrinkFor = (zoom) =>
   Math.pow(THREE.MathUtils.clamp(zoom, 0.1, 1), 1.6)
+
+// What a branch label has to be scaled by. Html sizes itself from camera
+// distance alone and ignores every group scale above it, so a label has to
+// carry both of them itself: the zoom-in shrink and the nesting.
+export const labelScaleFor = (zoom) => shrinkFor(zoom) * nestFor(zoom)
 
 export function applyZoom(view, zoom, outPos, outLook) {
   scratch.copy(view.pos).sub(ZOOM_TARGET)
