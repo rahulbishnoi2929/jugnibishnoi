@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Line, Html } from '@react-three/drei'
 import * as THREE from 'three'
-import { HEAD, fitFor } from './layout.js'
+import { HEAD, fitFor, shrinkFor } from './layout.js'
 
 const world = new THREE.Vector3()
 
@@ -98,6 +98,13 @@ function Node({ node, index, state, onPick, zoom }) {
       // factor multiplies afterwards, or zooming in could never hide it.
       label.current.style.opacity =
         state === 'off' ? 0 : (Math.max(0.3, byDepth) * near).toFixed(3)
+
+      // Shrink the text by exactly what the model shrinks by. Html sizes
+      // itself from camera distance only, so on its own the labels grew as
+      // you zoomed in while the ring under them contracted — the words ran
+      // together over a model that was getting away from them. Written as
+      // `scale` rather than `transform` so the CSS translateY survives.
+      label.current.style.scale = shrinkFor(zoom?.current ?? 1).toFixed(3)
     }
   })
 

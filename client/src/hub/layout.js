@@ -81,9 +81,15 @@ export function placeBranches(node, branches = [], narrow) {
 }
 
 // Where the camera sits when nothing is selected.
+//
+// The aim is low because the composition runs from the bottom of the globe
+// (y = -2r, below his feet) to the top of the ring — its middle is near the
+// ground, not near his chest. Aiming at 0.95 put that middle a screen-third
+// below centre: everything piled up at the bottom edge with a band of empty
+// sky above it. At 0.2 the content centres on both a phone and a desktop.
 export const HOME_VIEW = {
   pos: new THREE.Vector3(0, 2.4, 9.4),
-  look: new THREE.Vector3(0, 0.95, 0),
+  look: new THREE.Vector3(0, 0.2, 0),
 }
 
 const CHEST = new THREE.Vector3(0, 1.2, 0)
@@ -99,6 +105,15 @@ export const ZOOM_MAX = 2.2
 // view was authored at; below that the aim slides down to the planet so you
 // end up looking at the ground rather than past it.
 const scratch = new THREE.Vector3()
+
+// How far he and his branches shrink at a given zoom.
+//
+// Exported because the labels have to use the same number. drei's Html
+// scales itself from camera distance alone and ignores the scale of the
+// group it sits in, so the text grew as the ring it belongs to shrank —
+// zoom in and the labels swelled into each other while the model receded.
+export const shrinkFor = (zoom) =>
+  Math.pow(THREE.MathUtils.clamp(zoom, 0.1, 1), 1.6)
 
 export function applyZoom(view, zoom, outPos, outLook) {
   scratch.copy(view.pos).sub(ZOOM_TARGET)

@@ -21,6 +21,7 @@ import {
   ZOOM_MIN,
   ZOOM_MAX,
   fitFor,
+  shrinkFor,
 } from './layout.js'
 import { asset } from '../lib/asset.js'
 import '../styles/hub.css'
@@ -276,6 +277,7 @@ export default function Hub() {
                       branches={branches}
                       accent={activeNode.accent}
                       active={sub}
+                      zoom={zoom}
                       onPick={goSub}
                     />
                   )}
@@ -339,8 +341,7 @@ function Shrink({ zoom, children }) {
   const g = useRef()
   useFrame((_, dt) => {
     const k = 1 - Math.pow(0.000004, Math.min(dt, 0.1))
-    const target = Math.pow(THREE.MathUtils.clamp(zoom.current, 0.1, 1), 1.6)
-    const s = THREE.MathUtils.lerp(g.current.scale.x, target, k)
+    const s = THREE.MathUtils.lerp(g.current.scale.x, shrinkFor(zoom.current), k)
     g.current.scale.setScalar(s)
   })
   return <group ref={g}>{children}</group>

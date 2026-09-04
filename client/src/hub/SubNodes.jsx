@@ -2,10 +2,11 @@ import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Line, Html } from '@react-three/drei'
 import * as THREE from 'three'
+import { shrinkFor } from './layout.js'
 
 // A chapter's own branches, growing out of its node the way the chapters
 // grow out of his head. Same rules one level down.
-export default function SubNodes({ branches, accent, active, onPick }) {
+export default function SubNodes({ branches, accent, active, onPick, zoom }) {
   return (
     <group>
       {branches.map((b, i) => (
@@ -15,6 +16,7 @@ export default function SubNodes({ branches, accent, active, onPick }) {
           index={i}
           accent={accent}
           state={!active ? 'idle' : active === b.id ? 'on' : 'off'}
+          zoom={zoom}
           onPick={onPick}
         />
       ))}
@@ -22,7 +24,7 @@ export default function SubNodes({ branches, accent, active, onPick }) {
   )
 }
 
-function SubNode({ branch, index, accent, state, onPick }) {
+function SubNode({ branch, index, accent, state, onPick, zoom }) {
   const [hover, setHover] = useState(false)
   const dot = useRef()
   const line = useRef()
@@ -67,6 +69,9 @@ function SubNode({ branch, index, accent, state, onPick }) {
     }
     if (label.current) {
       label.current.style.opacity = (on ? (state === 'off' ? 0.35 : 1) : 0).toFixed(2)
+      // Same as a chapter label: Html scales on camera distance alone, so
+      // without this the sub-branch text swells while its fan contracts.
+      label.current.style.scale = shrinkFor(zoom?.current ?? 1).toFixed(3)
     }
   })
 
