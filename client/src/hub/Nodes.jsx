@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Line, Html } from '@react-three/drei'
 import * as THREE from 'three'
-import { HEAD, fitFor, shrinkFor } from './layout.js'
+import { HEAD, depthFade, shrinkFor } from './layout.js'
 
 const world = new THREE.Vector3()
 
@@ -54,28 +54,17 @@ function Node({ node, index, state, onPick, zoom }) {
     group.current.position.y = state === 'idle' ? Math.sin(t * 0.5) * 0.06 : 0
     const wobble = state === 'idle' && !hover ? Math.sin(t * 1.6) * 0.08 : 0
 
-    // Now that the rings are full circles, half the branches are behind him
-    // at any moment. Fade them by distance or the labels pile up on top of
-    // each other and it reads as noise rather than depth.
-    // Measured as a ratio of the camera's own distance, not in absolute
-    // units. The old constants were tuned to the desktop ring; on a phone,
-    // where the ring is smaller and the camera further back, every node
-    // landed at the near end and nothing dimmed at all.
-    dot.current.getWorldPosition(world)
-    const ratio = world.distanceTo(s.camera.position) / s.camera.position.length()
-    const depth = THREE.MathUtils.clamp((ratio - 0.78) / 0.42, 0, 1)
-    // Zoomed close to the planet the ring ends up around the camera and
-    // the labels blow up into nonsense, so they get out of the way.
+    // Depth is the only thing that fades a branch now.
     //
-    // This has to test the *effective* distance, zoom times the viewport
-    // fit, not zoom on its own. On a phone the fit already holds the
-    // camera back, so testing raw zoom made the branches vanish as soon as
-    // you pinched to a comfortable reading distance — nowhere near the
-    // planet.
-    const effective = (zoom?.current ?? 1) * fitFor(s.size.width)
-    const near = THREE.MathUtils.clamp((effective - 0.5) / 0.25, 0, 1)
-    const byDepth = 1 - depth * 0.82
-    const fade = byDepth * near
+    // There used to be a second factor that dimmed everything as you zoomed
+    // in, because close to the planet the ring ended up around the camera
+    // and the labels blew up into nonsense. Scaling the labels by shrinkFor
+    // fixed that at the source — they now recede with the ring instead of
+    // swelling — so the fade was left dimming the branches for no reason.
+    // On a phone it reached 0.16 at full pinch: the whole lower half of the
+    // pinch range washed out.
+    dot.current.getWorldPosition(world)
+    const fade = depthFade(world, s.camera.position)
 
     dot.current.scale.setScalar(
       THREE.MathUtils.lerp(dot.current.scale.x, targetScale + wobble, k)
@@ -94,10 +83,9 @@ function Node({ node, index, state, onPick, zoom }) {
     }
     if (label.current) {
       // A branch round the back stays dimmed but clickable — that is how
-      // you bring it to the front — so the depth floor is 0.3. The zoom
-      // factor multiplies afterwards, or zooming in could never hide it.
+      // you bring it to the front — so the depth floor is 0.3.
       label.current.style.opacity =
-        state === 'off' ? 0 : (Math.max(0.3, byDepth) * near).toFixed(3)
+        state === 'off' ? 0 : Math.max(0.3, fade).toFixed(3)
 
       // Shrink the text by exactly what the model shrinks by. Html sizes
       // itself from camera distance only, so on its own the labels grew as

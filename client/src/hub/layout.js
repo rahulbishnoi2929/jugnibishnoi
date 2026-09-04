@@ -1,5 +1,9 @@
 import * as THREE from 'three'
-import { HEAD_Y } from './Figure.jsx'
+
+// How high his head sits. Lives here rather than in Figure.jsx so this
+// module stays plain geometry with no React in its import graph — that is
+// what lets layout.test.mjs run it under node. Figure imports it back.
+export const HEAD_Y = 1.78
 
 // The crown, not the centre of the skull — 0.06 put the junction inside
 // his head, so the branches read as passing through his face.
@@ -119,6 +123,21 @@ export function applyZoom(view, zoom, outPos, outLook) {
   scratch.copy(view.pos).sub(ZOOM_TARGET)
   outPos.copy(ZOOM_TARGET).addScaledVector(scratch, zoom)
   outLook.copy(view.look).lerp(ZOOM_TARGET, THREE.MathUtils.clamp(1 - zoom, 0, 1))
+}
+
+// How much a branch dims for sitting round the back.
+//
+// Half the ring is behind him at any moment, and without this the labels
+// pile up on each other and read as noise rather than depth.
+//
+// Measured as a ratio of the camera's own distance rather than in absolute
+// units, so it holds for the small phone ring as well as the desktop one —
+// the old fixed constants put every phone node at the near end and nothing
+// dimmed at all.
+export function depthFade(world, cameraPos) {
+  const ratio = world.distanceTo(cameraPos) / cameraPos.length()
+  const depth = THREE.MathUtils.clamp((ratio - 0.78) / 0.42, 0, 1)
+  return 1 - depth * 0.82
 }
 
 // Travelling holds one camera position and turns the world instead: the

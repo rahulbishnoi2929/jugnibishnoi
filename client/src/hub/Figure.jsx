@@ -1,14 +1,15 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { HEAD_Y } from './layout.js'
 
 // Placeholder standing figure, built from primitives.
 //
 // It is deliberately a silhouette, not an attempt at a person: a bad
 // likeness reads worse than an obvious stand-in. Swap it for the scan by
 // dropping the .glb in and replacing this group — HEAD_Y is the only value
-// the rest of the scene needs from it.
-export const HEAD_Y = 1.78
+// the rest of the scene needs from it, and it is declared in layout.js.
+export { HEAD_Y }
 
 export default function Figure({ facing, bob }) {
   const group = useRef()
