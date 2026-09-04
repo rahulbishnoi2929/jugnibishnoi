@@ -20,13 +20,15 @@ import {
   cosmicStage,
   depthFade,
   fitFor,
+  fitRadius,
   labelScaleFor,
   nestFor,
   placeNodes,
   placeRooms,
   shrinkFor,
+  stagePlacement,
 } from './layout.js'
-import { PLANETS, galaxy, solarSystem, universe } from './cosmos.js'
+import { PLANETS, galaxy, orbitOf, solarSystem, starfield, universe } from './cosmos.js'
 
 let passed = 0
 const test = (name, fn) => {
@@ -182,11 +184,61 @@ test('the composition sits in the middle of the frame', () => {
 })
 
 // ---------- the ladder out ----------
+//
+// These assertions are in screen pixels, not world units, because world
+// units are exactly what hid the first version's failure. All three stages
+// were scaled by one shared factor while their local radii were 5.3, 22 and
+// 70, so the solar system reached full opacity at four times the width of
+// the frame, the galaxy at thirteen times and the universe at thirty-eight.
+// The maths was self-consistent and the pictures were unusable. Nothing
+// here is believed until it has been projected onto a viewport.
 
-const ladder = (steps = 900) => {
+const VIEWPORTS = [
+  { name: 'phone', w: 375, h: 812 },
+  { name: 'desktop', w: 1440, h: 820 },
+]
+
+// The camera as Travel leaves it once you are past the hub's own range.
+function outsideCamera({ name, w, h }) {
+  const pos = new THREE.Vector3()
+  const look = new THREE.Vector3()
+  applyZoom(HOME_VIEW, ZOOM_HUB_MAX * fitFor(w), pos, look)
+  const cam = new THREE.PerspectiveCamera(40, w / h, 0.1, 2000)
+  cam.position.copy(pos)
+  cam.lookAt(look)
+  cam.updateMatrixWorld()
+  const dist = cam.position.length()
+  return {
+    name,
+    cam,
+    dist,
+    fit: fitRadius(cam, dist),
+    // three's own point-size rule, and the projection scale generally.
+    unitPx: h / 2 / (dist * Math.tan(Math.PI / 9)),
+  }
+}
+
+const place = {
+  position: new THREE.Vector3(),
+  quaternion: new THREE.Quaternion(),
+  scale: 1,
+}
+const _m = new THREE.Matrix4()
+const _s = new THREE.Vector3()
+
+// Where a point of a stage lands, in fractions of the viewport.
+function screenOf(stage, size, view, point) {
+  stagePlacement(stage, size, view.fit, 0, place)
+  _m.compose(place.position, place.quaternion, _s.setScalar(place.scale))
+  const n = new THREE.Vector3(point[0], point[1], point[2])
+    .applyMatrix4(_m)
+    .project(view.cam)
+  return { x: (n.x + 1) / 2, y: (1 - n.y) / 2, scale: place.scale }
+}
+
+const ladder = (steps = 600) => {
   const out = []
   for (let i = 0; i <= steps; i++) {
-    // Geometric, because that is how the zoom itself moves.
     const z = ZOOM_MIN * Math.pow(ZOOM_MAX / ZOOM_MIN, i / steps)
     out.push({ z, t: cosmicScale(z) })
   }
@@ -195,29 +247,44 @@ const ladder = (steps = 900) => {
 
 const STAGE_IDS = [0, ...STAGES.map((_, i) => i + 1)]
 
+// Built once; the tests below only read them.
+const SOLAR = solarSystem()
+const GALAXY = galaxy({ count: 6000 })
+const UNIVERSE = universe({ clusters: 60, perCluster: 10, field: 100 })
+const SKY = starfield()
+const BODIES = [SOLAR, GALAXY, UNIVERSE]
+
+const radii = (arr) => {
+  const out = []
+  for (let i = 0; i < arr.length; i += 3) {
+    out.push(Math.hypot(arr[i], arr[i + 1], arr[i + 2]))
+  }
+  return out
+}
+const chunk = (arr) => {
+  const out = []
+  for (let i = 0; i < arr.length; i += 3) out.push([arr[i], arr[i + 1], arr[i + 2]])
+  return out
+}
+const finite = (a) => a.every((v) => Number.isFinite(v))
+
 test('the hub range is untouched by the ladder', () => {
   // Everything about zooming in has to behave exactly as it did before
   // there was anywhere else to go.
   for (let z = ZOOM_MIN; z <= ZOOM_HUB_MAX; z += 0.05) {
-    // Accumulated 0.05s overshoot ZOOM_HUB_MAX by a float hair, so this is
-    // a tolerance rather than an equality.
     assert.ok(cosmicScale(z) < 1e-12, `zoom ${z.toFixed(2)} left the hub early`)
     assert.ok(Math.abs(nestFor(z) - 1) < 1e-12)
     assert.ok(Math.abs(labelScaleFor(z) - shrinkFor(z)) < 1e-12)
   }
 })
 
-test('the ladder runs from the hub to the last stage and no further', () => {
+test('the ladder ends exactly on the outermost stage', () => {
   assert.equal(cosmicScale(ZOOM_HUB_MAX), 0)
-  // The far end of the zoom range lands exactly on the outermost stage,
-  // rather than short of it or past it into nothing.
   assert.ok(Math.abs(cosmicScale(ZOOM_MAX) - STAGES.length) < 1e-9)
 })
 
 test('the ladder is continuous — no stage pops into being', () => {
-  // The whole illusion is that one scale becomes the next without a seam,
-  // and a seam is exactly what a threshold bug produces.
-  const rungs = ladder()
+  const rungs = ladder(3000)
   for (let i = 1; i < rungs.length; i++) {
     for (const stage of STAGE_IDS) {
       const a = cosmicStage(rungs[i - 1].t, stage)
@@ -226,131 +293,309 @@ test('the ladder is continuous — no stage pops into being', () => {
         Math.abs(a.opacity - b.opacity) < 0.05,
         `stage ${stage} jumped ${Math.abs(a.opacity - b.opacity).toFixed(3)} in opacity near zoom ${rungs[i].z.toFixed(1)}`
       )
-      // Scale is geometric, so compare it as a ratio.
       assert.ok(
-        Math.abs(Math.log(b.scale / a.scale)) < 0.05,
-        `stage ${stage} jumped in scale near zoom ${rungs[i].z.toFixed(1)}`
+        Math.abs(Math.log(b.size / a.size)) < 0.05,
+        `stage ${stage} jumped in size near zoom ${rungs[i].z.toFixed(1)}`
       )
     }
   }
 })
 
-test('there is always something to look at, and never a crowd', () => {
-  for (const { z, t } of ladder(400)) {
-    const lit = STAGE_IDS.filter((i) => cosmicStage(t, i).opacity > 0.02)
-    assert.ok(lit.length >= 1, `nothing visible at zoom ${z.toFixed(1)}`)
-    // Two at a time is the cross-fade. Three would be a mess, and would
-    // mean the fade windows had drifted wider than the spacing.
+test('there is never an empty screen on the way out', () => {
+  // The failure this replaces: between the hub and the solar system there
+  // was four fifths of a ladder step with nothing drawn at all.
+  for (const { z, t } of ladder()) {
+    const lit = STAGE_IDS.filter((i) => cosmicStage(t, i).opacity > 0.05)
+    const sky = t > 0.15
+    assert.ok(
+      lit.length >= 1 || sky,
+      `nothing on screen at zoom ${z.toFixed(1)} (t ${t.toFixed(2)})`
+    )
+    // Two at a time is the cross-fade; three would be a mess.
     assert.ok(lit.length <= 2, `${lit.length} stages at once at zoom ${z.toFixed(1)}`)
   }
 })
 
-test('each stage is fully itself somewhere', () => {
-  // A stage whose opacity never reaches 1 is one you never arrive at.
-  for (const i of STAGE_IDS) {
-    const peak = Math.max(...ladder(400).map(({ t }) => cosmicStage(t, i).opacity))
-    assert.ok(peak > 0.99, `stage ${i} peaks at only ${peak.toFixed(3)}`)
+test('a stage is only ever fully shown at a size that fits the screen', () => {
+  // The original bug, stated as a rule. A stage may be larger than the
+  // frame while it is arriving — that is what pulling away from something
+  // looks like — but never while it is the subject.
+  for (const { z, t } of ladder()) {
+    for (let i = 1; i <= STAGES.length; i++) {
+      const { size, opacity } = cosmicStage(t, i)
+      if (opacity > 0.999) {
+        assert.ok(
+          size <= 1.2,
+          `${STAGES[i - 1]} is fully opaque at ${size.toFixed(2)}x the frame (zoom ${z.toFixed(1)})`
+        )
+      }
+      assert.ok(
+        opacity < 0.01 || size < 3.2,
+        `${STAGES[i - 1]} visible at ${size.toFixed(1)}x the frame (zoom ${z.toFixed(1)})`
+      )
+    }
   }
 })
 
-test('his planet becomes a dot in the solar system, not a rival to it', () => {
-  // The nesting read. His planet does not have to be *small* by the time
-  // the solar system arrives — it has to be small *relative to it*. Both
-  // sit at the origin, because the stage is slid to put Earth there, so
-  // what matters is the ratio of the two apparent sizes.
-  const full = ladder(400).find(({ t }) => cosmicStage(t, 1).opacity > 0.99)
-  assert.ok(full, 'the solar system never fully arrives')
-
-  const NEPTUNE = PLANETS[PLANETS.length - 1][1]
-  const his = nestFor(full.z) * 1.35 // globe radius at the hub
-  const theirs = cosmicStage(full.t, 1).scale * NEPTUNE
-  assert.ok(
-    his / theirs < 0.05,
-    `his planet was ${((his / theirs) * 100).toFixed(1)}% of the solar system`
-  )
-
-  // And by the far end of the first stage he is inside Earth's own dot,
-  // which is the moment the two become the same object.
-  const earthDot = PLANETS[2][2]
-  assert.ok(nestFor(ZOOM_HUB_MAX * 6) * 1.35 < earthDot * 1.2)
-})
-
-// ---------- what is actually out there ----------
-
-const finite = (a) => a.every((v) => Number.isFinite(v))
-
-test('the solar system is eight planets on eight orbits', () => {
-  const { orbits, planets } = solarSystem()
-  assert.equal(planets.length, PLANETS.length)
-  assert.equal(orbits.length % 6, 0, 'line segments come in pairs of points')
-  assert.ok(finite(orbits))
-  // Each planet on its own ring, in order, none touching the next.
-  for (let i = 1; i < planets.length; i++) {
+test('each stage is fully itself somewhere, and near the frame size', () => {
+  for (const i of STAGE_IDS) {
+    let peak = 0
+    let sizeAtPeak = null
+    for (const { t } of ladder()) {
+      const s = cosmicStage(t, i)
+      if (s.opacity > peak) {
+        peak = s.opacity
+        sizeAtPeak = s.size
+      }
+    }
+    assert.ok(peak > 0.99, `stage ${i} peaks at only ${peak.toFixed(3)}`)
     assert.ok(
-      planets[i].orbit > planets[i - 1].orbit + planets[i].size,
-      `${planets[i].name} sits on top of ${planets[i - 1].name}`
+      sizeAtPeak > 0.5,
+      `stage ${i} is only ${sizeAtPeak.toFixed(2)} of the frame at its best`
     )
   }
-  // And each one actually on the ring it belongs to.
-  for (const p of planets) {
-    const r = Math.hypot(p.pos[0], p.pos[2])
-    assert.ok(Math.abs(r - p.orbit) < 1e-9, `${p.name} is off its orbit`)
+})
+
+test('every stage lands on screen when it is the subject', () => {
+  for (const vp of VIEWPORTS) {
+    const view = outsideCamera(vp)
+    for (const stage of BODIES) {
+      const pts = stage.planets ? stage.planets.map((p) => p.pos) : chunk(stage.pos)
+      let off = 0
+      for (const p of pts) {
+        const s = screenOf(stage, 1, view, p)
+        if (s.x < 0 || s.x > 1 || s.y < 0 || s.y > 1) off++
+      }
+      const inside = 1 - off / pts.length
+      assert.ok(
+        inside > 0.93,
+        `${view.name}: only ${(inside * 100).toFixed(0)}% of ${stage.id} is on screen when it is the subject`
+      )
+    }
   }
 })
 
-test('the galaxy is a disc, not a ball or a cloud of NaN', () => {
-  const g = galaxy({ count: 4000, seed: 3 })
-  assert.ok(finite(g.pos))
-  assert.ok(finite(g.col))
+test('the composition hands over from Earth to the sun', () => {
+  // Arriving, a stage is anchored on the thing you came from so the two
+  // line up as one shrinks into the other. Settled, it has to be centred on
+  // itself, or the sun sits a third of the way off frame and Neptune's
+  // orbit hangs over the edge.
+  const view = outsideCamera(VIEWPORTS[0])
+  const off = (p) => Math.hypot(p.x - 0.5, p.y - 0.5)
 
+  // Arriving: Earth is the middle of the screen, because that is where his
+  // planet is and the two have to occupy the same spot to hand over.
+  const earthArriving = screenOf(SOLAR, 2.8, view, SOLAR.anchor)
+  assert.ok(
+    off(earthArriving) < 0.02,
+    `Earth should be dead centre while the stage arrives, was ${off(earthArriving).toFixed(3)} away`
+  )
+
+  // Settled: the sun is, and Earth has slid out to its own orbit.
+  const sunSettled = screenOf(SOLAR, 1.0, view, [0, 0, 0])
+  const earthSettled = screenOf(SOLAR, 1.0, view, SOLAR.anchor)
+  assert.ok(
+    off(sunSettled) < 0.02,
+    `the sun should be centred once settled, was ${off(sunSettled).toFixed(3)} away`
+  )
+  assert.ok(
+    off(earthSettled) > 0.04,
+    `Earth should have moved off centre onto its orbit, was ${off(earthSettled).toFixed(3)} away`
+  )
+})
+
+// ---------- the solar system, in pixels ----------
+
+test('the solar system is drawn from its real orbital elements', () => {
+  // The compression of distance and size is deliberate. The shape of each
+  // orbit is not allowed to be: real eccentricity with the sun at a focus,
+  // real inclination out of the ecliptic.
+  assert.deepEqual(
+    SOLAR.planets.map((p) => p.name),
+    PLANETS.map((p) => p.name)
+  )
+
+  for (let i = 0; i < SOLAR.planets.length; i++) {
+    const p = SOLAR.planets[i]
+    const el = PLANETS[i]
+    if (i > 0) {
+      assert.ok(
+        p.orbit > SOLAR.planets[i - 1].orbit,
+        `${p.name} is drawn inside ${SOLAR.planets[i - 1].name}`
+      )
+    }
+
+    const first = p.path[0]
+    const last = p.path[p.path.length - 1]
+    assert.ok(
+      Math.hypot(first[0] - last[0], first[1] - last[1], first[2] - last[2]) < 1e-9,
+      `${p.name}'s orbit is not a closed loop`
+    )
+
+    // The sun at a focus means the near and far points differ by 2ae, so
+    // this ratio recovers the eccentricity. A circle would fail it, and
+    // Mercury's 0.206 is visible on screen.
+    const rs = p.path.map((q) => Math.hypot(q[0], q[1], q[2]))
+    const spread =
+      (Math.max(...rs) - Math.min(...rs)) / (Math.max(...rs) + Math.min(...rs))
+    assert.ok(
+      Math.abs(spread - el.e) < 0.02,
+      `${p.name} drawn at eccentricity ${spread.toFixed(3)}, elements say ${el.e}`
+    )
+
+    // Inclination: a tipped orbit has to leave the ecliptic by the right
+    // amount, and Earth — which defines the plane — must stay in it.
+    const rise = Math.max(...p.path.map((q) => Math.abs(q[1]))) / p.orbit
+    const want = Math.sin((el.inc * Math.PI) / 180)
+    assert.ok(
+      Math.abs(rise - want) < 0.02,
+      `${p.name} rises ${rise.toFixed(3)} out of plane, inclination says ${want.toFixed(3)}`
+    )
+  }
+})
+
+test('the belts land where the real ones do', () => {
+  // 2.1-3.3 AU and 30-50 AU, put through the same compression as the
+  // planets, so the main belt has to fall into the Mars-Jupiter gap on its
+  // own rather than by being placed there.
+  const mars = SOLAR.planets[3].orbit
+  const jupiter = SOLAR.planets[4].orbit
+  for (const r of radii(SOLAR.asteroids)) {
+    assert.ok(
+      r > mars && r < jupiter,
+      `an asteroid at ${r.toFixed(3)} is not between Mars and Jupiter`
+    )
+  }
+  const neptune = SOLAR.planets[7].orbit
+  for (const r of radii(SOLAR.kuiper)) {
+    assert.ok(r > neptune * 0.97, `a Kuiper object at ${r.toFixed(3)} is inside Neptune`)
+  }
+  assert.ok(Math.abs(orbitOf(30.047) - 1) < 1e-9, 'Neptune should define the unit radius')
+})
+
+test('every planet is a visible dot, clear of its neighbours', () => {
+  // The measurements that matter, on the smallest screen there is. The
+  // first attempt drew Earth at 1.9px with a 4px gap to Venus, so the dots
+  // touched across two different orbits.
+  const view = outsideCamera(VIEWPORTS[0])
+  const scale = view.fit / SOLAR.radius // stage size 1: the subject
+  const pxOf = (v) => v * scale * view.unitPx
+
+  const halo = pxOf(SOLAR.sun) * 1.7
+  assert.ok(
+    pxOf(SOLAR.planets[0].orbit) > halo * 1.4,
+    `Mercury's orbit at ${pxOf(SOLAR.planets[0].orbit).toFixed(0)}px is crowded by the sun's halo at ${halo.toFixed(0)}px`
+  )
+
+  for (let i = 0; i < SOLAR.planets.length; i++) {
+    const p = SOLAR.planets[i]
+    const dot = pxOf(p.size)
+    assert.ok(dot >= 1.8, `${p.name} has a radius of only ${dot.toFixed(1)}px`)
+    if (i === 0) continue
+    const prev = SOLAR.planets[i - 1]
+    const gap = pxOf(p.orbit - prev.orbit)
+    assert.ok(
+      gap > dot + pxOf(prev.size),
+      `${prev.name} and ${p.name} are ${gap.toFixed(1)}px apart carrying ${(dot + pxOf(prev.size)).toFixed(1)}px of dot`
+    )
+  }
+
+  // And Saturn's rings have to be bigger than Saturn or they are a smudge.
+  const saturn = SOLAR.planets[5]
+  assert.ok(
+    pxOf(saturn.size * 2.27) - pxOf(saturn.size) > 3,
+    'Saturn has no visible rings'
+  )
+})
+
+test('the sky is behind everything and dense enough to read', () => {
+  assert.ok(finite(SKY.pos))
+  assert.ok(finite(SKY.col))
+  assert.ok(SKY.col.every((c) => c >= 0 && c <= 1))
+  // Outside every stage at its largest, so it never punches through one.
+  const biggest = Math.max(...VIEWPORTS.map((vp) => outsideCamera(vp).fit)) * 3.2
+  assert.ok(SKY.radius > biggest, `sky at ${SKY.radius} is inside a stage at ${biggest.toFixed(0)}`)
+  assert.ok(SKY.pos.length / 3 > 800, 'too few stars to read as a sky')
+  // Every star on the shell, or fading it in would reveal a lumpy sphere.
+  for (const r of radii(SKY.pos)) {
+    assert.ok(Math.abs(r - SKY.radius) < 0.01, `a star at ${r.toFixed(2)} is off the shell`)
+  }
+})
+
+test('point clouds render at a size you can see', () => {
+  // three sizes points by gl_PointSize = size * (height/2) / -z. There is
+  // no field of view in it at all, which is the trap: converting with the
+  // usual tan(fov/2) is correct for geometry and makes every point cloud
+  // out here 2.7 times smaller than asked for. These are the numbers that
+  // rule produces from the constants the components actually pass.
+  const renders = (worldSize, distance, h) => (worldSize * (h / 2)) / distance
+
+  for (const vp of VIEWPORTS) {
+    const view = outsideCamera(vp)
+    const pointUnit = view.dist / (vp.h / 2)
+    for (const [what, wanted] of [
+      ['asteroids', 1.3],
+      ['galaxy stars', 1.8],
+      ['universe galaxies', 2.0],
+    ]) {
+      const got = renders(wanted * pointUnit, view.dist, vp.h)
+      assert.ok(
+        Math.abs(got - wanted) < 0.05,
+        `${vp.name}: ${what} asked for ${wanted}px, would render at ${got.toFixed(2)}px`
+      )
+    }
+
+    // The sky is never scaled by a stage and sits at a fixed radius, so its
+    // world size is a bare constant in the component and has to be checked
+    // against the rule directly.
+    const sky = renders(1.2, SKY.radius, vp.h)
+    assert.ok(sky > 1, `${vp.name}: sky stars render at only ${sky.toFixed(2)}px`)
+    // And it must stay under the galaxy's stars, or the backdrop reads as
+    // the brighter object and the galaxy sits behind its own background.
+    assert.ok(sky < 1.8, `${vp.name}: sky stars outshine the galaxy's`)
+  }
+})
+
+// ---------- the two big ones ----------
+
+test('the galaxy is a disc, not a ball or a cloud of NaN', () => {
+  assert.ok(finite(GALAXY.pos))
+  assert.ok(finite(GALAXY.col))
   let maxR = 0
   let maxY = 0
-  for (let i = 0; i < g.pos.length; i += 3) {
-    maxR = Math.max(maxR, Math.hypot(g.pos[i], g.pos[i + 2]))
-    maxY = Math.max(maxY, Math.abs(g.pos[i + 1]))
+  for (let i = 0; i < GALAXY.pos.length; i += 3) {
+    maxR = Math.max(maxR, Math.hypot(GALAXY.pos[i], GALAXY.pos[i + 2]))
+    maxY = Math.max(maxY, Math.abs(GALAXY.pos[i + 1]))
   }
-  // Points scatter past the nominal radius; they must not run away.
-  assert.ok(maxR < g.radius * 1.35, `galaxy reached ${maxR.toFixed(1)}`)
-  // Flat: far wider than it is thick, or it does not read as a galaxy.
-  assert.ok(maxY < maxR * 0.25, `thickness ${maxY.toFixed(2)} vs radius ${maxR.toFixed(1)}`)
-  // Colours in gamut, or three.js clamps them into stripes.
-  assert.ok(g.col.every((c) => c >= 0 && c <= 1))
-  // The sun sits out in the disc, not in the core and not off the rim.
-  const sunR = Math.hypot(g.sun[0], g.sun[2])
-  assert.ok(sunR > g.radius * 0.4 && sunR < g.radius * 0.8)
+  assert.ok(maxR < GALAXY.radius * 1.35, `galaxy reached ${maxR.toFixed(2)}`)
+  assert.ok(maxY < maxR * 0.25, `thickness ${maxY.toFixed(3)} vs radius ${maxR.toFixed(2)}`)
+  assert.ok(GALAXY.col.every((c) => c >= 0 && c <= 1))
+  const sunR = Math.hypot(GALAXY.sun[0], GALAXY.sun[2])
+  assert.ok(sunR > GALAXY.radius * 0.4 && sunR < GALAXY.radius * 0.8)
 })
 
 test('the universe clusters rather than being static', () => {
-  const u = universe({ clusters: 40, perCluster: 10, field: 60, seed: 5 })
-  assert.ok(finite(u.pos))
-  assert.ok(finite(u.web))
-  assert.equal(u.pos.length / 3, 40 * 10 + 60)
-  // Every filament is a pair of cluster centres: a multiple of 6 floats.
-  assert.equal(u.web.length % 6, 0)
-  assert.ok(u.web.length > 0, 'no cosmic web at all')
+  assert.ok(finite(UNIVERSE.pos))
+  assert.ok(finite(UNIVERSE.web))
+  assert.equal(UNIVERSE.web.length % 6, 0)
+  assert.ok(UNIVERSE.web.length > 0, 'no cosmic web at all')
 
-  // The actual test of clustering: mean nearest-neighbour distance should
-  // be well under what an even spread through the same ball would give.
-  // Static would put that ratio near 1.
-  const n = u.pos.length / 3
+  const n = UNIVERSE.pos.length / 3
   let sum = 0
   for (let i = 0; i < n; i++) {
     let best = Infinity
     for (let j = 0; j < n; j++) {
       if (i === j) continue
-      const dx = u.pos[i * 3] - u.pos[j * 3]
-      const dy = u.pos[i * 3 + 1] - u.pos[j * 3 + 1]
-      const dz = u.pos[i * 3 + 2] - u.pos[j * 3 + 2]
+      const dx = UNIVERSE.pos[i * 3] - UNIVERSE.pos[j * 3]
+      const dy = UNIVERSE.pos[i * 3 + 1] - UNIVERSE.pos[j * 3 + 1]
+      const dz = UNIVERSE.pos[i * 3 + 2] - UNIVERSE.pos[j * 3 + 2]
       best = Math.min(best, dx * dx + dy * dy + dz * dz)
     }
     sum += Math.sqrt(best)
   }
   const mean = sum / n
-  const even = u.radius / Math.cbrt(n)
-  assert.ok(
-    mean < even * 0.6,
-    `mean spacing ${mean.toFixed(2)} vs even ${even.toFixed(2)} — not clustered`
-  )
+  const even = UNIVERSE.radius / Math.cbrt(n)
+  assert.ok(mean < even * 0.6, `mean spacing ${mean.toFixed(3)} vs even ${even.toFixed(3)}`)
 })
 
 console.log('\n' + passed + ' passed')

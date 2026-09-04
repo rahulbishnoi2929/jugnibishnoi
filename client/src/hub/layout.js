@@ -117,8 +117,8 @@ export const ZOOM_MIN = 0.4
 // is the whole trick, and it is why none of these numbers are in metres.
 export const ZOOM_HUB_MAX = 2.2 // the camera stops pulling back here
 export const STAGES = ['solar', 'galaxy', 'universe']
-const STAGE_STEP = 6 // zoom factor from one stage to the next
-const NEST = 0.06
+const STAGE_STEP = 3.2 // zoom factor from one stage to the next
+const NEST = 0.06 // a stage is this fraction of the size of the next one out
 
 export const ZOOM_MAX = ZOOM_HUB_MAX * Math.pow(STAGE_STEP, STAGES.length)
 
@@ -128,26 +128,110 @@ export const ZOOM_MAX = ZOOM_HUB_MAX * Math.pow(STAGE_STEP, STAGES.length)
 export const cosmicScale = (zoom) =>
   Math.log(Math.max(zoom, ZOOM_HUB_MAX) / ZOOM_HUB_MAX) / Math.log(STAGE_STEP)
 
-// How stage i should be drawn when the ladder is at t.
+// How much of the frame a stage should fill when it is the subject: a bit
+// inside the short edge, so nothing important sits on the border.
+export const FRAME_FILL = 0.82
+
+// The radius, in world units, that a stage should be scaled to occupy.
+// Taken from the live camera rather than a table, so it is right on any
+// viewport and cannot drift from the framing.
+export function fitRadius(camera, distance) {
+  const halfH = distance * Math.tan((camera.fov * Math.PI) / 360)
+  return Math.min(halfH, halfH * camera.aspect) * FRAME_FILL
+}
+
+// How a stage should be drawn when the ladder is at t.
 //
-// It shrinks to a dot as you pull away from it, and fades twice over: once
-// when it is too small to be anything, and again when you are so far inside
-// it that it is only a wash across the frame.
+// `size` is its apparent radius as a fraction of the frame — 1 means it
+// exactly fills the fit, 0.06 means it is a dot at the middle of whatever
+// contains it. Because every stage is scaled by fitRadius / its own radius,
+// this one number describes all of them, which is the point: the opacity
+// below is written in terms of apparent size rather than ladder position.
+//
+// It has to be. The first version faded on ladder position while the three
+// stages had local radii of 5.3, 22 and 70, so each peaked at a different
+// and always wrong size — the solar system reached full opacity at nearly
+// four times the frame, the galaxy at thirteen times, the universe at
+// thirty-eight. You never actually saw any of them.
+// SEEN is deliberately bigger than the frame. A stage first appears while
+// you are still inside it, which is what pulling away from something looks
+// like, and it closes the gap that 1.6 left: from the hub to the solar
+// system there were four fifths of a ladder step with nothing on screen at
+// all. At 2.8 the visible bands overlap and something is always there.
+const SEEN = 2.8 // first shows here, nearly three times the frame
+const FULL = 1.15 // fully itself from here
+const LEAVING = 0.1 // starts to go once it is this small
+const GONE = 0.03 // a speck, and then nothing
+
 export function cosmicStage(t, i) {
-  const d = t - i
+  const size = Math.pow(NEST, t - i)
   return {
-    scale: Math.pow(NEST, d),
+    size,
     opacity: Math.min(
-      1 - THREE.MathUtils.smoothstep(d, 0.45, 0.95),
-      THREE.MathUtils.smoothstep(d, -0.95, -0.4)
+      1 - smoothstep(size, FULL, SEEN),
+      smoothstep(size, GONE, LEAVING)
     ),
   }
+}
+
+// The transform a stage is drawn with, as the position / quaternion / scale
+// a three group takes.
+//
+// It lives here, and both the renderer and the tests call it, so that what
+// is measured is the placement that is actually used. Keeping two copies of
+// this chain in step by hand is exactly how the last version ended up
+// asserting one thing and drawing another.
+//
+// A child point p ends up at  position + Q * (scale * p), and what we want
+// is  scale * Ry(spin) * R(tilt) * (p - anchor*mix). Those agree when
+// Q = Ry(spin) * R(tilt) and position = -scale * Q * anchor * mix.
+const _spinQ = new THREE.Quaternion()
+const _tiltE = new THREE.Euler()
+const _up = new THREE.Vector3(0, 1, 0)
+
+export function stagePlacement(stage, size, fit, spin, out) {
+  const scale = (fit / stage.radius) * size
+  out.quaternion
+    .setFromEuler(_tiltE.set(stage.tilt[0], stage.tilt[1], stage.tilt[2]))
+    .premultiply(_spinQ.setFromAxisAngle(_up, spin))
+
+  const mix = anchorMix(size)
+  out.position
+    .set(-stage.anchor[0] * mix, -stage.anchor[1] * mix, -stage.anchor[2] * mix)
+    .applyQuaternion(out.quaternion)
+    .multiplyScalar(scale)
+
+  out.scale = scale
+  return out
+}
+
+// How much of the "thing you came from" offset a stage should still be
+// carrying, given its apparent size.
+//
+// A stage arrives anchored on whatever you were just looking at — Earth for
+// the solar system — because that is the only way the two line up as one
+// shrinks into the other. But holding that anchor once the stage is the
+// subject puts the sun a third of the way off centre and hangs Neptune's
+// orbit over the edge of the frame. So the offset eases out as the stage
+// settles, and the composition slides from Earth-centred to sun-centred
+// while you watch. This is the camera move a real sequence would make.
+export const anchorMix = (size) => smoothstep(size, 1.0, 2.2)
+
+// Cubic smoothstep. Written out rather than imported so the meaning of the
+// fade curves is visible in this file.
+function smoothstep(x, min, max) {
+  const t = THREE.MathUtils.clamp((x - min) / (max - min), 0, 1)
+  return t * t * (3 - 2 * t)
 }
 
 // The hub's own place on that ladder. His planet is not inside the group
 // that shrinks when you zoom in — it is the thing you zoom towards — but it
 // does have to shrink when you leave, so this is separate from shrinkFor.
-export const nestFor = (zoom) => cosmicStage(cosmicScale(zoom), 0).scale
+export const nestFor = (zoom) => cosmicStage(cosmicScale(zoom), 0).size
+
+// Past this his planet is a speck of a speck and unmounting it costs
+// nothing but takes its DOM labels with it.
+export const HUB_GONE = 1.1
 
 // Camera position and aim for a given zoom factor. 1 is the framing the
 // view was authored at; below that the aim slides down to the planet so you

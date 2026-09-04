@@ -22,6 +22,7 @@ import {
   ZOOM_MIN,
   ZOOM_MAX,
   ZOOM_HUB_MAX,
+  HUB_GONE,
   STAGES,
   cosmicScale,
   fitFor,
@@ -473,8 +474,8 @@ function Hud({ zoom, caption, title, legend, back, away, setAway }) {
     }
 
     // Hysteresis, so a jitter around the threshold cannot thrash the tree.
-    if (!away && t > 0.95) setAway(true)
-    else if (away && t < 0.85) setAway(false)
+    if (!away && t > HUB_GONE) setAway(true)
+    else if (away && t < HUB_GONE - 0.1) setAway(false)
   })
 
   return null
