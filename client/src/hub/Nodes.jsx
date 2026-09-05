@@ -36,7 +36,14 @@ function Node({ node, index, state, onPick, zoom, head }) {
   // branches on the left and right of the ring bow the wrong way.
   const curve = useMemo(() => {
     const mid = head.clone().lerp(node.pos, 0.5)
-    mid.y += 0.35
+    // The bulge is a fraction of the branch's own length, not a fixed
+    // number. At 0.35 flat it was tuned for the desktop ring, where a
+    // branch is three units long; on a phone the drop from his head to the
+    // rooms ring is only 0.52, so the same 0.35 arched the curve up over
+    // his head and sent it out sideways at head height, straight across
+    // his face. 0.12 of the length reproduces the desktop curve and drops
+    // away from him properly at the smaller size.
+    mid.y += 0.12 * head.distanceTo(node.pos)
     mid.x *= 1.3
     mid.z *= 1.3
     return new THREE.QuadraticBezierCurve3(head, mid, node.pos).getPoints(40)
@@ -71,6 +78,17 @@ function Node({ node, index, state, onPick, zoom, head }) {
     const hub = hubOpacity(zoom?.current ?? 1)
     const fade = depth * hub
 
+    // On a phone, only the front of the ring is labelled.
+    //
+    // Eight labels at 16px will not fit around a ring 264 pixels wide: over
+    // a full turn they overlapped each other by up to 70 pixels, which is
+    // most of a word. The dots stay, and so does the click that brings a
+    // branch round to the front — it is the text that goes, and only for
+    // the half of the ring that is behind him. Four labels at a time, and
+    // none of them on top of another.
+    const front =
+      s.size.width < 520 ? THREE.MathUtils.smoothstep(world.z, -0.1, 0.3) : 1
+
     dot.current.scale.setScalar(
       THREE.MathUtils.lerp(dot.current.scale.x, targetScale + wobble, k)
     )
@@ -88,7 +106,7 @@ function Node({ node, index, state, onPick, zoom, head }) {
     }
     if (label.current) {
       label.current.style.opacity =
-        state === 'off' ? 0 : (Math.max(0.3, depth) * hub).toFixed(3)
+        state === 'off' ? 0 : (Math.max(0.3, depth) * hub * front).toFixed(3)
 
       // Shrink the text by exactly what the model shrinks by. Html sizes
       // itself from camera distance only, so on its own the labels grew as

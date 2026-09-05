@@ -32,7 +32,6 @@ import {
   figureFor,
   fitFor,
   headFor,
-  liftFor,
   nestFor,
   shrinkFor,
 } from './layout.js'
@@ -120,6 +119,7 @@ export default function Hub() {
   const title = useRef(null)
   const legend = useRef(null)
   const back = useRef(null)
+  const copy = useRef(null)
 
   const onDown = (e) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return
@@ -291,6 +291,7 @@ export default function Hub() {
             title={title}
             legend={legend}
             back={back}
+            copy={copy}
             away={away}
             setAway={setAway}
           />
@@ -378,7 +379,7 @@ export default function Hub() {
         ↓ Back to Earth
       </button>
 
-      <header className="hub-copy" aria-hidden={!!active}>
+      <header className="hub-copy" ref={copy} aria-hidden={!!active}>
         <p className="hub-eyebrow">Mehrajpur, Fazilka — Punjab</p>
         <h1 className="hub-name">Rahul Bishnoi</h1>
         <p className="hub-line">Twenty-three years, in five parts. Pick one.</p>
@@ -461,28 +462,29 @@ function Ease({ zoom, want }) {
 // it is what you zoom towards — but it does have to leave with him.
 function Nest({ zoom, children }) {
   const g = useRef()
-  useFrame((state) => {
+  useFrame(() => {
     // Straight from the eased zoom, with no second smoothing of its own.
     // It used to lerp towards its own target at its own rate while Cosmos
     // read the zoom directly, so his planet lagged behind the solar system
     // arriving around it — two things animating one gesture at two speeds,
     // which is most of what made this feel rough.
-    const nest = nestFor(zoom.current)
-    g.current.scale.setScalar(nest)
-
-    // Sideways he stays at the origin, because every stage out there is
-    // placed so the thing you came from lands on it. Vertically, on a phone
-    // only, he sits in the upper half instead: the composition is 344px of
-    // an 812px screen and centring it left 230 of empty sky above and 38
-    // below, which reads as a broken layout rather than as space.
+    // He stays at the origin, because every stage out there is placed so
+    // the thing you came from lands on it. Nothing to follow.
     //
-    // The lift rides the nesting, so as he shrinks to a dot it shrinks with
-    // him — framed for a phone while he is the subject, and landing exactly
-    // on Earth by the time he is not. A fixed lift would leave him hanging
-    // above the solar system.
-    g.current.position.y = liftFor(state.size.width) * nest
+    // There was briefly a lift here, to fill the empty top of a phone
+    // screen. It cost more than it bought: tipping the composition up
+    // flattened the branch ring from 0.14 of its own width to 0.06, and
+    // labels that already overlapped each other by 24 pixels went to 65.
+    // Filling the top is the title block's job, and it does that from the
+    // top of the page now.
+    g.current.scale.setScalar(nestFor(zoom.current))
   })
   return <group ref={g}>{children}</group>
+}
+
+const smoothCopy = (x, a, b) => {
+  const t = THREE.MathUtils.clamp((x - a) / (b - a), 0, 1)
+  return t * t * (3 - 2 * t)
 }
 
 // Names the scale you are at and offers the way back.
@@ -491,7 +493,7 @@ function Nest({ zoom, children }) {
 // DOM nodes outside it — the same trick the branch labels use. The only
 // thing it puts through React is the one flag that unmounts his planet,
 // and only when it changes.
-function Hud({ zoom, caption, title, legend, back, away, setAway }) {
+function Hud({ zoom, caption, title, legend, back, copy, away, setAway }) {
   const shown = useRef(null)
 
   useFrame(() => {
@@ -523,6 +525,15 @@ function Hud({ zoom, caption, title, legend, back, away, setAway }) {
       back.current.style.opacity = out.toFixed(3)
       back.current.style.pointerEvents = out > 0.5 ? 'auto' : 'none'
       back.current.tabIndex = out > 0.5 ? 0 : -1
+    }
+
+    // His name belongs to his planet, so it goes as you leave it. On a
+    // phone it also sits exactly where the cosmic caption appears, and two
+    // titles in one corner is worse than none.
+    if (copy.current) {
+      const here = 1 - smoothCopy(t, 0.08, 0.55)
+      copy.current.style.opacity = here.toFixed(3)
+      copy.current.style.pointerEvents = here > 0.5 ? '' : 'none'
     }
 
     // Hysteresis, so a jitter around the threshold cannot thrash the tree.

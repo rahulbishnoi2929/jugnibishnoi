@@ -19,6 +19,7 @@ import {
   cosmicScale,
   cosmicStage,
   depthFade,
+  HEAD_Y,
   fitFor,
   fitRadius,
   hubOpacity,
@@ -30,7 +31,6 @@ import {
   figureFor,
   headFor,
   labelScaleFor,
-  liftFor,
   nestFor,
   placeNodes,
   placeRooms,
@@ -165,16 +165,16 @@ test('the ring still reads as having depth', () => {
 
 test('the composition shares the screen with the copy', () => {
   // Where the art lands, projected the way three.js will project it, and
-  // measured against the DOM block it has to live above. Two complaints
-  // came from getting this wrong in opposite directions: aiming at his
-  // chest put the whole thing a screen-third low, and then centring it left
-  // a quarter of a phone screen empty at the top.
+  // measured against the DOM block it has to live with. Three complaints
+  // came out of getting this wrong: aiming at his chest put the whole thing
+  // a screen-third low, centring it left a quarter of a phone empty at the
+  // top, and lifting it into that space flattened the branch ring until the
+  // labels collided. The type moved to the top instead.
   const LAYOUT = [
-    // The copy block's top edge, from hub.css: on a phone it sits at
-    // bottom 108 and runs about 92 tall; on a desktop it is at bottom 40
-    // and is meant to overlap the globe.
-    { w: 375, h: 812, copyTop: 612, overlaps: false },
-    { w: 1440, h: 820, copyTop: 660, overlaps: true },
+    // On a phone the title block is at the top now: 40 down, about 92 tall.
+    // On a desktop it stays at the bottom, over the globe on purpose.
+    { w: 375, h: 812, copy: { top: 40, bottom: 132 }, below: false },
+    { w: 1440, h: 820, copy: { top: 660, bottom: 780 }, below: true },
   ]
 
   const frame = ({ w, h }) => {
@@ -187,16 +187,14 @@ test('the composition shares the screen with the copy', () => {
     cam.lookAt(look)
     cam.updateMatrixWorld()
 
-    const lift = new THREE.Vector3(0, liftFor(w), 0)
     const at = (v) => {
-      const n = v.clone().add(lift).project(cam)
+      const n = v.clone().project(cam)
       return { x: ((n.x + 1) / 2) * w, y: ((1 - n.y) / 2) * h }
     }
     const nodes = placeNodes(five, narrow)
     const globeR = narrow ? 0.95 : 1.35
     const p = nodes.map((n) => at(n.pos.clone()))
-    // Label text sits about 34px above its node and is about 44px tall and
-    // 80 wide.
+    // Label text sits about 34px above its node, about 44 tall and 80 wide.
     return {
       top: Math.min(...p.map((q) => q.y)) - 56,
       bottom: at(new THREE.Vector3(0, -2 * globeR, 0)).y,
@@ -209,54 +207,105 @@ test('the composition shares the screen with the copy', () => {
     const f = frame(s)
     assert.ok(f.top > 0, `content ran off the top at ${s.w}: ${f.top.toFixed(0)}`)
     assert.ok(f.bottom < s.h, `content ran off the bottom at ${s.w}: ${f.bottom.toFixed(0)}`)
-    // The branch labels are what reaches furthest sideways, and on a phone
-    // they have almost no room to spare.
+    // The branch labels reach furthest sideways, and on a phone they have
+    // very little room to spare.
     assert.ok(f.left > 0 && f.right < s.w, `the labels clip the sides at ${s.w}`)
 
-    if (s.overlaps) continue
+    if (s.below) continue
 
-    // On a phone the slack has to be shared out rather than piled at one
-    // end. Before the lift it was 230 above and 38 below.
-    const above = f.top
-    const below = s.copyTop - f.bottom
-    assert.ok(below > 40, `only ${below.toFixed(0)}px between the art and the name`)
-    assert.ok(above > 80, `only ${above.toFixed(0)}px above the art`)
-    assert.ok(
-      Math.max(above, below) < Math.min(above, below) * 2,
-      `the slack is lopsided at ${s.w}: ${above.toFixed(0)} above, ${below.toFixed(0)} below`
-    )
+    // The art has to clear the title above it without leaving a hole.
+    const gap = f.top - s.copy.bottom
+    assert.ok(gap > 15, `the art is ${gap.toFixed(0)}px under the title`)
+    assert.ok(gap < 120, `there is ${gap.toFixed(0)}px of nothing under the title`)
+    // And it should use the screen it is on.
+    const fills = (f.bottom - f.top) / s.h
+    assert.ok(fills > 0.45, `the art is only ${(fills * 100).toFixed(0)}% of the screen`)
   }
 })
 
-test('the branches grow out of the top of his head', () => {
-  // Reported as the branches looking tilted down. They were: the ring
-  // shrank for phones and he did not, so the chapter ring sat 0.48 *below*
-  // the top of his head and every branch left it going downwards. On a
-  // desktop the same ring is 0.32 above.
-  for (const [name, narrow] of [['desktop', false], ['phone', true]]) {
-    const head = headFor(narrow).y
-    const chapters = placeNodes(five, narrow)[0].pos
-    const rooms = placeRooms(three, narrow)[0].pos
-    const radius = Math.hypot(chapters.x, chapters.z)
+test('the branches leave the top of his head and stay off him', () => {
+  // Two complaints, one measurement. "The branches are tilted down" was the
+  // chapter ring sitting below the top of his head on a phone, so every
+  // branch left going downwards. "It is covering the 3d model" was the
+  // rooms ring sitting beside his knees, so the branches to it ran across
+  // his body — 608 curve points landed on his silhouette over a full turn.
+  //
+  // A desktop can hang the rooms below him because the ring is 2.5 wide
+  // against a body a fifth of a unit across. A phone cannot, so on a phone
+  // both rings go above his head.
+  for (const [name, w] of [['desktop', 1440], ['phone', 375]]) {
+    const narrow = w < 520
+    const h = narrow ? 812 : 820
+    const fig = figureFor(narrow)
+    const head = headFor(narrow)
 
+    const pos = new THREE.Vector3()
+    const look = new THREE.Vector3()
+    applyZoom(HOME_VIEW, fitFor(w), pos, look)
+    const cam = new THREE.PerspectiveCamera(40, w / h, 0.1, 100)
+    cam.position.copy(pos)
+    cam.lookAt(look)
+    cam.updateMatrixWorld()
+    const at = (v) => {
+      const n = v.clone().project(cam)
+      return { x: ((n.x + 1) / 2) * w, y: ((1 - n.y) / 2) * h }
+    }
+
+    // Every branch has to leave the top of his head going up.
+    const chapters = placeNodes(five, narrow)
     assert.ok(
-      chapters.y > head,
-      `${name}: the chapter ring is ${(head - chapters.y).toFixed(2)} below his head`
+      chapters[0].pos.y > head.y,
+      `${name}: the chapter ring is below the top of his head`
     )
-    assert.ok(rooms.y < head, `${name}: the rooms ring is above his head`)
 
-    // And by a similar fraction of the ring's own radius at both sizes, or
-    // the two are not the same shape.
-    const rise = (chapters.y - head) / radius
+    // His silhouette, from the primitives Figure draws.
+    const half = 0.22 * fig
+    const body = {
+      l: at(new THREE.Vector3(-half, (HEAD_Y * fig) / 2, 0)).x,
+      r: at(new THREE.Vector3(half, (HEAD_Y * fig) / 2, 0)).x,
+      t: at(new THREE.Vector3(0, (HEAD_Y + 0.17) * fig, 0)).y,
+      b: at(new THREE.Vector3(0, 0, 0)).y,
+    }
+
+    // Turn the whole thing through a full revolution: a branch that only
+    // crosses him at one angle still crosses him.
+    let crossings = 0
+    const spin = new THREE.Vector3(0, 1, 0)
+    for (let k = 0; k < 48; k++) {
+      const turn = (k / 48) * Math.PI * 2
+      for (const node of [...chapters, ...placeRooms(three, narrow)]) {
+        const p = node.pos.clone().applyAxisAngle(spin, turn)
+        const mid = head.clone().lerp(p, 0.5)
+        mid.y += 0.12 * head.distanceTo(p)
+        mid.x *= 1.3
+        mid.z *= 1.3
+        const pts = new THREE.QuadraticBezierCurve3(head, mid, p).getPoints(30)
+        // Past the first quarter only: the start of a branch is attached to
+        // his head by design, and counting that swamps everything else.
+        pts.forEach((q, i) => {
+          if (i < 8) return
+          const s = at(q)
+          if (s.x > body.l && s.x < body.r && s.y > body.t && s.y < body.b) crossings++
+        })
+      }
+    }
+    // A phone has to be clean, because that is where it was reported and
+    // where the ring is small enough for it to matter. A desktop hangs its
+    // rooms ring below him and always has — but the ring there is 2.5 wide
+    // against a fifth-of-a-unit body, so the branches only clip him in
+    // passing. This holds that where it is rather than redesigning a view
+    // nobody has complained about.
+    const sampled = 48 * 8 * 23
+    const limit = narrow ? 0 : sampled * 0.05
     assert.ok(
-      rise > 0.07 && rise < 0.2,
-      `${name}: the branches rise ${rise.toFixed(3)} of the ring radius`
+      crossings <= limit,
+      `${name}: branches cross his body at ${crossings} points of ${sampled}`
     )
   }
 
-  // He is smaller on a phone and full size everywhere else, and the branch
-  // junction moves with him — a junction left behind would hang the
-  // branches in the air above his head.
+  // He is smaller on a phone and full size elsewhere, and the junction the
+  // branches leave from moves with him — one left behind would hang them in
+  // the air above his head.
   assert.equal(figureFor(false), 1)
   assert.ok(figureFor(true) < 1)
   assert.ok(
@@ -265,27 +314,81 @@ test('the branches grow out of the top of his head', () => {
   )
 })
 
-test('the lift goes away as he does', () => {
-  // The phone framing is a lift in world units, and it rides the nesting
-  // so it shrinks with him. If it did not, he would still be a screen's
-  // worth above the solar system when he was meant to be sitting on Earth.
-  const lift = liftFor(375)
-  assert.ok(lift > 0, 'a phone should lift the composition')
-  assert.equal(liftFor(1440), 0, 'a desktop should not')
+test('no two labels sit on top of each other', () => {
+  // Eight labels at 16px will not fit around a ring 264 pixels wide. Over a
+  // full turn they overlapped each other by up to 70 pixels, which is most
+  // of a word, and landed on his silhouette in 91 frames out of 576. On a
+  // phone only the front of the ring is labelled now — the dots stay, and
+  // so does the click that brings a branch round.
+  const w = 375
+  const h = 812
+  const fig = figureFor(true)
+  const pos = new THREE.Vector3()
+  const look = new THREE.Vector3()
+  applyZoom(HOME_VIEW, fitFor(w), pos, look)
+  const cam = new THREE.PerspectiveCamera(40, w / h, 0.1, 100)
+  cam.position.copy(pos)
+  cam.lookAt(look)
+  cam.updateMatrixWorld()
+  const at = (v) => {
+    const n = v.clone().project(cam)
+    return { x: ((n.x + 1) / 2) * w, y: ((1 - n.y) / 2) * h }
+  }
 
-  const offsetAt = (z) => lift * nestFor(z)
-  assert.equal(offsetAt(1), lift, 'the lift should be full at the hub')
-  // By the time the solar system is the subject he is a dot, and the lift
-  // is a fraction of his own size rather than a fraction of the screen.
-  const solarZoom = ZOOM_HUB_MAX * 3.2
-  assert.ok(
-    offsetAt(solarZoom) < 0.1,
-    `he is still ${offsetAt(solarZoom).toFixed(3)} above Earth at the solar system`
-  )
-  // At the far end, in pixels rather than in world units: about 39 pixels
-  // to the unit on a phone, so this is a hundredth of a pixel.
-  const px = offsetAt(ZOOM_MAX) * 39
-  assert.ok(px < 0.01, `the lift is still ${px.toFixed(4)}px at the far end`)
+  const named = [
+    ...placeNodes(
+      ['Soil', 'Grit', 'Campus', 'Build', 'Signal'].map((id) => ({ id })),
+      true
+    ),
+    ...placeRooms(['Games', 'The work', 'Blog'].map((id) => ({ id })), true),
+  ]
+  const half = 0.22 * fig
+  const body = {
+    l: at(new THREE.Vector3(-half, (HEAD_Y * fig) / 2, 0)).x,
+    r: at(new THREE.Vector3(half, (HEAD_Y * fig) / 2, 0)).x,
+    t: at(new THREE.Vector3(0, (HEAD_Y + 0.17) * fig, 0)).y,
+    b: at(new THREE.Vector3(0, 0, 0)).y,
+  }
+  const overlaps = (a, b) => a.l < b.r && a.r > b.l && a.t < b.b && a.b > b.t
+
+  let worst = 0
+  let onHim = 0
+  let offEdge = 0
+  let shown = 0
+  const spin = new THREE.Vector3(0, 1, 0)
+  for (let k = 0; k < 48; k++) {
+    const turn = (k / 48) * Math.PI * 2
+    const boxes = []
+    for (const n of named) {
+      const p = n.pos.clone().applyAxisAngle(spin, turn)
+      // Behind him, the text is not drawn.
+      if (p.z < 0) continue
+      const s = at(p)
+      const width = Math.max(46, n.id.length * 9 + 16)
+      const box = { l: s.x - width / 2, r: s.x + width / 2, t: s.y - 45, b: s.y - 1 }
+      boxes.push(box)
+      shown++
+      offEdge = Math.max(offEdge, -box.l, box.r - w)
+      if (overlaps(box, body)) onHim++
+    }
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        if (overlaps(boxes[i], boxes[j])) {
+          worst = Math.max(
+            worst,
+            Math.min(boxes[i].r, boxes[j].r) - Math.max(boxes[i].l, boxes[j].l)
+          )
+        }
+      }
+    }
+  }
+
+  assert.equal(worst, 0, `two labels overlap by ${worst.toFixed(0)}px`)
+  assert.equal(onHim, 0, `a label sits on his silhouette in ${onHim} frames`)
+  assert.ok(offEdge <= 0, `a label runs ${offEdge.toFixed(0)}px off the edge`)
+  // Enough of them to navigate by, and few enough to read.
+  const average = shown / 48
+  assert.ok(average >= 3 && average <= 5, `${average.toFixed(1)} labels shown at a time`)
 })
 
 // ---------- the ladder out ----------

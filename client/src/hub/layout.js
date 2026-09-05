@@ -47,22 +47,26 @@ const ring = (items, { r, y, phase }) =>
 // and the pull-back is gentle.
 export const fitFor = (w) => (w < 520 ? 1.35 : w < 760 ? 1.15 : 1)
 
+// On a desktop the rooms hang below him and it reads fine: the ring is
+// 2.5 wide against a body a fifth of a unit across, so the branches swing
+// well clear.
+//
+// A phone cannot do that. Everything is half the size but the labels are
+// still typed at 16px, and a branch running from his head down to a ring
+// beside his knees crosses his body — measured over a full turn, 608 curve
+// points landed on his silhouette. So on a phone both rings go above his
+// head: the chapters on top, the rooms tucked between them and his crown.
+// That takes the crossings to zero, and it makes the whole composition 407
+// pixels tall instead of 344, which the empty top of the screen wanted
+// anyway.
+//
+// The 0.80 between the two rings is measured, not chosen. At 0.63 the two
+// sets of labels still overlapped by 59 pixels; at 0.80 they clear.
 const RING = {
   wide: { chapters: { r: 3.0, y: 2.25 }, rooms: { r: 2.5, y: 1.1 } },
-  narrow: { chapters: { r: 1.5, y: 1.45 }, rooms: { r: 1.28, y: 0.72 } },
+  narrow: { chapters: { r: 1.55, y: 2.22 }, rooms: { r: 1.02, y: 1.42 } },
 }
 
-// How far to lift the whole hub, in world units, for a given viewport.
-//
-// A portrait phone is 812 tall and the composition is 344 of that. Centred,
-// which is where it was, that leaves 230 pixels of empty sky above it and
-// 38 below before the name — all the slack piled at the top, which reads as
-// a broken layout rather than as space. Lifting it puts about 150 above and
-// 120 between it and the copy, so the page is a column: art, name, links.
-//
-// Nothing on a wider screen needs this. The desktop composition is already
-// centred, and the copy there sits over the globe on purpose.
-export const liftFor = (w) => (w < 520 ? 1.0 : 0)
 
 // Chapters ride high and wide, in order, so spinning walks the years.
 export function placeNodes(chapters, narrow) {

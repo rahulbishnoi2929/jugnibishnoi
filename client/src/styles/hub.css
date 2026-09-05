@@ -349,6 +349,20 @@
 }
 
 @media (max-width: 520px) {
+  /* The title goes to the top of a phone, not the bottom — which is the
+     same width the 3D switches its own layout at, so the two agree.
+     The art cannot fill that space itself: the branch labels at the sides
+     are already within eight pixels of the screen edge. Lifting the art up
+     into it was the other option and it was worse — tipping the
+     composition flattens the branch ring and the labels start colliding.
+     Type is what the top of a phone is for. */
+  .hub-copy {
+    left: var(--s3);
+    right: var(--s3);
+    top: var(--s5);
+    bottom: auto;
+  }
+
   /* The ring is smaller on a phone rather than further away, so the text
      does not need shrinking as hard as it did. */
   .node-title {
