@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Line, Html } from '@react-three/drei'
 import * as THREE from 'three'
-import { depthFade, hubOpacity, labelScaleFor } from './layout.js'
+import { branchCurve, depthFade, hubOpacity, labelScaleFor } from './layout.js'
 
 const world = new THREE.Vector3()
 
@@ -31,23 +31,9 @@ function Node({ node, index, state, onPick, zoom, head }) {
   const line = useRef()
   const label = useRef()
 
-  // A curve, not a straight spoke — straight lines look like a diagram.
-  // The bulge pushes outward from the spine, not sideways in x, or the
-  // branches on the left and right of the ring bow the wrong way.
-  const curve = useMemo(() => {
-    const mid = head.clone().lerp(node.pos, 0.5)
-    // The bulge is a fraction of the branch's own length, not a fixed
-    // number. At 0.35 flat it was tuned for the desktop ring, where a
-    // branch is three units long; on a phone the drop from his head to the
-    // rooms ring is only 0.52, so the same 0.35 arched the curve up over
-    // his head and sent it out sideways at head height, straight across
-    // his face. 0.12 of the length reproduces the desktop curve and drops
-    // away from him properly at the smaller size.
-    mid.y += 0.12 * head.distanceTo(node.pos)
-    mid.x *= 1.3
-    mid.z *= 1.3
-    return new THREE.QuadraticBezierCurve3(head, mid, node.pos).getPoints(40)
-  }, [node.pos, head])
+  // A curve, not a straight spoke. layout.js owns the shape, so the tests
+  // measure the same one that gets drawn.
+  const curve = useMemo(() => branchCurve(head, node.pos), [node.pos, head])
 
   // Travelling to one branch mutes the other four rather than hiding them:
   // you should still see what you did not pick.

@@ -20,6 +20,7 @@ import {
   cosmicStage,
   depthFade,
   HEAD_Y,
+  branchCurve,
   fitFor,
   fitRadius,
   hubOpacity,
@@ -275,11 +276,7 @@ test('the branches leave the top of his head and stay off him', () => {
       const turn = (k / 48) * Math.PI * 2
       for (const node of [...chapters, ...placeRooms(three, narrow)]) {
         const p = node.pos.clone().applyAxisAngle(spin, turn)
-        const mid = head.clone().lerp(p, 0.5)
-        mid.y += 0.12 * head.distanceTo(p)
-        mid.x *= 1.3
-        mid.z *= 1.3
-        const pts = new THREE.QuadraticBezierCurve3(head, mid, p).getPoints(30)
+        const pts = branchCurve(head, p, 30)
         // Past the first quarter only: the start of a branch is attached to
         // his head by design, and counting that swamps everything else.
         pts.forEach((q, i) => {
@@ -311,6 +308,58 @@ test('the branches leave the top of his head and stay off him', () => {
   assert.ok(
     Math.abs(headFor(true).y / headFor(false).y - figureFor(true)) < 1e-9,
     'the branch junction does not scale with him'
+  )
+})
+
+test('a branch bows, by the same amount of itself at any size', () => {
+  // A straight spoke reads as a diagram. What matters is that the bow is a
+  // proportion of the branch rather than a fixed distance — a flat number
+  // is right for one ring and wrong for the other, which is how a curve
+  // tuned for the desktop ended up arching over his head on a phone.
+  //
+  // Measured in world space, not on screen: the branch pointing straight at
+  // the camera has almost no span on screen, so a screen-space ratio for it
+  // is a division by nearly nothing.
+  for (const [name, narrow] of [['desktop', false], ['phone', true]]) {
+    const head = headFor(narrow)
+    for (const node of [...placeNodes(five, narrow), ...placeRooms(three, narrow)]) {
+      const pts = branchCurve(head, node.pos, 40)
+      const reach = head.distanceTo(node.pos)
+      let bow = 0
+      const chord = new THREE.Vector3()
+      pts.forEach((p, i) => {
+        chord.copy(head).lerp(node.pos, i / (pts.length - 1))
+        bow = Math.max(bow, p.distanceTo(chord))
+      })
+      const share = bow / reach
+      assert.ok(
+        share > 0.08,
+        `${name}: ${node.id} bows ${(share * 100).toFixed(0)}% of its length — that is a spoke`
+      )
+      assert.ok(
+        share < 0.25,
+        `${name}: ${node.id} bows ${(share * 100).toFixed(0)}% of its length — that is a rainbow`
+      )
+    }
+  }
+
+  // And the same proportion at both sizes, which is the whole point of
+  // making the offsets fractions of the length.
+  const shareFor = (narrow) => {
+    const head = headFor(narrow)
+    const node = placeNodes(five, narrow)[1].pos
+    const pts = branchCurve(head, node, 40)
+    const chord = new THREE.Vector3()
+    let bow = 0
+    pts.forEach((p, i) => {
+      chord.copy(head).lerp(node, i / (pts.length - 1))
+      bow = Math.max(bow, p.distanceTo(chord))
+    })
+    return bow / head.distanceTo(node)
+  }
+  assert.ok(
+    Math.abs(shareFor(true) - shareFor(false)) < 0.04,
+    `a branch bows ${(shareFor(true) * 100).toFixed(0)}% of itself on a phone and ${(shareFor(false) * 100).toFixed(0)}% on a desktop`
   )
 })
 

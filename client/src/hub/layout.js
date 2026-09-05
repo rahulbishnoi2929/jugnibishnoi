@@ -84,6 +84,32 @@ export function placeRooms(rooms, narrow) {
   }))
 }
 
+// The curve a branch takes from his head out to its node.
+//
+// A straight spoke looks like a diagram, so it bows. Both offsets are
+// fractions of the branch's own length, which is what makes a branch bow by
+// the same proportion of itself at any size — measured, about a sixth of
+// its own length away from the straight line between its ends, which is 24
+// pixels on a phone and 60 on a desktop.
+//
+// A flat number is what this used to be, and it cannot work: 0.35 was tuned
+// for a desktop branch three units long, and on a phone — where the run
+// from his head to the rooms ring was half a unit — it arched the curve up
+// over his head and sent it out sideways across his face.
+//
+// It lives here, and both Nodes and the tests call it, so that what is
+// measured is the curve that is actually drawn.
+export function branchCurve(head, node, segments = 40) {
+  const mid = head.clone().lerp(node, 0.5)
+  const reach = head.distanceTo(node)
+  mid.y += 0.2 * reach
+  // Pushed outward from the spine, not sideways in x, or the branches on
+  // the left and right of the ring bow the wrong way.
+  mid.x *= 1.45
+  mid.z *= 1.45
+  return new THREE.QuadraticBezierCurve3(head, mid, node).getPoints(segments)
+}
+
 // A chapter's own branches, fanned out from its node. They open to the
 // right because the reading panel owns the left half of the screen.
 //
