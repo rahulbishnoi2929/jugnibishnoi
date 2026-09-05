@@ -27,6 +27,8 @@ import {
   ZOOM_RATE,
   ZOOM_SNAP,
   ZOOM_DT_MAX,
+  figureFor,
+  headFor,
   labelScaleFor,
   liftFor,
   nestFor,
@@ -224,6 +226,43 @@ test('the composition shares the screen with the copy', () => {
       `the slack is lopsided at ${s.w}: ${above.toFixed(0)} above, ${below.toFixed(0)} below`
     )
   }
+})
+
+test('the branches grow out of the top of his head', () => {
+  // Reported as the branches looking tilted down. They were: the ring
+  // shrank for phones and he did not, so the chapter ring sat 0.48 *below*
+  // the top of his head and every branch left it going downwards. On a
+  // desktop the same ring is 0.32 above.
+  for (const [name, narrow] of [['desktop', false], ['phone', true]]) {
+    const head = headFor(narrow).y
+    const chapters = placeNodes(five, narrow)[0].pos
+    const rooms = placeRooms(three, narrow)[0].pos
+    const radius = Math.hypot(chapters.x, chapters.z)
+
+    assert.ok(
+      chapters.y > head,
+      `${name}: the chapter ring is ${(head - chapters.y).toFixed(2)} below his head`
+    )
+    assert.ok(rooms.y < head, `${name}: the rooms ring is above his head`)
+
+    // And by a similar fraction of the ring's own radius at both sizes, or
+    // the two are not the same shape.
+    const rise = (chapters.y - head) / radius
+    assert.ok(
+      rise > 0.07 && rise < 0.2,
+      `${name}: the branches rise ${rise.toFixed(3)} of the ring radius`
+    )
+  }
+
+  // He is smaller on a phone and full size everywhere else, and the branch
+  // junction moves with him — a junction left behind would hang the
+  // branches in the air above his head.
+  assert.equal(figureFor(false), 1)
+  assert.ok(figureFor(true) < 1)
+  assert.ok(
+    Math.abs(headFor(true).y / headFor(false).y - figureFor(true)) < 1e-9,
+    'the branch junction does not scale with him'
+  )
 })
 
 test('the lift goes away as he does', () => {

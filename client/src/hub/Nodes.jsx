@@ -2,11 +2,11 @@ import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Line, Html } from '@react-three/drei'
 import * as THREE from 'three'
-import { HEAD, depthFade, hubOpacity, labelScaleFor } from './layout.js'
+import { depthFade, hubOpacity, labelScaleFor } from './layout.js'
 
 const world = new THREE.Vector3()
 
-export default function Nodes({ nodes, active, onPick, zoom }) {
+export default function Nodes({ nodes, active, onPick, zoom, head }) {
   return (
     <group>
       {nodes.map((n, i) => (
@@ -16,6 +16,7 @@ export default function Nodes({ nodes, active, onPick, zoom }) {
           index={i}
           state={!active ? 'idle' : active === n.id ? 'on' : 'off'}
           zoom={zoom}
+          head={head}
           onPick={onPick}
         />
       ))}
@@ -23,7 +24,7 @@ export default function Nodes({ nodes, active, onPick, zoom }) {
   )
 }
 
-function Node({ node, index, state, onPick, zoom }) {
+function Node({ node, index, state, onPick, zoom, head }) {
   const [hover, setHover] = useState(false)
   const dot = useRef()
   const group = useRef()
@@ -34,12 +35,12 @@ function Node({ node, index, state, onPick, zoom }) {
   // The bulge pushes outward from the spine, not sideways in x, or the
   // branches on the left and right of the ring bow the wrong way.
   const curve = useMemo(() => {
-    const mid = HEAD.clone().lerp(node.pos, 0.5)
+    const mid = head.clone().lerp(node.pos, 0.5)
     mid.y += 0.35
     mid.x *= 1.3
     mid.z *= 1.3
-    return new THREE.QuadraticBezierCurve3(HEAD, mid, node.pos).getPoints(40)
-  }, [node.pos])
+    return new THREE.QuadraticBezierCurve3(head, mid, node.pos).getPoints(40)
+  }, [node.pos, head])
 
   // Travelling to one branch mutes the other four rather than hiding them:
   // you should still see what you did not pick.

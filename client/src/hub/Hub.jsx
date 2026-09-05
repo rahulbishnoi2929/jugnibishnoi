@@ -29,7 +29,9 @@ import {
   HUB_GONE,
   STAGES,
   cosmicScale,
+  figureFor,
   fitFor,
+  headFor,
   liftFor,
   nestFor,
   shrinkFor,
@@ -62,6 +64,10 @@ export default function Hub() {
     () => [...placeNodes(chapters, narrow), ...placeRooms(rooms, narrow)],
     [narrow]
   )
+
+  // He is drawn smaller on a phone, so his branches leave the top of his
+  // head rather than drooping out of it, and the junction moves with him.
+  const head = useMemo(() => headFor(narrow), [narrow])
 
   // Rooms that only route away are never a destination here.
   const openable = nodes.filter((n) => n.kind !== 'link')
@@ -313,22 +319,29 @@ export default function Hub() {
                   <Shrink zoom={zoom}>
                     {/* Grounds him. The painted horizon in each scene does
                         not line up with the 3D floor, and without this he
-                        floats. */}
+                        floats. It is his, so it shrinks when he does. */}
                     <Shadow
                       position={[0, 0.015, 0]}
                       rotation={[-Math.PI / 2, 0, 0]}
-                      scale={[0.32, 0.32, 1]}
+                      scale={[0.32 * figureFor(narrow), 0.32 * figureFor(narrow), 1]}
                       opacity={0.55}
                       color="#000000"
                     />
                     <Figure
                       facing={active ? nodes.find((n) => n.id === active)?.pos : null}
                       bob={bob}
+                      scale={figureFor(narrow)}
                     />
 
                     {/* Everything growing out of his head rides with it. */}
                     <Breathe bob={bob}>
-                      <Nodes nodes={nodes} active={active} onPick={go} zoom={zoom} />
+                      <Nodes
+                        nodes={nodes}
+                        active={active}
+                        onPick={go}
+                        zoom={zoom}
+                        head={head}
+                      />
 
                       {branches.length > 0 && (
                         <SubNodes

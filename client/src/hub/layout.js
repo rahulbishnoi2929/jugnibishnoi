@@ -5,9 +5,25 @@ import * as THREE from 'three'
 // what lets layout.test.mjs run it under node. Figure imports it back.
 export const HEAD_Y = 1.78
 
+// How big he is drawn, for a given viewport.
+//
+// The ring shrank for phones and he did not, which left him standing a head
+// taller than his own branches: the chapter ring sat 0.48 *below* the top
+// of his head, so every branch grew downwards out of it. On a desktop the
+// same ring is 0.32 above. That is the droop.
+//
+// 0.64 puts the ring back above his head by the same fraction of its own
+// radius that the desktop one is, so the whole thing is the same shape at
+// both sizes. Scaling him rather than moving the rings is what keeps the
+// ring's width, its openness, and every label position exactly as measured.
+export const figureFor = (narrow) => (narrow ? 0.64 : 1)
+
 // The crown, not the centre of the skull — 0.06 put the junction inside
 // his head, so the branches read as passing through his face.
-export const HEAD = new THREE.Vector3(0, HEAD_Y + 0.15, 0)
+export const headFor = (narrow) =>
+  new THREE.Vector3(0, (HEAD_Y + 0.15) * figureFor(narrow), 0)
+
+export const HEAD = headFor(false)
 
 // Two rings around him, each split evenly through a full circle.
 //
