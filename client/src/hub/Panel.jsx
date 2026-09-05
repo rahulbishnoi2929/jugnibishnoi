@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { mediaFor } from '../lib/media.js'
+import Gallery from './Gallery.jsx'
 
 // The game only loads if you go and play it.
 const Board = lazy(() => import('../game/Board.jsx'))
@@ -7,7 +8,15 @@ const Board = lazy(() => import('../game/Board.jsx'))
 // The chapter, opened in place. It scrolls inside itself and nothing
 // follows it — that is the point: a branch is a destination, not a
 // section you fall out of the bottom of into the next one.
-export default function Panel({ chapter, onBack, backLabel = '← All chapters' }) {
+export default function Panel({
+  chapter,
+  onBack,
+  backLabel = '← All chapters',
+  // Set when a branch of a chapter is open, so the gallery knows which
+  // sets of photos belong to it.
+  gallery,
+  onOpenPhoto,
+}) {
   if (!chapter) return null
 
   const media = mediaFor(chapter.id)
@@ -57,6 +66,14 @@ export default function Panel({ chapter, onBack, backLabel = '← All chapters' 
         ))}
 
         {/* Whatever is sitting in src/photos/<id>/ right now. */}
+        {gallery && (
+          <Gallery
+            chapterId={gallery.chapter}
+            branchId={gallery.branch}
+            onOpen={onOpenPhoto}
+          />
+        )}
+
         {media.map((m) => (
           <figure className="panel-photo" key={m.url}>
             {m.video ? (

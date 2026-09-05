@@ -32,11 +32,11 @@
   },
 
   "photos": {
-    "campus/athletics/example-name-of-a-file": {
-      "what": "Delete this entry. It is here to show the shape.",
-      "when": "",
-      "where": "",
-      "why": ""
+    "campus/athletics/EXAMPLE-replace-this-key-with-a-real-filename": {
+      "what": "One line. It is also the alt text.",
+      "when": "2023",
+      "where": "BFCET, Bathinda",
+      "why": "The one worth the trouble."
     }
   }
 }

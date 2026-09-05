@@ -11,6 +11,7 @@ import Nodes from './Nodes.jsx'
 import Cosmos from './Cosmos.jsx'
 import SubNodes from './SubNodes.jsx'
 import Panel from './Panel.jsx'
+import Plate from './Plate.jsx'
 import {
   placeNodes,
   placeRooms,
@@ -113,6 +114,11 @@ export default function Hub() {
   // number: past the solar system his planet is a speck, and unmounting it
   // takes its DOM labels with it. Only ever flips, so one render.
   const [away, setAway] = useState(false)
+
+  // The photo you have opened, and the list the arrows walk. Null most of
+  // the time; this is the only thing in the hub that sits above everything
+  // else on the screen.
+  const [plate, setPlate] = useState(null)
 
   // Written every frame by Hud, read by nobody but the DOM.
   const caption = useRef(null)
@@ -236,13 +242,17 @@ export default function Hub() {
   useEffect(() => {
     const onKey = (e) => {
       if (e.key !== 'Escape') return
+      // One handler, so the order is stated rather than left to whichever
+      // listener happened to register first: the photo closes, then the
+      // way back in from the cosmos, then the branch, then the chapter.
+      if (plate) return setPlate(null)
       if (want.current > ZOOM_HUB_MAX) return void (want.current = 1)
       if (!active) return
       openSub ? goSub(null) : go(null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [active, openSub])
+  }, [active, openSub, plate])
 
   return (
     <div className={'hub' + (active ? ' is-travelled' : '')}>
@@ -292,6 +302,7 @@ export default function Hub() {
             legend={legend}
             back={back}
             copy={copy}
+            travelled={!!active}
             away={away}
             setAway={setAway}
           />
@@ -389,7 +400,18 @@ export default function Hub() {
         chapter={openSub ? { ...openSub, accent: activeNode.accent } : chapter}
         onBack={() => (openSub ? goSub(null) : go(null))}
         backLabel={openSub ? '← ' + chapter.title : '← All chapters'}
+        gallery={openSub ? { chapter: active, branch: openSub.id } : null}
+        onOpenPhoto={(photo, list) => setPlate({ photo, list })}
       />
+
+      {plate && (
+        <Plate
+          photo={plate.photo}
+          list={plate.list}
+          onClose={() => setPlate(null)}
+          onMove={(photo) => setPlate((p) => ({ ...p, photo }))}
+        />
+      )}
 
       <Link className="hub-alt" to="/journey" aria-hidden={!!active}>
         Or read it start to finish →
@@ -493,7 +515,7 @@ const smoothCopy = (x, a, b) => {
 // DOM nodes outside it — the same trick the branch labels use. The only
 // thing it puts through React is the one flag that unmounts his planet,
 // and only when it changes.
-function Hud({ zoom, caption, title, legend, back, copy, away, setAway }) {
+function Hud({ zoom, caption, title, legend, back, copy, travelled, away, setAway }) {
   const shown = useRef(null)
 
   useFrame(() => {
@@ -531,7 +553,10 @@ function Hud({ zoom, caption, title, legend, back, copy, away, setAway }) {
     // phone it also sits exactly where the cosmic caption appears, and two
     // titles in one corner is worse than none.
     if (copy.current) {
-      const here = 1 - smoothCopy(t, 0.08, 0.55)
+      // Written inline every frame, which beats any stylesheet rule — so
+      // the travelled state has to be folded in here rather than left to
+      // `.is-travelled`, or his name sits on top of an open chapter.
+      const here = travelled ? 0 : 1 - smoothCopy(t, 0.08, 0.55)
       copy.current.style.opacity = here.toFixed(3)
       copy.current.style.pointerEvents = here > 0.5 ? '' : 'none'
     }
