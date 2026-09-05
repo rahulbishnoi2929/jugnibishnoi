@@ -30,6 +30,7 @@ import {
   STAGES,
   cosmicScale,
   fitFor,
+  liftFor,
   nestFor,
   shrinkFor,
 } from './layout.js'
@@ -447,15 +448,26 @@ function Ease({ zoom, want }) {
 // it is what you zoom towards — but it does have to leave with him.
 function Nest({ zoom, children }) {
   const g = useRef()
-  useFrame(() => {
+  useFrame((state) => {
     // Straight from the eased zoom, with no second smoothing of its own.
-    // It used to lerp towards the target at its own rate while Cosmos read
-    // the zoom directly, so his planet lagged behind the solar system
-    // arriving around it — two things animating the same gesture at
-    // different speeds, which is most of what made this feel rough.
-    // He stays at the origin, because every stage out there is placed so
-    // that the thing you came from lands on it. Nothing to follow.
-    g.current.scale.setScalar(nestFor(zoom.current))
+    // It used to lerp towards its own target at its own rate while Cosmos
+    // read the zoom directly, so his planet lagged behind the solar system
+    // arriving around it — two things animating one gesture at two speeds,
+    // which is most of what made this feel rough.
+    const nest = nestFor(zoom.current)
+    g.current.scale.setScalar(nest)
+
+    // Sideways he stays at the origin, because every stage out there is
+    // placed so the thing you came from lands on it. Vertically, on a phone
+    // only, he sits in the upper half instead: the composition is 344px of
+    // an 812px screen and centring it left 230 of empty sky above and 38
+    // below, which reads as a broken layout rather than as space.
+    //
+    // The lift rides the nesting, so as he shrinks to a dot it shrinks with
+    // him — framed for a phone while he is the subject, and landing exactly
+    // on Earth by the time he is not. A fixed lift would leave him hanging
+    // above the solar system.
+    g.current.position.y = liftFor(state.size.width) * nest
   })
   return <group ref={g}>{children}</group>
 }

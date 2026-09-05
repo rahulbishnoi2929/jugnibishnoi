@@ -28,6 +28,7 @@ import {
   ZOOM_SNAP,
   ZOOM_DT_MAX,
   labelScaleFor,
+  liftFor,
   nestFor,
   placeNodes,
   placeRooms,
@@ -160,8 +161,20 @@ test('the ring still reads as having depth', () => {
   }
 })
 
-test('the composition sits in the middle of the frame', () => {
-  // Where the content lands, projected the way three.js will project it.
+test('the composition shares the screen with the copy', () => {
+  // Where the art lands, projected the way three.js will project it, and
+  // measured against the DOM block it has to live above. Two complaints
+  // came from getting this wrong in opposite directions: aiming at his
+  // chest put the whole thing a screen-third low, and then centring it left
+  // a quarter of a phone screen empty at the top.
+  const LAYOUT = [
+    // The copy block's top edge, from hub.css: on a phone it sits at
+    // bottom 108 and runs about 92 tall; on a desktop it is at bottom 40
+    // and is meant to overlap the globe.
+    { w: 375, h: 812, copyTop: 612, overlaps: false },
+    { w: 1440, h: 820, copyTop: 660, overlaps: true },
+  ]
+
   const frame = ({ w, h }) => {
     const narrow = w < 520
     const pos = new THREE.Vector3()
@@ -172,29 +185,68 @@ test('the composition sits in the middle of the frame', () => {
     cam.lookAt(look)
     cam.updateMatrixWorld()
 
-    const y = (v) => ((1 - v.project(cam).y) / 2) * h
+    const lift = new THREE.Vector3(0, liftFor(w), 0)
+    const at = (v) => {
+      const n = v.clone().add(lift).project(cam)
+      return { x: ((n.x + 1) / 2) * w, y: ((1 - n.y) / 2) * h }
+    }
     const nodes = placeNodes(five, narrow)
     const globeR = narrow ? 0.95 : 1.35
-    // Label text sits about 34px above its node, and is ~44px tall.
-    const top = Math.min(...nodes.map((n) => y(n.pos.clone()))) - 34 - 22
-    const bottom = y(new THREE.Vector3(0, -2 * globeR, 0))
-    return { centre: (top + bottom) / 2, top, bottom, middle: h / 2 }
+    const p = nodes.map((n) => at(n.pos.clone()))
+    // Label text sits about 34px above its node and is about 44px tall and
+    // 80 wide.
+    return {
+      top: Math.min(...p.map((q) => q.y)) - 56,
+      bottom: at(new THREE.Vector3(0, -2 * globeR, 0)).y,
+      left: Math.min(...p.map((q) => q.x)) - 40,
+      right: Math.max(...p.map((q) => q.x)) + 40,
+    }
   }
 
-  for (const s of [{ w: 375, h: 812 }, { w: 1440, h: 820 }]) {
+  for (const s of LAYOUT) {
     const f = frame(s)
     assert.ok(f.top > 0, `content ran off the top at ${s.w}: ${f.top.toFixed(0)}`)
+    assert.ok(f.bottom < s.h, `content ran off the bottom at ${s.w}: ${f.bottom.toFixed(0)}`)
+    // The branch labels are what reaches furthest sideways, and on a phone
+    // they have almost no room to spare.
+    assert.ok(f.left > 0 && f.right < s.w, `the labels clip the sides at ${s.w}`)
+
+    if (s.overlaps) continue
+
+    // On a phone the slack has to be shared out rather than piled at one
+    // end. Before the lift it was 230 above and 38 below.
+    const above = f.top
+    const below = s.copyTop - f.bottom
+    assert.ok(below > 40, `only ${below.toFixed(0)}px between the art and the name`)
+    assert.ok(above > 80, `only ${above.toFixed(0)}px above the art`)
     assert.ok(
-      f.bottom < s.h,
-      `content ran off the bottom at ${s.w}: ${f.bottom.toFixed(0)}`
-    )
-    // Within a tenth of the viewport height of centre. Aiming at his chest
-    // put it a third of the screen low.
-    assert.ok(
-      Math.abs(f.centre - f.middle) < s.h * 0.1,
-      `at ${s.w} the composition centres at ${f.centre.toFixed(0)}, want ~${f.middle}`
+      Math.max(above, below) < Math.min(above, below) * 2,
+      `the slack is lopsided at ${s.w}: ${above.toFixed(0)} above, ${below.toFixed(0)} below`
     )
   }
+})
+
+test('the lift goes away as he does', () => {
+  // The phone framing is a lift in world units, and it rides the nesting
+  // so it shrinks with him. If it did not, he would still be a screen's
+  // worth above the solar system when he was meant to be sitting on Earth.
+  const lift = liftFor(375)
+  assert.ok(lift > 0, 'a phone should lift the composition')
+  assert.equal(liftFor(1440), 0, 'a desktop should not')
+
+  const offsetAt = (z) => lift * nestFor(z)
+  assert.equal(offsetAt(1), lift, 'the lift should be full at the hub')
+  // By the time the solar system is the subject he is a dot, and the lift
+  // is a fraction of his own size rather than a fraction of the screen.
+  const solarZoom = ZOOM_HUB_MAX * 3.2
+  assert.ok(
+    offsetAt(solarZoom) < 0.1,
+    `he is still ${offsetAt(solarZoom).toFixed(3)} above Earth at the solar system`
+  )
+  // At the far end, in pixels rather than in world units: about 39 pixels
+  // to the unit on a phone, so this is a hundredth of a pixel.
+  const px = offsetAt(ZOOM_MAX) * 39
+  assert.ok(px < 0.01, `the lift is still ${px.toFixed(4)}px at the far end`)
 })
 
 // ---------- the ladder out ----------

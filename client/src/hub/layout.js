@@ -36,6 +36,18 @@ const RING = {
   narrow: { chapters: { r: 1.5, y: 1.45 }, rooms: { r: 1.28, y: 0.72 } },
 }
 
+// How far to lift the whole hub, in world units, for a given viewport.
+//
+// A portrait phone is 812 tall and the composition is 344 of that. Centred,
+// which is where it was, that leaves 230 pixels of empty sky above it and
+// 38 below before the name — all the slack piled at the top, which reads as
+// a broken layout rather than as space. Lifting it puts about 150 above and
+// 120 between it and the copy, so the page is a column: art, name, links.
+//
+// Nothing on a wider screen needs this. The desktop composition is already
+// centred, and the copy there sits over the globe on purpose.
+export const liftFor = (w) => (w < 520 ? 1.0 : 0)
+
 // Chapters ride high and wide, in order, so spinning walks the years.
 export function placeNodes(chapters, narrow) {
   const { r, y } = (narrow ? RING.narrow : RING.wide).chapters
