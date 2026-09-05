@@ -62,7 +62,7 @@ export default function Panel({ chapter, onBack, backLabel = '← All chapters' 
             {m.video ? (
               <video src={m.url} controls muted loop preload="metadata" />
             ) : (
-              <img src={m.url} alt={m.label} loading="lazy" decoding="async" />
+              <img src={m.thumb} alt={m.label} loading="lazy" decoding="async" />
             )}
             {m.label && <figcaption>{m.label}</figcaption>}
           </figure>

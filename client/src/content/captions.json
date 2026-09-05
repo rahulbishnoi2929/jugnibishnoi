@@ -1,0 +1,42 @@
+{
+  "_readme": [
+    "Two things live here.",
+    "",
+    "`branches` says which photo sets appear under which branch of a chapter,",
+    "and in what order. The key is chapter/branch. `set` is the folder name",
+    "under client/src/photos/<chapter>/.",
+    "",
+    "`photos` is the when / where / what / why for a single photo, keyed by",
+    "chapter/set/filename with no extension. Every field is optional and a",
+    "photo with no entry at all still appears — it just shows without the",
+    "four facts around it. Drop all seventy-five in tonight and write these",
+    "over however long it takes.",
+    "",
+    "what: one line. It is also the alt text, so write it for someone who",
+    "     cannot see the photo.",
+    "when: whatever you know. '2023' is a fine answer.",
+    "where: the place, not the coordinates.",
+    "why: the one that is worth the trouble — why this photo is here."
+  ],
+
+  "branches": {
+    "campus/sports": [
+      { "set": "athletics", "title": "Athletics", "lede": "" },
+      { "set": "basketball", "title": "Basketball", "lede": "" },
+      { "set": "volleyball", "title": "Volleyball", "lede": "" },
+      { "set": "shooting", "title": "Shooting ball", "lede": "" }
+    ],
+    "campus/competition": [
+      { "set": "installation", "title": "Installation", "lede": "" }
+    ]
+  },
+
+  "photos": {
+    "campus/athletics/example-name-of-a-file": {
+      "what": "Delete this entry. It is here to show the shape.",
+      "when": "",
+      "where": "",
+      "why": ""
+    }
+  }
+}
