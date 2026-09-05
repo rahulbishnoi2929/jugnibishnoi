@@ -27,6 +27,7 @@
 const fs = require('fs')
 const path = require('path')
 const sharp = require('sharp')
+const heicConvert = require('heic-convert')
 
 const RAW = path.join(__dirname, '..', 'photos-raw')
 const OUT = path.join(__dirname, '..', 'client', 'src', 'photos')
@@ -34,6 +35,7 @@ const OUT = path.join(__dirname, '..', 'client', 'src', 'photos')
 const FULL = 1600 // longest edge, for the one you are looking at
 const THUMB = 480 // longest edge, for the grid
 const SOURCE = /\.(jpe?g|png|webp|avif|heic|heif|tiff?)$/i
+const HEIC = /\.hei[cf]$/i
 
 const slug = (name) =>
   name
@@ -43,8 +45,26 @@ const slug = (name) =>
     .replace(/[\s_]+/g, '-')
     .toLowerCase()
 
+// iPhones shoot HEIC, and the libheif that ships inside sharp cannot
+// decode it — every one of them failed with "bad seek". heic-convert is a
+// pure-JavaScript decoder, about two seconds a photo, and it hands back a
+// JPEG that sharp is perfectly happy with.
+//
+// Rotation is not a worry here: checked against real files, an iPhone HEIC
+// already stores its pixels the right way up and reports no orientation
+// flag, so a portrait shot decodes portrait.
+async function load(file) {
+  if (!HEIC.test(file)) return sharp(file)
+  const jpeg = await heicConvert({
+    buffer: fs.readFileSync(file),
+    format: 'JPEG',
+    quality: 0.95,
+  })
+  return sharp(jpeg)
+}
+
 async function one(from, to) {
-  const image = sharp(from).rotate() // rotate() with no angle applies EXIF
+  const image = (await load(from)).rotate() // rotate() applies any EXIF flag
   const { width, height, format } = await image.metadata()
 
   await image
@@ -114,8 +134,9 @@ async function main() {
   }
   if (failed) {
     console.log('')
-    console.log('        HEIC is the usual failure — iPhones shoot it and not every')
-    console.log('        build of sharp can read it. Export those as JPEG and rerun.')
+    console.log('        HEIC is decoded by heic-convert rather than by sharp, whose')
+    console.log('        bundled libheif cannot read an iPhone file. If one still')
+    console.log('        fails, export that photo as JPEG and run this again.')
   }
 }
 
