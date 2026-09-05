@@ -127,3 +127,35 @@ with it, is synchronous, so it can be checked without a single frame.
 
 It also reports the driver's `ALIASED_POINT_SIZE_RANGE`, which is why the
 star shader clamps `gl_PointSize` at 56 — some drivers cap it at 63.
+
+## photos.js
+
+Turns a folder of phone photos into something a website can serve.
+
+```
+node scripts/photos.js
+```
+
+Put originals in `photos-raw/<chapter>/<set>/` — say
+`photos-raw/campus/athletics/` — and run it. They come out in
+`client/src/photos/<chapter>/<set>/` at 1600px, with a 480px thumbnail
+beside each one.
+
+`photos-raw/` is gitignored. A phone photo is about four megabytes and
+seventy-five of them is three hundred, against a site that is currently
+one and a half. The originals stay on your machine.
+
+Three things happen besides resizing:
+
+- **EXIF is stripped.** A phone photo carries the GPS coordinates of where
+  it was taken, which for anything shot at home is your front door.
+- **Orientation is baked in.** Phones store a portrait shot as landscape
+  pixels plus a "rotate this" flag. Browsers mostly honour it and canvases
+  mostly do not; rotating the pixels makes it right everywhere.
+- **A thumbnail is written**, because a grid of seventy-five 1600px images
+  is thirteen megabytes to show something the size of a stamp.
+
+Measured on a 4032x3024 phone-sized JPEG: 5.7MB in, 0.4MB out.
+
+HEIC is the usual failure — iPhones shoot it and not every build of sharp
+can read it. Export those as JPEG and run it again.
