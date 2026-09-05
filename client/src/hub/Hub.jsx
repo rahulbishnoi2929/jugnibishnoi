@@ -190,6 +190,7 @@ export default function Hub() {
   // it, the branches read it.
   const bob = useRef(0)
 
+
   const canvasBox = useRef(null)
   useEffect(() => {
     const el = canvasBox.current
@@ -452,6 +453,8 @@ function Nest({ zoom, children }) {
     // the zoom directly, so his planet lagged behind the solar system
     // arriving around it — two things animating the same gesture at
     // different speeds, which is most of what made this feel rough.
+    // He stays at the origin, because every stage out there is placed so
+    // that the thing you came from lands on it. Nothing to follow.
     g.current.scale.setScalar(nestFor(zoom.current))
   })
   return <group ref={g}>{children}</group>

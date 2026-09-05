@@ -104,9 +104,11 @@ export const orbitOf = (au) =>
 // here — it is the ordering that matters, not the gaps. 0.32 keeps Mercury
 // visible without letting Jupiter swallow its own orbit, and the constant
 // is set so Earth lands just under three pixels on the narrowest phone,
-// which is the smallest a dot can be and still be a dot.
+// which is the smallest a dot can be and still be a dot. It carries the
+// same 1.2 the framing radius does, so widening the frame to fit the system
+// around Earth did not quietly shrink every planet.
 const BODY_K = 0.32
-const EARTH_DOT = 0.018
+const EARTH_DOT = 0.0216
 export const bodyOf = (earths) => EARTH_DOT * Math.pow(earths, BODY_K)
 
 const SUN_EARTHS = 109.2
@@ -222,11 +224,14 @@ export function solarSystem() {
 
   return {
     id: 'solar',
-    // Neptune sets the radius, not the Kuiper belt beyond it: a faint
-    // scatter bleeding off the edge of the frame costs nothing and reads as
-    // "it carries on", whereas fitting it would shrink every orbit by a
-    // seventh to make room for the emptiest part of the picture.
-    radius: 1,
+    // The radius the stage is framed by, and it is measured from Earth
+    // rather than from the sun, because Earth is what sits at the middle of
+    // the frame. Neptune's orbit is 1 and Earth is 0.38 out, so the far
+    // side of the system is 1.38 away from him. 1.2 leaves the near side
+    // comfortably inside and lets the far side of Neptune's orbit graze the
+    // edge, with the Kuiper belt beyond it bleeding off — which is what
+    // "it carries on" looks like.
+    radius: 1.2,
     tilt: [0.34, 0, 0.06],
     // Earth is the anchor: the stage is slid so this point is the origin,
     // which is where his planet already is. Without it he shrinks into the
@@ -517,7 +522,16 @@ export function galaxy({ seed = 7, radius = 1, stars = 24000 } = {}) {
 
   return {
     id: 'galaxy',
-    radius,
+    // How far the disc itself reaches, which is not the same as the radius
+    // it is framed by.
+    extent: radius,
+    // Framed from the sun, not from the core. The sun is 0.63 of the way
+    // out, so the far rim is 1.63 away from him and the near rim only
+    // 0.37. Fitting all of that would draw the galaxy at 60 per cent of the
+    // size it deserves; 1.35 puts the core about half a frame off centre
+    // with the far rim running off the edge, which is what being inside a
+    // galaxy looks like.
+    radius: radius * 1.35,
     tilt: [0.46, 0, 0.12],
     layers: { haze, nucleus, bulge, disc, hii },
     sun,
@@ -608,6 +622,13 @@ export function universe({
     )
   }
 
+  // Ours is the cluster nearest the middle. Taking the first one drawn
+  // meant the whole field was framed around a random corner of itself.
+  let home = 0
+  for (let i = 1; i < centres.length; i++) {
+    if (dist2(centres[i], [0, 0, 0]) < dist2(centres[home], [0, 0, 0])) home = i
+  }
+
   // Filaments: each cluster to its two nearest neighbours. Duplicates are
   // fine — they are drawn at an opacity where a doubled line is invisible.
   const web = []
@@ -622,12 +643,14 @@ export function universe({
 
   return {
     id: 'universe',
-    radius,
+    // Framed from our own cluster, which is near enough the middle that
+    // this barely differs from the radius itself.
+    radius: radius + Math.sqrt(dist2(centres[home], [0, 0, 0])),
     tilt: [0.2, 0, 0],
     layers: { gal },
     web: new Float32Array(web),
-    home: centres[0],
-    anchor: centres[0],
+    home: centres[home],
+    anchor: centres[home],
     pos: gal.pos,
     col: gal.col,
   }

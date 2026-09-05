@@ -206,14 +206,29 @@ export function cosmicStage(t, i) {
 // The transform a stage is drawn with, as the position / quaternion / scale
 // a three group takes.
 //
-// It lives here, and both the renderer and the tests call it, so that what
-// is measured is the placement that is actually used. Keeping two copies of
-// this chain in step by hand is exactly how the last version ended up
-// asserting one thing and drawing another.
+// It lives here, and both the renderer and the tests call it, so what is
+// measured is the placement that is actually used.
+//
+// Every stage is placed so that the thing you came from sits at the world
+// origin: Earth for the solar system, the sun for the galaxy, our own
+// cluster for the universe. That single rule is the whole nesting. His
+// planet is at that origin too, so all four scales are stacked on the same
+// point and he never moves — which is both what a cosmic zoom does and, on
+// this particular site, the point being made.
 //
 // A child point p ends up at  position + Q * (scale * p), and what we want
-// is  scale * Ry(spin) * R(tilt) * (p - anchor*mix). Those agree when
-// Q = Ry(spin) * R(tilt) and position = -scale * Q * anchor * mix.
+// is  scale * Ry(spin) * R(tilt) * (p - anchor). Those agree when
+// Q = Ry(spin) * R(tilt) and position = -scale * Q * anchor.
+//
+// There was briefly a version that eased the anchor out as a stage settled,
+// so the composition drifted from Earth-centred to sun-centred. It is gone,
+// and it is worth saying why: the sun is 0.38 of a radius from Earth and
+// the galactic core is 0.63 of a radius from the sun, so that drift was a
+// pan across two thirds of the screen, which no easing makes smooth. Worse,
+// his planet stayed nailed to the origin while the stage slid its own
+// centre onto that same origin — so the sun arrived exactly where he was
+// standing and swallowed him. Each stage's radius now allows for its anchor
+// offset instead, and nothing moves.
 const _spinQ = new THREE.Quaternion()
 const _tiltE = new THREE.Euler()
 const _up = new THREE.Vector3(0, 1, 0)
@@ -224,27 +239,14 @@ export function stagePlacement(stage, size, fit, spin, out) {
     .setFromEuler(_tiltE.set(stage.tilt[0], stage.tilt[1], stage.tilt[2]))
     .premultiply(_spinQ.setFromAxisAngle(_up, spin))
 
-  const mix = anchorMix(size)
   out.position
-    .set(-stage.anchor[0] * mix, -stage.anchor[1] * mix, -stage.anchor[2] * mix)
+    .set(-stage.anchor[0], -stage.anchor[1], -stage.anchor[2])
     .applyQuaternion(out.quaternion)
     .multiplyScalar(scale)
 
   out.scale = scale
   return out
 }
-
-// How much of the "thing you came from" offset a stage should still be
-// carrying, given its apparent size.
-//
-// A stage arrives anchored on whatever you were just looking at — Earth for
-// the solar system — because that is the only way the two line up as one
-// shrinks into the other. But holding that anchor once the stage is the
-// subject puts the sun a third of the way off centre and hangs Neptune's
-// orbit over the edge of the frame. So the offset eases out as the stage
-// settles, and the composition slides from Earth-centred to sun-centred
-// while you watch. This is the camera move a real sequence would make.
-export const anchorMix = (size) => smoothstep(size, 1.0, 2.2)
 
 // Cubic smoothstep. Written out rather than imported so the meaning of the
 // fade curves is visible in this file.

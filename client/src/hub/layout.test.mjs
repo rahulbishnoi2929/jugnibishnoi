@@ -239,6 +239,7 @@ const place = {
 }
 const _m = new THREE.Matrix4()
 const _s = new THREE.Vector3()
+const ORIGIN = new THREE.Vector3()
 
 // Where a point of a stage lands, in fractions of the viewport.
 function screenOf(stage, size, view, point) {
@@ -249,6 +250,10 @@ function screenOf(stage, size, view, point) {
     .project(view.cam)
   return { x: (n.x + 1) / 2, y: (1 - n.y) / 2, scale: place.scale }
 }
+
+// Where his planet is: the world origin, always. Every stage out there is
+// placed so the thing you came from lands on it.
+const HUB = new THREE.Vector3(0, 0, 0)
 
 const ladder = (steps = 600) => {
   const out = []
@@ -389,32 +394,111 @@ test('every stage lands on screen when it is the subject', () => {
   }
 })
 
-test('the composition hands over from Earth to the sun', () => {
-  // Arriving, a stage is anchored on the thing you came from so the two
-  // line up as one shrinks into the other. Settled, it has to be centred on
-  // itself, or the sun sits a third of the way off frame and Neptune's
-  // orbit hangs over the edge.
+test('every scale is stacked on the same point', () => {
+  // The nesting, and the fix for "our earth goes into sun". Each stage is
+  // placed so the thing you came from lands on the world origin, which is
+  // where his planet is. So Earth, the sun's place in the galaxy, and our
+  // cluster's place in the universe are all the same point on screen, at
+  // every zoom, and nothing has to travel to get there.
   const view = outsideCamera(VIEWPORTS[0])
-  const off = (p) => Math.hypot(p.x - 0.5, p.y - 0.5)
 
-  // Arriving: Earth is the middle of the screen, because that is where his
-  // planet is and the two have to occupy the same spot to hand over.
-  const earthArriving = screenOf(SOLAR, 2.8, view, SOLAR.anchor)
+  // The camera aims a little above the world origin — it is framed for a
+  // standing figure — so the shared point is near the middle rather than
+  // exactly on it. What matters is that it is the *same* point for all of
+  // them, at every size.
+  const first = screenOf(SOLAR, 1, view, SOLAR.anchor)
   assert.ok(
-    off(earthArriving) < 0.02,
-    `Earth should be dead centre while the stage arrives, was ${off(earthArriving).toFixed(3)} away`
+    Math.hypot(first.x - 0.5, first.y - 0.5) < 0.03,
+    `the stack sits ${Math.hypot(first.x - 0.5, first.y - 0.5).toFixed(3)} off the middle`
   )
 
-  // Settled: the sun is, and Earth has slid out to its own orbit.
-  const sunSettled = screenOf(SOLAR, 1.0, view, [0, 0, 0])
-  const earthSettled = screenOf(SOLAR, 1.0, view, SOLAR.anchor)
+  for (const [name, stage] of [
+    ['Earth in the solar system', SOLAR],
+    ['the sun in the galaxy', GALAXY],
+    ['our cluster in the universe', UNIVERSE],
+  ]) {
+    for (const size of [3.4, 2.0, 1.0, 0.5, 0.1]) {
+      const p = screenOf(stage, size, view, stage.anchor)
+      const apart = Math.hypot(p.x - first.x, p.y - first.y)
+      assert.ok(
+        apart < 0.001,
+        `${name} at size ${size} sits ${apart.toFixed(4)} from where the others do`
+      )
+    }
+  }
+})
+
+test('his planet lands on Earth, not in the sun', () => {
+  // Reported as "our earth goes into sun". The stage used to ease its
+  // anchor out as it settled, sliding its own centre onto the origin —
+  // where his planet was nailed. So the sun arrived exactly where he was
+  // standing. Now the anchor never eases, and the two coincide by
+  // construction at every size.
+  const view = outsideCamera(VIEWPORTS[0])
+
+  for (const size of [3.4, 1.6, 1.0, 0.4]) {
+    stagePlacement(SOLAR, size, view.fit, 0, place)
+    _m.compose(place.position, place.quaternion, _s.setScalar(place.scale))
+    const earth = new THREE.Vector3(...SOLAR.anchor).applyMatrix4(_m)
+    const sun = new THREE.Vector3(0, 0, 0).applyMatrix4(_m)
+
+    assert.ok(
+      HUB.distanceTo(earth) < 1e-9,
+      `at size ${size} his planet is ${HUB.distanceTo(earth).toFixed(4)} from Earth`
+    )
+    // And the sun is a real distance away from him, not on top of him.
+    assert.ok(
+      HUB.distanceTo(sun) > place.scale * 0.3,
+      `at size ${size} the sun is ${HUB.distanceTo(sun).toFixed(3)} away — that is on top of him`
+    )
+  }
+})
+
+test('the solar system sits at the sun, not at the galactic core', () => {
+  // The same fault one level out. At the galaxy stage his planet, the
+  // solar system and the sun's place in the galaxy are one point, and the
+  // core is well away from it.
+  const view = outsideCamera(VIEWPORTS[0])
+  stagePlacement(GALAXY, 1, view.fit, 0, place)
+  _m.compose(place.position, place.quaternion, _s.setScalar(place.scale))
+  const sunInGalaxy = new THREE.Vector3(...GALAXY.anchor).applyMatrix4(_m)
+  const core = new THREE.Vector3(0, 0, 0).applyMatrix4(_m)
+
   assert.ok(
-    off(sunSettled) < 0.02,
-    `the sun should be centred once settled, was ${off(sunSettled).toFixed(3)} away`
+    HUB.distanceTo(sunInGalaxy) < 1e-9,
+    'his planet is not where the galaxy puts the sun'
   )
   assert.ok(
-    off(earthSettled) > 0.04,
-    `Earth should have moved off centre onto its orbit, was ${off(earthSettled).toFixed(3)} away`
+    HUB.distanceTo(core) > place.scale * 0.5,
+    'his planet ended up at the galactic core'
+  )
+})
+
+test('nothing has to travel across the frame', () => {
+  // The other half of "the transition is not smooth". With the anchor
+  // easing out, his planet crossed 4.2 per cent of the frame in a single
+  // frame around zoom 15, because centring the galaxy on its own core is a
+  // pan across two thirds of the screen. Now it is zero by construction,
+  // and this is the assertion that says so rather than the comment.
+  const view = outsideCamera(VIEWPORTS[0])
+  const halfW = view.dist * Math.tan(Math.PI / 9) * view.cam.aspect
+
+  let zoom = 1
+  let worst = 0
+  for (let f = 0; f < 1200; f++) {
+    const before = zoom
+    zoom = ease(zoom, ZOOM_MAX, 1 / 60)
+    if (zoom === before) break
+    // Where each stage's anchor is on screen, frame over frame.
+    for (const stage of BODIES) {
+      const a = screenOf(stage, cosmicStage(cosmicScale(before), 1).size, view, stage.anchor)
+      const b = screenOf(stage, cosmicStage(cosmicScale(zoom), 1).size, view, stage.anchor)
+      worst = Math.max(worst, Math.hypot(a.x - b.x, a.y - b.y))
+    }
+  }
+  assert.ok(
+    worst < 0.002,
+    `an anchor moved ${(worst * 100).toFixed(2)}% of the frame in one frame`
   )
 })
 
@@ -622,10 +706,11 @@ test('the galaxy fades out instead of having an edge', () => {
   for (const r of ratios) {
     assert.ok(r > 0.45 && r < 0.92, `a bin fell by ${r.toFixed(2)}x, which is a cliff or a plateau`)
   }
-  // And there are still stars past the nominal radius.
+  // And there are still stars past the disc's own nominal extent, which is
+  // not the same as the radius the stage is framed by.
   const beyond = [...Array(GALAXY.layers.disc.count).keys()].filter((i) => {
     const p = GALAXY.layers.disc.pos
-    return Math.hypot(p[i * 3], p[i * 3 + 2]) > GALAXY.radius
+    return Math.hypot(p[i * 3], p[i * 3 + 2]) > GALAXY.extent
   })
   assert.ok(beyond.length > 20, 'nothing at all beyond the nominal radius')
 })
@@ -1039,13 +1124,13 @@ test('the galaxy is a disc, not a ball or a cloud of NaN', () => {
     maxR = Math.max(maxR, Math.hypot(GALAXY.pos[i], GALAXY.pos[i + 2]))
     maxY = Math.max(maxY, Math.abs(GALAXY.pos[i + 1]))
   }
-  assert.ok(maxR < GALAXY.radius * 1.35, `galaxy reached ${maxR.toFixed(2)}`)
+  assert.ok(maxR < GALAXY.extent * 1.35, `galaxy reached ${maxR.toFixed(2)}`)
   assert.ok(maxY < maxR * 0.25, `thickness ${maxY.toFixed(3)} vs radius ${maxR.toFixed(2)}`)
   // Over one is allowed and wanted: these layers are additive, so a bright
   // star saturating early is the point. What is not allowed is a runaway.
   assert.ok(GALAXY.col.every((c) => c >= 0 && c < 1.6))
   const sunR = Math.hypot(GALAXY.sun[0], GALAXY.sun[2])
-  assert.ok(sunR > GALAXY.radius * 0.4 && sunR < GALAXY.radius * 0.8)
+  assert.ok(sunR > GALAXY.extent * 0.4 && sunR < GALAXY.extent * 0.8)
 })
 
 test('the universe clusters rather than being static', () => {

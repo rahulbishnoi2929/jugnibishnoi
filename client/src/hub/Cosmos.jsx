@@ -80,6 +80,9 @@ export default function Cosmos({ zoom }) {
     const height = state.size.height
     const dpr = state.gl.getPixelRatio()
 
+    // Each stage is placed so the thing you came from lands on the world
+    // origin, which is where his planet is and where every other stage's
+    // anchor is too. Four scales stacked on one point.
     data.forEach((stage, i) => {
       const g = groups.current[i]
       if (!g) return
@@ -88,11 +91,7 @@ export default function Cosmos({ zoom }) {
       g.visible = opacity > SHOWN
       if (!g.visible) return
 
-      // One transform, from the one place that defines it. The anchor
-      // offset inside it slides out as the stage settles, so the
-      // composition hands over from Earth-centred to sun-centred while you
-      // watch rather than hanging Neptune's orbit over the frame edge.
-      const spin = (g.userData.spin = (g.userData.spin ?? 0) + dt * SPIN[stage.id])
+      const spin = (stage.spin = (stage.spin ?? 0) + dt * SPIN[stage.id])
       stagePlacement(stage, size, fit, spin, _place)
       g.position.copy(_place.position)
       g.quaternion.copy(_place.quaternion)
