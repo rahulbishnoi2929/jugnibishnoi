@@ -400,6 +400,70 @@ test('he faces you inside a chapter, whichever one you opened', () => {
   assert.equal(atHub, 0)
 })
 
+test('a branch is drawn from him, and crosses no photograph', () => {
+  // The rectangles hang on branches so the row reads as growing out of him
+  // rather than floating over him. Which end the branch starts at is not a
+  // free choice: the chapter node sits inside the row's own vertical band —
+  // the inner two rectangles have their top edges above it — so a curve out
+  // of the node runs straight across its neighbours.
+  //
+  // Sampled at 41 points per curve against every rectangle that is not its
+  // own. From the node that put 39 points inside a photograph on a desktop
+  // and 42 on a phone. From his head it is zero, which is what this holds.
+  const SUBS = ['competition', 'hackathon', 'sports', 'friends'].map((id) => ({ id }))
+  const SCREENS = [
+    { name: 'phone', w: 375, h: 812 },
+    { name: 'desktop', w: 1440, h: 820 },
+  ]
+
+  for (const s of SCREENS) {
+    const narrow = s.w < 520
+    const pos = new THREE.Vector3()
+    const look = new THREE.Vector3()
+    applyZoom(branchView(narrow), fitFor(s.w), pos, look)
+    const cam = new THREE.PerspectiveCamera(40, s.w / s.h, 0.1, 100)
+    cam.position.copy(pos)
+    cam.lookAt(look)
+    cam.updateMatrixWorld()
+    const at = (v) => {
+      const n = v.clone().project(cam)
+      return { x: ((n.x + 1) / 2) * s.w, y: ((1 - n.y) / 2) * s.h }
+    }
+
+    const campus = placeNodes(five, narrow)[2]
+    const spun = campus.pos.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), -campus.angle)
+    const subs = placeBranches({ ...campus, pos: spun, angle: 0 }, SUBS, narrow)
+    const card = cardFor(narrow)
+
+    const box = subs.map((b) => {
+      const c = at(b.pos)
+      const hw = Math.abs(c.x - at(new THREE.Vector3(b.pos.x + card.w / 2, b.pos.y, b.pos.z)).x)
+      const hh = Math.abs(c.y - at(new THREE.Vector3(b.pos.x, b.pos.y + card.h / 2, b.pos.z)).y)
+      return { l: c.x - hw, r: c.x + hw, t: c.y - hh, b: c.y + hh }
+    })
+
+    const head = headFor(narrow)
+    subs.forEach((b, i) => {
+      // Lands on the bottom edge of its own rectangle, not the middle: a
+      // line into the centre of a photograph is a line over a photograph.
+      const end = b.pos.clone()
+      end.y -= card.h / 2
+      const points = branchCurve(head, end, 40).map(at)
+      box.forEach((r, j) => {
+        if (j === i) return
+        const hit = points.find((p) => p.x > r.l && p.x < r.r && p.y > r.t && p.y < r.b)
+        assert.ok(
+          !hit,
+          `${s.name}: the branch to ${SUBS[i].id} crosses ${SUBS[j].id} at ${hit && hit.x.toFixed(0)},${hit && hit.y.toFixed(0)}`
+        )
+      })
+      // And it has to be long enough to read as a branch at all.
+      const len = Math.hypot(points[0].x - points[40].x, points[0].y - points[40].y)
+      assert.ok(len > 60, `${s.name}: the branch to ${SUBS[i].id} is ${len.toFixed(0)} pixels long`)
+    })
+  }
+})
+
 test('inside a branch you can see all of him, and all of the branches', () => {
   // Reported as wanting the model improved inside a branch. Measured, the
   // problem was not the model: on a phone eighteen pixels of his scalp

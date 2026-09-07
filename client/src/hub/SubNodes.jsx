@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Line, Html } from '@react-three/drei'
 import * as THREE from 'three'
-import { cardFor, labelScaleFor } from './layout.js'
+import { branchCurve, cardFor, headFor, labelScaleFor } from './layout.js'
 import { setsFor } from '../lib/media.js'
 import { coverCrop, previewMaterial } from './shaders.js'
 
@@ -18,8 +18,10 @@ import { coverCrop, previewMaterial } from './shaders.js'
 // The size comes from layout.js and differs by viewport, because these sit
 // much nearer the camera than the point it is aimed at — see cardFor.
 //
-// They hang over his head on both screens. On a desktop they used to be a
-// column beside him, which is not what a branch off a head does.
+// They hang over his head on both screens, on branches drawn from that
+// head, so the row reads as growing out of him rather than floating above
+// him. On a desktop they used to be a column beside him, which is not what
+// a branch off a head does.
 const HOLD = 2.0 // seconds on each picture
 const FADE = 0.7 // seconds to cross from one to the next
 const MOST = 6 // how many of a branch's photographs to cycle through
@@ -56,6 +58,7 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
   const [hover, setHover] = useState(false)
   const card = useRef()
   const frame = useRef()
+  const line = useRef()
   const label = useRef()
   const grew = useRef(0)
 
@@ -73,6 +76,27 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
   const material = useMemo(() => previewMaterial(), [])
   useEffect(() => () => material.dispose(), [material])
   const shown = useRef({ at: 0, a: 0, b: 1 })
+
+  // The branch itself, drawn from his head rather than from the chapter
+  // node the rectangle hangs off.
+  //
+  // The node was the obvious start and it is the wrong one: it sits inside
+  // the row's own vertical band — the inner two rectangles have their top
+  // edges above it — so a line out of it runs across its neighbours.
+  // Sampled at 48 points along each curve against every other rectangle,
+  // starting from the node put 39 of those points inside a picture on a
+  // desktop and 42 on a phone. From his head: zero, on both.
+  //
+  // It also lands on the bottom edge of its own rectangle instead of the
+  // middle, since a line into the centre of a photograph is a line over a
+  // photograph. And it is the same branchCurve the chapters grow out of his
+  // head with, so these read as more of the same tree rather than as a
+  // second kind of line.
+  const curve = useMemo(() => {
+    const end = branch.pos.clone()
+    end.y -= H / 2
+    return branchCurve(headFor(narrow), end, 40)
+  }, [branch, H, narrow])
 
   // The frame around the picture, as a closed loop.
   const outline = useMemo(() => {
@@ -115,6 +139,13 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
       frame.current.material.opacity = THREE.MathUtils.lerp(
         frame.current.material.opacity,
         lit * (hover || state === 'on' ? 0.9 : 0.35),
+        k
+      )
+    }
+    if (line.current) {
+      line.current.material.opacity = THREE.MathUtils.lerp(
+        line.current.material.opacity,
+        !on ? 0 : state === 'off' ? 0.12 : hover || state === 'on' ? 0.6 : 0.4,
         k
       )
     }
@@ -163,12 +194,15 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
 
   return (
     <group>
-      {/* No connector. It used to run from the node down a desktop column
-          and say which node the column came from. The row sits directly
-          under its node now on both screens, so the line has nothing left
-          to explain — and measured on the phone, where the row came first,
-          it ran horizontally across the top edge of the middle two
-          photographs. */}
+      <Line
+        ref={line}
+        points={curve}
+        color={accent}
+        transparent
+        opacity={0}
+        lineWidth={state === 'on' || hover ? 2 : 1}
+      />
+
       <mesh
         ref={card}
         position={branch.pos}
