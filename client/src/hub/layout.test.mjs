@@ -411,9 +411,9 @@ test('inside a branch you can see all of him, and all of the branches', () => {
   const SUBS = ['competition', 'hackathon', 'sports', 'friends'].map((id) => ({ id }))
 
   const SCREENS = [
-    // The panel is a bottom sheet at 64vh on a phone and a left column on
+    // The panel is a bottom sheet at 60vh on a phone and a left column on
     // a desktop, both from hub.css.
-    { name: 'phone', w: 375, h: 812, free: Math.round(812 * 0.36), safeTop: 47 },
+    { name: 'phone', w: 375, h: 812, free: Math.round(812 * 0.4), safeTop: 47 },
     { name: 'desktop', w: 1440, h: 820, free: 820, safeTop: 0 },
   ]
 
@@ -482,6 +482,32 @@ test('inside a branch you can see all of him, and all of the branches', () => {
       assert.ok(
         p.x > 0 && p.x < s.w,
         `${s.name}: a branch sits at x ${p.x.toFixed(0)} on a ${s.w}-wide screen`
+      )
+    }
+
+    // The angle each one leaves the node at. A branch rises off its trunk
+    // and then dips; it does not hang. Measured, these used to leave at
+    // -32, -56, -66 and -75 degrees on a desktop, which is a rope with
+    // photographs tied to it.
+    //
+    // On a phone the four are also required to leave at the SAME angle,
+    // because they are a row: a flat row cannot, since the inner pair have
+    // less width to fall across, and they hung at -44 next to -22.
+    const rise = subs.map((b) => {
+      const d = b.pos.clone().sub(spun)
+      return (Math.atan2(d.y, Math.hypot(d.x, d.z)) * 180) / Math.PI
+    })
+    for (const a of rise) {
+      assert.ok(
+        a > -62,
+        `${s.name}: a branch leaves the node at ${a.toFixed(0)} degrees, which is a rope`
+      )
+    }
+    if (narrow) {
+      const spread = Math.max(...rise) - Math.min(...rise)
+      assert.ok(
+        spread < 2,
+        `${s.name}: the row leaves at ${rise.map((a) => a.toFixed(0)).join(', ')} — ${spread.toFixed(0)} degrees apart`
       )
     }
 

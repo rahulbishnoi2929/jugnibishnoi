@@ -169,27 +169,37 @@ export function branchCurve(head, node, segments = 40) {
 // The row is spaced 0.69 apart, which is 86 pixels there — enough for a
 // photo rectangle between each with a gap.
 const FAN = {
-  // Tightened from a 1.9 drop to 1.37: measured on a 1440x820 desktop, the
-  // fourth branch sat at y 859 on an 820-tall screen, so Friends and its
-  // label hung off the bottom edge.
+  // An arc rather than a column. Measured, the old one left the node at
+  // -32, -56, -66 and -75 degrees: four photographs on a rope. A branch
+  // leaves its trunk rising, levels off and then dips under its own weight,
+  // which is what these do now — +5, -21, -42, -55.
   //
-  // And every x offset is now at least 0.34, so the column stays to his
-  // right. The last one used to be -0.06 — left of the node, which put a
-  // 300-pixel photograph straight over the person it is a photograph of.
+  // Wider was tried and mostly does not fit. These sit barely three units
+  // from the camera so a world unit is nearly 400 pixels across, and an arc
+  // pushed out far enough to shallow every angle ran the third photograph
+  // off the right-hand edge. The last one alone had the room, and uses it:
+  // out to 0.66 takes it from -61 to -55.
+  //
+  // The whole arc then dropped 0.06. Reaching for the shallowest first
+  // angle put the top of that rectangle ten pixels from the edge of the
+  // screen; this leaves it thirty-four.
   wide: [
-    [0.34, -0.22, 0.1],
-    [0.44, -0.65, -0.05],
-    [0.44, -1.05, 0.15],
-    [0.34, -1.37, -0.1],
+    [0.42, 0.04, 0.1],
+    [0.62, -0.24, -0.05],
+    [0.66, -0.61, 0.15],
+    [0.66, -0.96, -0.1],
   ],
-  // Dropped by 0.10 when the chapter ring rose to 2.32, since the row
-  // hangs off that node: without it the top of a rectangle landed at y 44,
-  // under a phone's status bar.
+  // All four leave at the same angle. A flat row cannot do that — the ones
+  // nearest the middle have less width to fall across, so they hung at -44
+  // while the outer two sat at -22. Matching them means the row is a shallow
+  // arc rather than a line, and it costs height: the inner pair rise 29
+  // pixels, which is why the panel gave up another four per cent of the
+  // screen to make room.
   narrow: [
-    [-1.04, -0.41, 0],
-    [-0.35, -0.34, 0],
-    [0.35, -0.34, 0],
-    [1.04, -0.41, 0],
+    [-1.04, -0.379, 0],
+    [-0.35, -0.127, 0],
+    [0.35, -0.127, 0],
+    [1.04, -0.379, 0],
   ],
 }
 
@@ -470,7 +480,7 @@ export function branchView(narrow) {
   // landed correctly but he did not: only 18 pixels of his scalp cleared
   // the panel, 14 per cent of him, which is not a model of anyone. This
   // puts the row near the top of the free band and all of him under it.
-  return { pos, look: new THREE.Vector3(0, -1.41, 0) }
+  return { pos, look: new THREE.Vector3(0, -1.16, 0) }
 }
 
 export const BRANCH_VIEW = branchView(false)
