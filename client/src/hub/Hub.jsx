@@ -362,6 +362,7 @@ export default function Hub() {
                         <SubNodes
                           branches={branches}
                           chapterId={active}
+                          narrow={narrow}
                           accent={activeNode.accent}
                           active={sub}
                           zoom={zoom}

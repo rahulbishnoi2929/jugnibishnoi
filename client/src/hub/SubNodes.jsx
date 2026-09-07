@@ -2,7 +2,7 @@ import { Suspense, useMemo, useRef, useState } from 'react'
 import { useFrame, useLoader } from '@react-three/fiber'
 import { Line, Html } from '@react-three/drei'
 import * as THREE from 'three'
-import { labelScaleFor } from './layout.js'
+import { cardFor, labelScaleFor } from './layout.js'
 import { setsFor } from '../lib/media.js'
 
 // A chapter's own branches, growing out of its node the way the chapters
@@ -11,14 +11,16 @@ import { setsFor } from '../lib/media.js'
 //
 // One texture per branch, and it is the 480px thumbnail rather than the
 // full frame: four previews cost about as much as one photograph.
-const W = 0.78
-const H = 0.58
+//
+// The size comes from layout.js and differs by viewport, because these sit
+// much nearer the camera than the point it is aimed at — see cardFor.
 
 // Scratch for the billboarding, so the frame loop allocates nothing.
 const _parent = new THREE.Quaternion()
 const _face = new THREE.Quaternion()
 
-export default function SubNodes({ branches, chapterId, accent, active, onPick, zoom }) {
+export default function SubNodes({ branches, chapterId, narrow, accent, active, onPick, zoom }) {
+  const card = cardFor(narrow)
   return (
     <group>
       {branches.map((b, i) => (
@@ -27,6 +29,7 @@ export default function SubNodes({ branches, chapterId, accent, active, onPick, 
           branch={b}
           index={i}
           chapterId={chapterId}
+          card={card}
           accent={accent}
           state={!active ? 'idle' : active === b.id ? 'on' : 'off'}
           zoom={zoom}
@@ -37,7 +40,9 @@ export default function SubNodes({ branches, chapterId, accent, active, onPick, 
   )
 }
 
-function SubNode({ branch, index, chapterId, accent, state, onPick, zoom }) {
+function SubNode({ branch, index, chapterId, card: size, accent, state, onPick, zoom }) {
+  const W = size.w
+  const H = size.h
   const [hover, setHover] = useState(false)
   const card = useRef()
   const frame = useRef()
@@ -70,7 +75,7 @@ function SubNode({ branch, index, chapterId, accent, state, onPick, zoom }) {
       new THREE.Vector3(-x, y, 0),
       new THREE.Vector3(-x, -y, 0),
     ]
-  }, [])
+  }, [W, H])
 
   useFrame((state3, dt) => {
     const k = 1 - Math.pow(0.000004, Math.min(dt, 0.1))
@@ -149,7 +154,7 @@ function SubNode({ branch, index, chapterId, accent, state, onPick, zoom }) {
         <planeGeometry args={[W, H]} />
         {preview ? (
           <Suspense fallback={<meshBasicMaterial color="#14161a" transparent opacity={0} />}>
-            <Picture url={preview} />
+            <Picture url={preview} aspect={W / H} />
           </Suspense>
         ) : (
           <meshBasicMaterial color="#14161a" transparent opacity={0} />
@@ -196,14 +201,14 @@ function SubNode({ branch, index, chapterId, accent, state, onPick, zoom }) {
 // The photograph itself, cropped to fill the rectangle the way the grid
 // crops its thumbnails — these are seventeen landscape to fifteen portrait,
 // and letterboxing half of them would look like a mistake.
-function Picture({ url }) {
+function Picture({ url, aspect }) {
   const map = useLoader(THREE.TextureLoader, url)
 
   useMemo(() => {
     map.colorSpace = THREE.SRGBColorSpace
     const image = map.image
     if (!image?.width) return
-    const plane = W / H
+    const plane = aspect
     const photo = image.width / image.height
     if (photo > plane) {
       map.repeat.set(plane / photo, 1)
@@ -213,7 +218,7 @@ function Picture({ url }) {
       map.offset.set(0, (1 - photo / plane) / 2)
     }
     map.needsUpdate = true
-  }, [map])
+  }, [map, aspect])
 
   return <meshBasicMaterial map={map} transparent opacity={0} toneMapped={false} />
 }

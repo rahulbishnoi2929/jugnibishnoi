@@ -16,6 +16,9 @@ import {
   ZOOM_MAX,
   ZOOM_HUB_MAX,
   applyZoom,
+  branchView,
+  cardFor,
+  placeBranches,
   cosmicScale,
   cosmicStage,
   depthFade,
@@ -363,6 +366,110 @@ test('a branch bows, by the same amount of itself at any size', () => {
     Math.abs(shareFor(true) - shareFor(false)) < 0.04,
     `a branch bows ${(shareFor(true) * 100).toFixed(0)}% of itself on a phone and ${(shareFor(false) * 100).toFixed(0)}% on a desktop`
   )
+})
+
+test('inside a branch you can see all of him, and all of the branches', () => {
+  // Reported as wanting the model improved inside a branch. Measured, the
+  // problem was not the model: on a phone eighteen pixels of his scalp
+  // cleared the reading panel and nothing else did — 14 per cent of him.
+  // A figure you cannot see cannot be improved.
+  //
+  // Two things have to fit in the band the panel leaves free: the row of
+  // photo branches, and him. This is the assertion that they do.
+  const SUBS = ['competition', 'hackathon', 'sports', 'friends'].map((id) => ({ id }))
+
+  const SCREENS = [
+    // The panel is a bottom sheet at 64vh on a phone and a left column on
+    // a desktop, both from hub.css.
+    { name: 'phone', w: 375, h: 812, free: Math.round(812 * 0.36), safeTop: 47 },
+    { name: 'desktop', w: 1440, h: 820, free: 820, safeTop: 0 },
+  ]
+
+  for (const s of SCREENS) {
+    const narrow = s.w < 520
+    const pos = new THREE.Vector3()
+    const look = new THREE.Vector3()
+    applyZoom(branchView(narrow), fitFor(s.w), pos, look)
+    const cam = new THREE.PerspectiveCamera(40, s.w / s.h, 0.1, 100)
+    cam.position.copy(pos)
+    cam.lookAt(look)
+    cam.updateMatrixWorld()
+    const at = (v) => {
+      const n = v.clone().project(cam)
+      return { x: ((n.x + 1) / 2) * s.w, y: ((1 - n.y) / 2) * s.h }
+    }
+
+    // Him, crown to feet.
+    const fig = figureFor(narrow)
+    const crown = at(new THREE.Vector3(0, BODY_TOP * fig, 0))
+    const feet = at(new THREE.Vector3(0, 0, 0))
+    assert.ok(
+      crown.y > s.safeTop,
+      `${s.name}: the top of his head is at ${crown.y.toFixed(0)}, under the status bar`
+    )
+    assert.ok(
+      feet.y < s.free,
+      `${s.name}: his feet are at ${feet.y.toFixed(0)}, behind a panel that starts at ${s.free}`
+    )
+
+    // The branch row, with room under each for its label.
+    const campus = placeNodes(five, narrow)[2]
+    const spun = campus.pos.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), -campus.angle)
+    const subs = placeBranches({ ...campus, pos: spun, angle: 0 }, SUBS, narrow)
+    const card = cardFor(narrow)
+    for (const b of subs) {
+      const p = at(b.pos)
+      // Measured at the branch's own depth, not at the distance the camera
+      // is aimed: these sit nearer the lens than the point it looks at, and
+      // sizing them at the aim distance is what made a desktop rectangle
+      // come out at 307 pixels across when it was meant to be 130.
+      const height = Math.abs(
+        p.y - at(new THREE.Vector3(b.pos.x, b.pos.y + card.h / 2, b.pos.z)).y
+      )
+      assert.ok(
+        p.y - height > s.safeTop,
+        `${s.name}: a branch rectangle runs off the top at ${(p.y - height).toFixed(0)}`
+      )
+      assert.ok(
+        p.y + height + 26 < s.free,
+        `${s.name}: a branch label at ${(p.y + height + 26).toFixed(0)} is behind the panel`
+      )
+      assert.ok(
+        p.x > 0 && p.x < s.w,
+        `${s.name}: a branch sits at x ${p.x.toFixed(0)} on a ${s.w}-wide screen`
+      )
+    }
+
+    // And no rectangle may sit on him. On a phone that means the row is
+    // above his head; on a desktop the fan is a column beside him instead,
+    // so there it means clear of him sideways. Either way: not on top of
+    // the person the photographs are of.
+    const half = 0.24 * fig
+    const body = {
+      l: at(new THREE.Vector3(-half, (BODY_TOP * fig) / 2, 0)).x,
+      r: at(new THREE.Vector3(half, (BODY_TOP * fig) / 2, 0)).x,
+      t: crown.y,
+      b: feet.y,
+    }
+    for (const b of subs) {
+      const p = at(b.pos)
+      const edge = Math.abs(
+        p.y - at(new THREE.Vector3(b.pos.x, b.pos.y + card.h / 2, b.pos.z)).y
+      )
+      const wide = Math.abs(
+        p.x - at(new THREE.Vector3(b.pos.x + card.w / 2, b.pos.y, b.pos.z)).x
+      )
+      const over =
+        p.x + wide > body.l &&
+        p.x - wide < body.r &&
+        p.y + edge > body.t &&
+        p.y - edge < body.b
+      assert.ok(
+        !over,
+        `${s.name}: a branch rectangle at ${p.x.toFixed(0)},${p.y.toFixed(0)} is on top of him`
+      )
+    }
+  }
 })
 
 test('no two labels sit on top of each other', () => {

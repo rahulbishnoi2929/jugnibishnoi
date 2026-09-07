@@ -302,7 +302,12 @@
   .panel {
     width: 100%;
     top: auto;
-    height: 72vh;
+    /* 64, not 72. At 72 the free band above it was 227px, and once the row
+       of photo branches had taken 70 of those, eighteen pixels of his scalp
+       were all that cleared the panel — 14 per cent of him. At 64 the band
+       is 292 and all of him fits under the row. The panel scrolls, so the
+       eight per cent costs a line of text and buys the whole figure. */
+    height: 64vh;
   }
 
   .panel-scroll {

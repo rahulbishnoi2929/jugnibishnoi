@@ -93,6 +93,20 @@ export function placeRooms(rooms, narrow) {
   }))
 }
 
+// How big a branch's photograph is drawn, in world units.
+//
+// Different per viewport, and it has to be: the branches sit at z +3 on a
+// desktop while the camera aims at a point 6.7 away, so they are barely
+// three units from the lens and a rectangle drawn at one size comes out
+// enormous. Measured at 0.78 wide it was 307 pixels across on a desktop
+// against 105 on a phone — three times the size on the screen with more
+// room, overlapping its neighbours by 51 pixels and covering him.
+//
+// These are chosen from the measurement instead: about 78 pixels on a
+// phone, where four have to fit across 375, and about 130 on a desktop.
+export const cardFor = (narrow) =>
+  narrow ? { w: 0.58, h: 0.43 } : { w: 0.33, h: 0.245 }
+
 // The curve a branch takes from his head out to its node.
 //
 // A straight spoke looks like a diagram, so it bows. Both offsets are
@@ -139,11 +153,18 @@ export function branchCurve(head, node, segments = 40) {
 // The row is spaced 0.69 apart, which is 86 pixels there — enough for a
 // photo rectangle between each with a gap.
 const FAN = {
+  // Tightened from a 1.9 drop to 1.37: measured on a 1440x820 desktop, the
+  // fourth branch sat at y 859 on an 820-tall screen, so Friends and its
+  // label hung off the bottom edge.
+  //
+  // And every x offset is now at least 0.34, so the column stays to his
+  // right. The last one used to be -0.06 — left of the node, which put a
+  // 300-pixel photograph straight over the person it is a photograph of.
   wide: [
-    [0.34, -0.3, 0.1],
-    [0.4, -0.9, -0.05],
-    [0.26, -1.45, 0.15],
-    [-0.06, -1.9, -0.1],
+    [0.34, -0.22, 0.1],
+    [0.44, -0.65, -0.05],
+    [0.44, -1.05, 0.15],
+    [0.34, -1.37, -0.1],
   ],
   narrow: [
     [-1.04, -0.31, 0],
@@ -426,11 +447,11 @@ export function branchView(narrow) {
     const right = forward.clone().cross(UP).normalize()
     return { pos, look: CHEST.clone().addScaledVector(right, -BRANCH_AIM) }
   }
-  // Aimed low, which lifts everything up the screen: the row of branches
-  // lands near the top of the free band and the top of his head just under
-  // it, so a phone shows the same thing a desktop does — photographs
-  // growing out of him — inside 227 pixels.
-  return { pos, look: new THREE.Vector3(0, -0.69, 0) }
+  // Aimed low, which lifts everything up the screen. At -0.69 the row
+  // landed correctly but he did not: only 18 pixels of his scalp cleared
+  // the panel, 14 per cent of him, which is not a model of anyone. This
+  // puts the row near the top of the free band and all of him under it.
+  return { pos, look: new THREE.Vector3(0, -1.41, 0) }
 }
 
 export const BRANCH_VIEW = branchView(false)
