@@ -30,6 +30,7 @@ export default function SubNodes({ branches, chapterId, narrow, accent, active, 
           index={i}
           chapterId={chapterId}
           card={card}
+          narrow={narrow}
           accent={accent}
           state={!active ? 'idle' : active === b.id ? 'on' : 'off'}
           zoom={zoom}
@@ -40,7 +41,7 @@ export default function SubNodes({ branches, chapterId, narrow, accent, active, 
   )
 }
 
-function SubNode({ branch, index, chapterId, card: size, accent, state, onPick, zoom }) {
+function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, onPick, zoom }) {
   const W = size.w
   const H = size.h
   const [hover, setHover] = useState(false)
@@ -128,14 +129,21 @@ function SubNode({ branch, index, chapterId, card: size, accent, state, onPick, 
 
   return (
     <group>
-      <Line
-        ref={line}
-        points={curve}
-        color={accent}
-        transparent
-        opacity={0}
-        lineWidth={state === 'on' || hover ? 2 : 1}
-      />
+      {/* The connector, on a desktop only. There the branches fan down a
+          column and the line says which node they came from. On a phone
+          they are a row sitting directly under that node, so the line has
+          nothing to explain — and measured, it ran horizontally straight
+          across the top edge of the two middle photographs. */}
+      {!narrow && (
+        <Line
+          ref={line}
+          points={curve}
+          color={accent}
+          transparent
+          opacity={0}
+          lineWidth={state === 'on' || hover ? 2 : 1}
+        />
+      )}
 
       <mesh
         ref={card}
@@ -177,15 +185,25 @@ function SubNode({ branch, index, chapterId, card: size, accent, state, onPick, 
         lineWidth={state === 'on' || hover ? 1.6 : 1}
       />
 
+      {/* On a desktop the name hangs under its picture; there is a column
+          of them and room below each. On a phone it sits along the bottom
+          edge of the picture instead — the row ends 12 pixels above the top
+          of his head, so a name underneath lands on his face. */}
       <Html
-        position={[branch.pos.x, branch.pos.y - H / 2 - 0.09, branch.pos.z]}
+        position={[
+          branch.pos.x,
+          branch.pos.y - H / 2 + (narrow ? 0.07 : -0.09),
+          branch.pos.z,
+        ]}
         center
         distanceFactor={2.6}
         zIndexRange={[9, 0]}
       >
         <button
           ref={label}
-          className={'sub-label' + (hover ? ' is-hot' : '')}
+          className={
+            'sub-label' + (hover ? ' is-hot' : '') + (narrow ? ' is-on-photo' : '')
+          }
           style={{ '--node': accent, opacity: 0 }}
           onMouseEnter={() => setHover(true)}
           onMouseLeave={() => setHover(false)}

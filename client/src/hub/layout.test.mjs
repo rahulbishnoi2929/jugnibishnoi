@@ -430,10 +430,23 @@ test('inside a branch you can see all of him, and all of the branches', () => {
         p.y - height > s.safeTop,
         `${s.name}: a branch rectangle runs off the top at ${(p.y - height).toFixed(0)}`
       )
+      // The label hangs under the picture on a desktop and sits on its
+      // bottom edge on a phone, where there is no room under it.
+      const labelAt = narrow ? p.y + height : p.y + height + 26
       assert.ok(
-        p.y + height + 26 < s.free,
-        `${s.name}: a branch label at ${(p.y + height + 26).toFixed(0)} is behind the panel`
+        labelAt < s.free,
+        `${s.name}: a branch label at ${labelAt.toFixed(0)} is behind the panel`
       )
+      // On a phone the row sits directly above him, so a label under it
+      // lands on his face — which is why the name moved onto the bottom
+      // edge of the picture there. On a desktop the column is beside him
+      // and a label lower than his crown is simply a label lower down.
+      if (narrow) {
+        assert.ok(
+          labelAt < crown.y,
+          `${s.name}: a branch label at ${labelAt.toFixed(0)} lands on his head at ${crown.y.toFixed(0)}`
+        )
+      }
       assert.ok(
         p.x > 0 && p.x < s.w,
         `${s.name}: a branch sits at x ${p.x.toFixed(0)} on a ${s.w}-wide screen`

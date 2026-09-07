@@ -50,9 +50,12 @@ function Node({ node, index, state, onPick, zoom, head }) {
     })
   }, [curve, node.accent])
 
-  // Travelling to one branch mutes the other four rather than hiding them:
-  // you should still see what you did not pick.
-  const targetOpacity = state === 'off' ? 0.06 : state === 'on' ? 1 : hover ? 0.95 : 0.42
+  // Travelling to one branch keeps the other four as dots and drops their
+  // lines. They used to stay at 0.06, which is almost nothing to look at
+  // and still four full-length curves sweeping right across the top of the
+  // screen and out of frame — most of what made the branches read as too
+  // long once you were inside a chapter.
+  const targetOpacity = state === 'off' ? 0 : state === 'on' ? 1 : hover ? 0.95 : 0.42
   // 'on' stays small: the camera is right next to it, so 1.6 fills the screen.
   const targetScale = state === 'off' ? 0.4 : state === 'on' ? 0.7 : hover ? 1.6 : 1
 

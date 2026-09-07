@@ -342,11 +342,7 @@ export default function Hub() {
                       opacity={0.55}
                       color="#000000"
                     />
-                    <Figure
-                      facing={active ? nodes.find((n) => n.id === active)?.pos : null}
-                      bob={bob}
-                      scale={figureFor(narrow)}
-                    />
+                    <Figure bob={bob} scale={figureFor(narrow)} />
 
                     {/* Everything growing out of his head rides with it. */}
                     <Breathe bob={bob}>

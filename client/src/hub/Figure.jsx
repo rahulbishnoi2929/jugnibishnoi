@@ -25,7 +25,7 @@ const SHOULDER = H - HEAD_R * 2 * 1.5 // a head and a half from the top
 const HAND = 0.8 // fingertips reach mid-thigh
 const HALF_SHOULDER = 0.225 // two heads across, including the arms
 
-export default function Figure({ facing, bob, scale = 1 }) {
+export default function Figure({ bob, scale = 1 }) {
   const group = useRef()
   const chest = useRef()
   const armL = useRef()
@@ -44,15 +44,14 @@ export default function Figure({ facing, bob, scale = 1 }) {
     if (bob) bob.current = rise * scale
     chest.current.scale.y = 1 + Math.sin(t * 0.9) * 0.022
 
-    // Turning with the cursor is the turntable's job now — he and the
-    // branches move as one thing. All he does himself is face the branch
-    // you travelled to.
-    const target = facing ? Math.atan2(facing.x, facing.z + 2.2) : 0
-    group.current.rotation.y = THREE.MathUtils.lerp(
-      group.current.rotation.y,
-      target,
-      k
-    )
+    // He does not turn at all any more.
+    //
+    // He used to swing towards whichever branch you had travelled to,
+    // which was right when the camera swung round to the branch — but the
+    // turntable spins the branch to the front instead now, so the turn was
+    // being counted twice. Measured: the rig rotates -144 degrees to bring
+    // Campus forward and he then added 44 of his own, leaving him facing
+    // 100 degrees off the camera. Standing sideways.
 
     // Weight shifting from foot to foot, and arms that follow it.
     group.current.rotation.z = Math.sin(t * 0.45) * 0.016

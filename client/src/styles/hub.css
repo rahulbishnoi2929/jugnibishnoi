@@ -353,6 +353,18 @@
   color: var(--node);
 }
 
+/* On a phone the name sits along the bottom edge of its photograph rather
+   than under it, so it needs something to be legible against. */
+.sub-label.is-on-photo {
+  background: linear-gradient(
+    0deg,
+    color-mix(in srgb, var(--bg) 88%, transparent) 0%,
+    color-mix(in srgb, var(--bg) 55%, transparent) 100%
+  );
+  padding: var(--s1) var(--s2) 3px;
+  border-radius: 2px;
+}
+
 @media (max-width: 520px) {
   /* The title goes to the top of a phone, not the bottom — which is the
      same width the 3D switches its own layout at, so the two agree.
