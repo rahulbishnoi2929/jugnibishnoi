@@ -161,10 +161,18 @@ function Node({ node, index, state, onPick, zoom, head }) {
         center
         distanceFactor={8}
         zIndexRange={[10, 0]}
+        // The wrapper never takes the pointer; the button inside opts back
+        // in through CSS. drei's Html wrapper is a real div the size of its
+        // contents, and it used to be 'auto' whenever the label was not the
+        // open chapter — including when the label was muted and its own
+        // button was pointer-events:none. That left eight invisible
+        // rectangles, up to 104x63, lying across the middle of the screen
+        // and swallowing every click aimed at what was behind them. Which
+        // was the row of photographs.
         style={{
           opacity: state === 'on' ? 0 : 1,
           transition: 'opacity 300ms ease',
-          pointerEvents: state === 'on' ? 'none' : 'auto',
+          pointerEvents: 'none',
         }}
       >
         <button

@@ -254,6 +254,9 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
         center
         distanceFactor={2.6}
         zIndexRange={[9, 0]}
+        // Same reason as the chapter labels: the wrapper is a real div and
+        // must not sit on the photograph it is naming.
+        style={{ pointerEvents: 'none' }}
       >
         <button
           ref={label}

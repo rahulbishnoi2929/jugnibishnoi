@@ -81,6 +81,13 @@
 
 /* ---------- node labels (rendered into the canvas via drei Html) ---------- */
 
+.node-label,
+.sub-label {
+  /* The drei wrapper around these is pointer-events:none so it cannot eat
+     clicks meant for the scene behind it. The button itself opts back in. */
+  pointer-events: auto;
+}
+
 .node-label {
   display: grid;
   gap: 1px;

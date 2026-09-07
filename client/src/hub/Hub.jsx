@@ -130,22 +130,38 @@ export default function Hub() {
   const back = useRef(null)
   const copy = useRef(null)
 
-  const onDown = (e) => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return
-    // Capture, so the release reaches us even if the pointer ends up
-    // outside the window. Without it a drag that left the page never
-    // ended, and every later move kept turning the ring with no button
-    // held down.
-    // Throws NotFoundError if the id is not a live pointer, and losing the
-    // handler to that would drop the gesture entirely.
+  // Capture is taken when a drag starts, not when a finger lands.
+  //
+  // It used to be taken on pointerdown, and that silently broke every click
+  // in the scene. A captured pointer sends its pointerup to the capturing
+  // element, so the browser fires the click on this div rather than on the
+  // canvas underneath it — React Three Fiber listens on the canvas, so no
+  // mesh ever saw a click, and neither did the labels. Measured: pointerdown
+  // arrived, click never did.
+  //
+  // Held once the pointer has moved a few pixels, which is the point it
+  // stops being a tap. That still buys what capture was there for — a drag
+  // that leaves the window keeps sending moves and ends properly.
+  const held = useRef(false)
+  const travel = useRef(0)
+  const grab = (e) => {
+    if (held.current) return
     try {
       e.currentTarget.setPointerCapture?.(e.pointerId)
+      held.current = true
     } catch {}
+  }
+
+  const onDown = (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    travel.current = 0
 
     if (pointers.current.size === 2) {
       const [a, b] = [...pointers.current.values()]
       pinch.current = { gap: Math.hypot(a.x - b.x, a.y - b.y), zoom: want.current }
+      // Two fingers are never a tap, so this one can be held at once.
+      grab(e)
       // A pinch is not a drag. Drop the rotation anchor or the ring lurches
       // as the second finger lands.
       from.current = null
@@ -177,6 +193,10 @@ export default function Hub() {
     }
 
     if (!from.current) return
+    // A tap wanders a pixel or two. Past six it is a drag, and only then is
+    // the pointer worth holding on to.
+    travel.current += Math.abs(e.clientX - from.current.x) + Math.abs(e.clientY - from.current.y)
+    if (travel.current > 6) grab(e)
     drag.current.x += (e.clientX - from.current.x) * 0.011
     // Tilt is clamped — past about 25° you are looking at the top of his
     // head and the branches collapse into a line.
@@ -198,6 +218,8 @@ export default function Hub() {
       from.current = { ...only }
     } else if (pointers.current.size === 0) {
       from.current = null
+      held.current = false
+      travel.current = 0
       setDragging(false)
     }
   }
