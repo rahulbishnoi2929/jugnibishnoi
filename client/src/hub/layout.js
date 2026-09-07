@@ -23,7 +23,12 @@ export const BODY_TOP = HEAD_Y + HEAD_R
 // radius that the desktop one is, so the whole thing is the same shape at
 // both sizes. Scaling him rather than moving the rings is what keeps the
 // ring's width, its openness, and every label position exactly as measured.
-export const figureFor = (narrow) => (narrow ? 0.64 : 1)
+// The camera sits at 2.4 and cannot go much higher without looking down on
+// the top of everything, so how steeply a branch rises out of his head is
+// mostly a question of how far below the ring his head is. Shrinking him is
+// the lever that has: at full size on a desktop his head was 1.97 against a
+// ring at 2.25, and the branches came out five degrees off flat.
+export const figureFor = (narrow) => (narrow ? 0.64 : 0.8)
 
 // The crown, not the centre of the skull — 0.06 put the junction inside
 // his head, so the branches read as passing through his face.
@@ -71,9 +76,20 @@ export const fitFor = (w) => (w < 520 ? 1.35 : w < 760 ? 1.15 : 1)
 //
 // The 0.80 between the two rings is measured, not chosen. At 0.63 the two
 // sets of labels still overlapped by 59 pixels; at 0.80 they clear.
+// Both rings sit above his head on both screens now, and by enough to
+// read as rising rather than lying flat.
+//
+// The number that matters is the angle a branch leaves his head at, and it
+// was bad: on a desktop the chapters rose 5 degrees and the rooms fell 19,
+// which is a starburst drooping towards the ground rather than branches. On
+// a phone the chapters were fine at 32 and the rooms flat at 9. Measured
+// after: 19 and 15 on a desktop, 34 and 20 on a phone.
+//
+// Raising a ring is only half of it. The other half is how far his head is
+// below it, which is why the figure scale moved too — see figureFor.
 const RING = {
-  wide: { chapters: { r: 3.0, y: 2.25 }, rooms: { r: 2.5, y: 1.1 } },
-  narrow: { chapters: { r: 1.55, y: 2.22 }, rooms: { r: 1.02, y: 1.42 } },
+  wide: { chapters: { r: 3.0, y: 2.6 }, rooms: { r: 2.2, y: 2.15 } },
+  narrow: { chapters: { r: 1.55, y: 2.32 }, rooms: { r: 1.02, y: 1.63 } },
 }
 
 
@@ -166,11 +182,14 @@ const FAN = {
     [0.44, -1.05, 0.15],
     [0.34, -1.37, -0.1],
   ],
+  // Dropped by 0.10 when the chapter ring rose to 2.32, since the row
+  // hangs off that node: without it the top of a rectangle landed at y 44,
+  // under a phone's status bar.
   narrow: [
-    [-1.04, -0.31, 0],
-    [-0.35, -0.24, 0],
-    [0.35, -0.24, 0],
-    [1.04, -0.31, 0],
+    [-1.04, -0.41, 0],
+    [-0.35, -0.34, 0],
+    [0.35, -0.34, 0],
+    [1.04, -0.41, 0],
   ],
 }
 

@@ -309,10 +309,16 @@ test('the branches leave the top of his head and stay off him', () => {
   // He is smaller on a phone and full size elsewhere, and the junction the
   // branches leave from moves with him — one left behind would hang them in
   // the air above his head.
-  assert.equal(figureFor(false), 1)
-  assert.ok(figureFor(true) < 1)
+  assert.ok(figureFor(true) < figureFor(false), 'he should be smaller on a phone')
+  // The junction rides his scale exactly — one left behind would hang the
+  // branches in the air above his head. Compared as a ratio of the two
+  // sizes rather than against the phone's alone, because neither of them
+  // is 1 any more: he is 0.8 on a desktop as well, which is what gives the
+  // branches an angle to leave at.
   assert.ok(
-    Math.abs(headFor(true).y / headFor(false).y - figureFor(true)) < 1e-9,
+    Math.abs(
+      headFor(true).y / headFor(false).y - figureFor(true) / figureFor(false)
+    ) < 1e-9,
     'the branch junction does not scale with him'
   )
 })
