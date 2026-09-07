@@ -412,9 +412,10 @@ test('inside a branch you can see all of him, and all of the branches', () => {
 
   const SCREENS = [
     // The panel is a bottom sheet at 60vh on a phone and a left column on
-    // a desktop, both from hub.css.
-    { name: 'phone', w: 375, h: 812, free: Math.round(812 * 0.4), safeTop: 47 },
-    { name: 'desktop', w: 1440, h: 820, free: 820, safeTop: 0 },
+    // a desktop, both from hub.css. `wall` is that column's right edge:
+    // min(46ch, 52vw), which at 1440 is the 46ch, about 430 pixels.
+    { name: 'phone', w: 375, h: 812, free: Math.round(812 * 0.4), safeTop: 47, wall: 0 },
+    { name: 'desktop', w: 1440, h: 820, free: 820, safeTop: 0, wall: 430 },
   ]
 
   for (const s of SCREENS) {
@@ -469,19 +470,19 @@ test('inside a branch you can see all of him, and all of the branches', () => {
         labelAt < s.free,
         `${s.name}: a branch label at ${labelAt.toFixed(0)} is behind the panel`
       )
-      // On a phone the row sits directly above him, so a label under it
-      // lands on his face — which is why the name moved onto the bottom
-      // edge of the picture there. On a desktop the column is beside him
-      // and a label lower than his crown is simply a label lower down.
-      if (narrow) {
-        assert.ok(
-          labelAt < crown.y,
-          `${s.name}: a branch label at ${labelAt.toFixed(0)} lands on his head at ${crown.y.toFixed(0)}`
-        )
-      }
+      // The row sits above him on both screens, so its label must clear
+      // his head too — which on a phone is why the name moved onto the
+      // bottom edge of the picture rather than under it.
       assert.ok(
-        p.x > 0 && p.x < s.w,
-        `${s.name}: a branch sits at x ${p.x.toFixed(0)} on a ${s.w}-wide screen`
+        labelAt < crown.y,
+        `${s.name}: a branch label at ${labelAt.toFixed(0)} lands on his head at ${crown.y.toFixed(0)}`
+      )
+      const wide = Math.abs(
+        p.x - at(new THREE.Vector3(b.pos.x + card.w / 2, b.pos.y, b.pos.z)).x
+      )
+      assert.ok(
+        p.x - wide > s.wall && p.x + wide < s.w,
+        `${s.name}: a branch spans x ${(p.x - wide).toFixed(0)}-${(p.x + wide).toFixed(0)}, outside the ${s.wall}-${s.w} strip it has`
       )
     }
 
@@ -490,11 +491,18 @@ test('inside a branch you can see all of him, and all of the branches', () => {
     // -32, -56, -66 and -75 degrees on a desktop, which is a rope with
     // photographs tied to it.
     //
-    // On a phone the four are also required to leave at the SAME angle,
-    // because they are a row: a flat row cannot, since the inner pair have
-    // less width to fall across, and they hung at -44 next to -22.
+    // All four are also required to leave at the SAME angle, because they
+    // are a row: a flat row cannot, since the inner pair have less width to
+    // fall across, and on the phone they hung at -44 next to -22.
+    //
+    // Measured from the row's own axis rather than from the node. On a
+    // phone those are the same point. On a desktop the row is shifted a
+    // tenth of a unit off the node to cancel parallax, and an angle taken
+    // from the node there says a level row is lopsided.
+    const axis = subs.reduce((a, b) => a + b.pos.x, 0) / subs.length
     const rise = subs.map((b) => {
       const d = b.pos.clone().sub(spun)
+      d.x = b.pos.x - axis
       return (Math.atan2(d.y, Math.hypot(d.x, d.z)) * 180) / Math.PI
     })
     for (const a of rise) {
@@ -503,18 +511,17 @@ test('inside a branch you can see all of him, and all of the branches', () => {
         `${s.name}: a branch leaves the node at ${a.toFixed(0)} degrees, which is a rope`
       )
     }
-    if (narrow) {
-      const spread = Math.max(...rise) - Math.min(...rise)
-      assert.ok(
-        spread < 2,
-        `${s.name}: the row leaves at ${rise.map((a) => a.toFixed(0)).join(', ')} — ${spread.toFixed(0)} degrees apart`
-      )
-    }
+    const spread = Math.max(...rise) - Math.min(...rise)
+    assert.ok(
+      spread < 2,
+      `${s.name}: the row leaves at ${rise.map((a) => a.toFixed(0)).join(', ')} — ${spread.toFixed(0)} degrees apart`
+    )
 
-    // And no rectangle may sit on him. On a phone that means the row is
-    // above his head; on a desktop the fan is a column beside him instead,
-    // so there it means clear of him sideways. Either way: not on top of
-    // the person the photographs are of.
+    // The row goes over his head, and is centred on him. This is the whole
+    // point of it: on a desktop these used to be a column standing beside
+    // him in the strip left over by the reading panel, which is not what a
+    // branch growing out of a head looks like. The camera aim moved so that
+    // he stands in the middle of that strip and they hang above him.
     const half = 0.24 * fig
     const body = {
       l: at(new THREE.Vector3(-half, (BODY_TOP * fig) / 2, 0)).x,
@@ -522,24 +529,24 @@ test('inside a branch you can see all of him, and all of the branches', () => {
       t: crown.y,
       b: feet.y,
     }
-    for (const b of subs) {
+    const box = subs.map((b) => {
       const p = at(b.pos)
-      const edge = Math.abs(
-        p.y - at(new THREE.Vector3(b.pos.x, b.pos.y + card.h / 2, b.pos.z)).y
-      )
-      const wide = Math.abs(
-        p.x - at(new THREE.Vector3(b.pos.x + card.w / 2, b.pos.y, b.pos.z)).x
-      )
-      const over =
-        p.x + wide > body.l &&
-        p.x - wide < body.r &&
-        p.y + edge > body.t &&
-        p.y - edge < body.b
-      assert.ok(
-        !over,
-        `${s.name}: a branch rectangle at ${p.x.toFixed(0)},${p.y.toFixed(0)} is on top of him`
-      )
-    }
+      return {
+        l: p.x - Math.abs(p.x - at(new THREE.Vector3(b.pos.x + card.w / 2, b.pos.y, b.pos.z)).x),
+        r: p.x + Math.abs(p.x - at(new THREE.Vector3(b.pos.x + card.w / 2, b.pos.y, b.pos.z)).x),
+        b: p.y + Math.abs(p.y - at(new THREE.Vector3(b.pos.x, b.pos.y + card.h / 2, b.pos.z)).y),
+      }
+    })
+    assert.ok(
+      Math.max(...box.map((b) => b.b)) < body.t,
+      `${s.name}: the lowest rectangle reaches ${Math.max(...box.map((b) => b.b)).toFixed(0)} and his head is at ${body.t.toFixed(0)} — it is beside him, not over him`
+    )
+    const rowMid = (Math.min(...box.map((b) => b.l)) + Math.max(...box.map((b) => b.r))) / 2
+    const himMid = (body.l + body.r) / 2
+    assert.ok(
+      Math.abs(rowMid - himMid) < 40,
+      `${s.name}: the row is centred on ${rowMid.toFixed(0)} and he is at ${himMid.toFixed(0)}`
+    )
   }
 })
 

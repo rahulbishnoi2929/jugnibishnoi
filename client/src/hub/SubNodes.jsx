@@ -17,6 +17,9 @@ import { coverCrop, previewMaterial } from './shaders.js'
 //
 // The size comes from layout.js and differs by viewport, because these sit
 // much nearer the camera than the point it is aimed at — see cardFor.
+//
+// They hang over his head on both screens. On a desktop they used to be a
+// column beside him, which is not what a branch off a head does.
 const HOLD = 2.0 // seconds on each picture
 const FADE = 0.7 // seconds to cross from one to the next
 const MOST = 6 // how many of a branch's photographs to cycle through
@@ -53,7 +56,6 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
   const [hover, setHover] = useState(false)
   const card = useRef()
   const frame = useRef()
-  const line = useRef()
   const label = useRef()
   const grew = useRef(0)
 
@@ -71,13 +73,6 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
   const material = useMemo(() => previewMaterial(), [])
   useEffect(() => () => material.dispose(), [material])
   const shown = useRef({ at: 0, a: 0, b: 1 })
-
-  const curve = useMemo(() => {
-    const mid = branch.parent.clone().lerp(branch.pos, 0.55)
-    mid.x += 0.22
-    mid.y += 0.12
-    return new THREE.QuadraticBezierCurve3(branch.parent, mid, branch.pos).getPoints(24)
-  }, [branch])
 
   // The frame around the picture, as a closed loop.
   const outline = useMemo(() => {
@@ -120,13 +115,6 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
       frame.current.material.opacity = THREE.MathUtils.lerp(
         frame.current.material.opacity,
         lit * (hover || state === 'on' ? 0.9 : 0.35),
-        k
-      )
-    }
-    if (line.current) {
-      line.current.material.opacity = THREE.MathUtils.lerp(
-        line.current.material.opacity,
-        !on ? 0 : state === 'off' ? 0.1 : 0.5,
         k
       )
     }
@@ -175,22 +163,12 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
 
   return (
     <group>
-      {/* The connector, on a desktop only. There the branches fan down a
-          column and the line says which node they came from. On a phone
-          they are a row sitting directly under that node, so the line has
-          nothing to explain — and measured, it ran horizontally straight
-          across the top edge of the two middle photographs. */}
-      {!narrow && (
-        <Line
-          ref={line}
-          points={curve}
-          color={accent}
-          transparent
-          opacity={0}
-          lineWidth={state === 'on' || hover ? 2 : 1}
-        />
-      )}
-
+      {/* No connector. It used to run from the node down a desktop column
+          and say which node the column came from. The row sits directly
+          under its node now on both screens, so the line has nothing left
+          to explain — and measured on the phone, where the row came first,
+          it ran horizontally across the top edge of the middle two
+          photographs. */}
       <mesh
         ref={card}
         position={branch.pos}
@@ -217,8 +195,7 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
           rather than as a floating rectangle of colour.
           drei's Line rather than a raw <line> with an inline
           bufferAttribute: the pane this was written in cannot render a
-          frame, so an untested JSX shape would go out unverified, and this
-          one is already doing the branch curve two elements up. */}
+          frame, so an untested JSX shape would go out unverified. */}
       <Line
         ref={frame}
         points={outline}
@@ -229,10 +206,11 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
         lineWidth={state === 'on' || hover ? 1.6 : 1}
       />
 
-      {/* On a desktop the name hangs under its picture; there is a column
-          of them and room below each. On a phone it sits along the bottom
-          edge of the picture instead — the row ends 12 pixels above the top
-          of his head, so a name underneath lands on his face. */}
+      {/* On a desktop the name hangs under its picture: the row clears his
+          crown by 156 pixels, so there is room for one. On a phone it sits
+          along the bottom edge of the picture instead — there the row ends
+          12 pixels above his head and a name underneath lands on his
+          face. */}
       <Html
         position={[
           branch.pos.x,

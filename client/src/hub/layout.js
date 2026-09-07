@@ -121,7 +121,7 @@ export function placeRooms(rooms, narrow) {
 // These are chosen from the measurement instead: about 78 pixels on a
 // phone, where four have to fit across 375, and about 130 on a desktop.
 export const cardFor = (narrow) =>
-  narrow ? { w: 0.58, h: 0.43 } : { w: 0.33, h: 0.245 }
+  narrow ? { w: 0.58, h: 0.43 } : { w: 0.52, h: 0.386 }
 
 // The curve a branch takes from his head out to its node.
 //
@@ -169,25 +169,29 @@ export function branchCurve(head, node, segments = 40) {
 // The row is spaced 0.69 apart, which is 86 pixels there — enough for a
 // photo rectangle between each with a gap.
 const FAN = {
-  // An arc rather than a column. Measured, the old one left the node at
-  // -32, -56, -66 and -75 degrees: four photographs on a rope. A branch
-  // leaves its trunk rising, levels off and then dips under its own weight,
-  // which is what these do now — +5, -21, -42, -55.
+  // A row over his head, the same shape as the phone's, because a column
+  // beside him is not what a branch coming off a head looks like.
   //
-  // Wider was tried and mostly does not fit. These sit barely three units
-  // from the camera so a world unit is nearly 400 pixels across, and an arc
-  // pushed out far enough to shallow every angle ran the third photograph
-  // off the right-hand edge. The last one alone had the room, and uses it:
-  // out to 0.66 takes it from -61 to -55.
+  // Aiming the camera 1.85 units to his left used to push him right and
+  // leave the strip beside him for the pictures. That is where the column
+  // lived. The aim is 1.2 now, which lands him at x 933 on a 1440 screen —
+  // the free strip between the reading panel and the right edge is centred
+  // on 935 — and the pictures go above him instead.
   //
-  // The whole arc then dropped 0.06. Reaching for the shallowest first
-  // angle put the top of that rectangle ten pixels from the edge of the
-  // screen; this leaves it thirty-four.
+  // Worth the move on its own: the row has the full width of that strip
+  // rather than the leftovers, so a preview went from 137x97 pixels to
+  // 172x135. Swept over aim, camera distance, card size and span; this was
+  // the largest card that cleared the panel, the top edge and his head.
+  //
+  // Shifted 0.1 to his left, which is parallax and not taste: the node is
+  // three units nearer the lens than he is, so a rectangle at world x 0
+  // projects 39 pixels right of a man at world x 0. This cancels it, and
+  // the row comes out centred on him within 6 pixels.
   wide: [
-    [0.42, 0.04, 0.1],
-    [0.62, -0.24, -0.05],
-    [0.66, -0.61, 0.15],
-    [0.66, -0.96, -0.1],
+    [-1.05, -0.346, 0],
+    [-0.417, -0.115, 0],
+    [0.217, -0.115, 0],
+    [0.85, -0.346, 0],
   ],
   // All four leave at the same angle. A flat row cannot do that — the ones
   // nearest the middle have less width to fall across, so they hung at -44
@@ -467,10 +471,10 @@ export function depthFade(world, cameraPos) {
 //
 // So a phone aims straight at him and sits back far enough to fit the row
 // of branches into the band above the panel.
-const BRANCH_AIM = 1.85 // how far left of him to look, on a wide screen
+const BRANCH_AIM = 1.2 // how far left of him to look, on a wide screen
 
 export function branchView(narrow) {
-  const pos = new THREE.Vector3(0, narrow ? 2.6 : 2.25, narrow ? 7.4 : 6.4)
+  const pos = new THREE.Vector3(0, narrow ? 2.6 : 2.25, narrow ? 7.4 : 6.2)
   if (!narrow) {
     const forward = CHEST.clone().sub(pos).normalize()
     const right = forward.clone().cross(UP).normalize()
