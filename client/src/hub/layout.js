@@ -117,12 +117,32 @@ export function branchCurve(head, node, segments = 40) {
 // known angle while a chapter is open, so this needs no extra maths.
 // Down and to the right of the node: above it is off the top of the frame,
 // and left of it is under the reading panel.
-const FAN = [
-  [0.34, -0.3, 0.1],
-  [0.4, -0.9, -0.05],
-  [0.26, -1.45, 0.15],
-  [-0.06, -1.9, -0.1],
-]
+// Down and to the right on a desktop, where the reading panel is a column
+// down the left and the figure sits in the right half.
+//
+// A phone is not that. There the panel is a bottom sheet over 72% of the
+// screen, which leaves a band 375 by 227 above it — so the branches go in a
+// row across that band instead. Measured before this existed, every one of
+// the four sat at x 410 to 465 on a 375-wide screen and below y 344 on a
+// band that ends at 227: the whole fan was off the side and under the
+// panel at once, and you could open Campus on a phone and see none of it.
+//
+// The row is spaced 0.69 apart, which is 86 pixels there — enough for a
+// photo rectangle between each with a gap.
+const FAN = {
+  wide: [
+    [0.34, -0.3, 0.1],
+    [0.4, -0.9, -0.05],
+    [0.26, -1.45, 0.15],
+    [-0.06, -1.9, -0.1],
+  ],
+  narrow: [
+    [-1.04, -0.31, 0],
+    [-0.35, -0.24, 0],
+    [0.35, -0.24, 0],
+    [1.04, -0.31, 0],
+  ],
+}
 
 export function placeBranches(node, branches = [], narrow) {
   // The offsets are what we want to see on screen, but these nodes live
@@ -131,9 +151,13 @@ export function placeBranches(node, branches = [], narrow) {
   // without this the fan swung round and opened behind the panel.
   const spin = node.angle ?? 0
 
+  const fan = narrow ? FAN.narrow : FAN.wide
+
   return branches.map((b, i) => {
-    const k = narrow ? 0.68 : 1
-    const [dx, dy, dz] = FAN[i % FAN.length]
+    // The narrow row is already sized for its screen; only the desktop
+    // column was ever scaled.
+    const k = 1
+    const [dx, dy, dz] = fan[i % fan.length]
     const offset = new THREE.Vector3(dx * k, dy * k, dz * k).applyAxisAngle(
       new THREE.Vector3(0, 1, 0),
       spin
@@ -374,17 +398,33 @@ export function depthFade(world, cameraPos) {
 //
 // The camera used to swing round to the branch's own side of the ring,
 // which meant a branch behind him stayed behind him.
-export const BRANCH_VIEW = (() => {
-  const pos = new THREE.Vector3(0, 2.25, 6.4)
+// Where the camera goes when a chapter is open.
+//
+// On a desktop it aims left of him, so he sits in the right half and the
+// reading panel gets the left to itself. On a phone the panel is a bottom
+// sheet rather than a column, so there is nothing to make room for
+// sideways — and aiming left there pushed him and every one of his
+// branches clean off the right edge of the screen.
+//
+// So a phone aims straight at him and sits back far enough to fit the row
+// of branches into the band above the panel.
+const BRANCH_AIM = 1.85 // how far left of him to look, on a wide screen
 
-  // Aim left of him, so he sits in the right half and the panel gets the
-  // left half to itself.
-  const forward = CHEST.clone().sub(pos).normalize()
-  const right = forward.clone().cross(UP).normalize()
-  const look = CHEST.clone().addScaledVector(right, -1.85)
+export function branchView(narrow) {
+  const pos = new THREE.Vector3(0, narrow ? 2.6 : 2.25, narrow ? 7.4 : 6.4)
+  if (!narrow) {
+    const forward = CHEST.clone().sub(pos).normalize()
+    const right = forward.clone().cross(UP).normalize()
+    return { pos, look: CHEST.clone().addScaledVector(right, -BRANCH_AIM) }
+  }
+  // Aimed low, which lifts everything up the screen: the row of branches
+  // lands near the top of the free band and the top of his head just under
+  // it, so a phone shows the same thing a desktop does — photographs
+  // growing out of him — inside 227 pixels.
+  return { pos, look: new THREE.Vector3(0, -0.69, 0) }
+}
 
-  return { pos, look }
-})()
+export const BRANCH_VIEW = branchView(false)
 
 // The turntable angle that puts a node at the front of the ring, chosen as
 // the equivalent nearest the current angle so it takes the short way round

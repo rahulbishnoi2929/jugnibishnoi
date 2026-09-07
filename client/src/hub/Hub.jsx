@@ -17,7 +17,7 @@ import {
   placeRooms,
   placeBranches,
   HOME_VIEW,
-  BRANCH_VIEW,
+  branchView,
   spinToFront,
   applyZoom,
   ZOOM_MIN,
@@ -73,7 +73,10 @@ export default function Hub() {
   const openable = nodes.filter((n) => n.kind !== 'link')
   const active = openable.some((n) => n.id === id) ? id : null
   const chapter = openable.find((n) => n.id === active)
-  const view = active ? BRANCH_VIEW : HOME_VIEW
+  const view = useMemo(
+    () => (active ? branchView(narrow) : HOME_VIEW),
+    [active, narrow]
+  )
 
   // A chapter's own branches, and which of them is open.
   const activeNode = nodes.find((n) => n.id === active)
@@ -358,6 +361,7 @@ export default function Hub() {
                       {branches.length > 0 && (
                         <SubNodes
                           branches={branches}
+                          chapterId={active}
                           accent={activeNode.accent}
                           active={sub}
                           zoom={zoom}
