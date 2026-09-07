@@ -1,9 +1,16 @@
 import * as THREE from 'three'
 
-// How high his head sits. Lives here rather than in Figure.jsx so this
-// module stays plain geometry with no React in its import graph — that is
-// what lets layout.test.mjs run it under node. Figure imports it back.
-export const HEAD_Y = 1.78
+// How high his head sits, and how big it is. Both live here rather than in
+// Figure.jsx so this module stays plain geometry with no React in its
+// import graph — that is what lets layout.test.mjs run it under node.
+// Figure imports them back.
+//
+// He is 1.95 tall and his head is 0.26, which is 7.5 heads. That is the
+// proportion of an adult; he was 5.7 before, which is why he read a little
+// like a toy.
+export const HEAD_R = 0.13
+export const HEAD_Y = 1.82
+export const BODY_TOP = HEAD_Y + HEAD_R
 
 // How big he is drawn, for a given viewport.
 //
@@ -20,8 +27,10 @@ export const figureFor = (narrow) => (narrow ? 0.64 : 1)
 
 // The crown, not the centre of the skull — 0.06 put the junction inside
 // his head, so the branches read as passing through his face.
+// Just above the crown, not the centre of the skull: a junction inside his
+// head reads as branches passing through his face.
 export const headFor = (narrow) =>
-  new THREE.Vector3(0, (HEAD_Y + 0.15) * figureFor(narrow), 0)
+  new THREE.Vector3(0, (BODY_TOP + 0.02) * figureFor(narrow), 0)
 
 export const HEAD = headFor(false)
 

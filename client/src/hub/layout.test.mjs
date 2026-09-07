@@ -19,7 +19,9 @@ import {
   cosmicScale,
   cosmicStage,
   depthFade,
+  HEAD_R,
   HEAD_Y,
+  BODY_TOP,
   branchCurve,
   fitFor,
   fitRadius,
@@ -264,7 +266,7 @@ test('the branches leave the top of his head and stay off him', () => {
     const body = {
       l: at(new THREE.Vector3(-half, (HEAD_Y * fig) / 2, 0)).x,
       r: at(new THREE.Vector3(half, (HEAD_Y * fig) / 2, 0)).x,
-      t: at(new THREE.Vector3(0, (HEAD_Y + 0.17) * fig, 0)).y,
+      t: at(new THREE.Vector3(0, BODY_TOP * fig, 0)).y,
       b: at(new THREE.Vector3(0, 0, 0)).y,
     }
 
@@ -395,7 +397,7 @@ test('no two labels sit on top of each other', () => {
   const body = {
     l: at(new THREE.Vector3(-half, (HEAD_Y * fig) / 2, 0)).x,
     r: at(new THREE.Vector3(half, (HEAD_Y * fig) / 2, 0)).x,
-    t: at(new THREE.Vector3(0, (HEAD_Y + 0.17) * fig, 0)).y,
+    t: at(new THREE.Vector3(0, BODY_TOP * fig, 0)).y,
     b: at(new THREE.Vector3(0, 0, 0)).y,
   }
   const overlaps = (a, b) => a.l < b.r && a.r > b.l && a.t < b.b && a.b > b.t

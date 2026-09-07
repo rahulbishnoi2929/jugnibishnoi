@@ -35,6 +35,21 @@ function Node({ node, index, state, onPick, zoom, head }) {
   // measure the same one that gets drawn.
   const curve = useMemo(() => branchCurve(head, node.pos), [node.pos, head])
 
+  // And it brightens along its length. One flat colour from end to end
+  // reads as wire; dark where it leaves his head and full at the node puts
+  // the light at the destination, which is also the thing you are meant to
+  // look at and click.
+  const shade = useMemo(() => {
+    const tint = new THREE.Color(node.accent)
+    return curve.map((_, i) => {
+      const t = i / (curve.length - 1)
+      // Eased, so most of the brightening happens over the last third
+      // rather than evenly along a line you can see the gradient on.
+      const k = 0.2 + 0.8 * t * t
+      return [tint.r * k, tint.g * k, tint.b * k]
+    })
+  }, [curve, node.accent])
+
   // Travelling to one branch mutes the other four rather than hiding them:
   // you should still see what you did not pick.
   const targetOpacity = state === 'off' ? 0.06 : state === 'on' ? 1 : hover ? 0.95 : 0.42
@@ -108,7 +123,7 @@ function Node({ node, index, state, onPick, zoom, head }) {
       <Line
         ref={line}
         points={curve}
-        color={node.accent}
+        vertexColors={shade}
         transparent
         opacity={0.42}
         lineWidth={state === 'on' || hover ? 2.4 : 1.1}
