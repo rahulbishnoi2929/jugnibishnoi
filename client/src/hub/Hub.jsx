@@ -206,6 +206,11 @@ export default function Hub() {
   // it, the branches read it.
   const bob = useRef(0)
 
+  // Where the turntable has got to this frame. Rig writes it; Figure reads
+  // it to cancel it out, so that he keeps facing you while the ring of
+  // branches turns around him.
+  const spin = useRef(0)
+
 
   const canvasBox = useRef(null)
   useEffect(() => {
@@ -311,7 +316,7 @@ export default function Hub() {
           />
 
           <Suspense fallback={null}>
-            <Rig frozen={!!active} drag={drag} aim={aim}>
+            <Rig frozen={!!active} drag={drag} aim={aim} spin={spin}>
               {/* Keep pulling back and his planet is not the subject any
                   more. Inside the rig, so dragging turns the sky too. */}
               {!active && <Cosmos zoom={zoom} />}
@@ -342,7 +347,12 @@ export default function Hub() {
                       opacity={0.55}
                       color="#000000"
                     />
-                    <Figure bob={bob} scale={figureFor(narrow)} />
+                    <Figure
+                      bob={bob}
+                      spin={spin}
+                      turned={!!active}
+                      scale={figureFor(narrow)}
+                    />
 
                     {/* Everything growing out of his head rides with it. */}
                     <Breathe bob={bob}>
@@ -603,7 +613,7 @@ function Breathe({ bob, children }) {
 // Travelling spins it to put the branch you picked at the front, rather
 // than returning it to neutral — otherwise picking something behind him
 // left it behind him.
-function Rig({ children, frozen, drag, aim }) {
+function Rig({ children, frozen, drag, aim, spin }) {
   const g = useRef()
   useFrame((_, dt) => {
     // The base is the fraction of the gap still left after one second, so
@@ -617,6 +627,7 @@ function Rig({ children, frozen, drag, aim }) {
     // Keep the drag value on the animated angle, so going back to the hub
     // carries on from where the spin left it instead of snapping.
     if (spun) drag.current.x = g.current.rotation.y
+    spin.current = g.current.rotation.y
   })
   return <group ref={g}>{children}</group>
 }

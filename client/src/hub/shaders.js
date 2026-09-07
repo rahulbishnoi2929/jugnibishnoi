@@ -208,6 +208,65 @@ export function planetMaterial(color, centre, axis = [0, 1, 0], bands = 0) {
   })
 }
 
+// ---------- branch previews ----------
+
+// Two photographs and a mix between them.
+//
+// The preview on a branch cycles through what is behind it, and a hard swap
+// every two seconds reads as a glitch rather than as a slideshow. This
+// holds both frames and crossfades, which costs one extra sampler and no
+// extra geometry.
+//
+// Each photograph is cropped to fill rather than letterboxed — these are
+// seventeen landscape to fifteen portrait, and bars down the side of half
+// of them would look like a mistake. The crop is per texture, since the two
+// being mixed are rarely the same shape.
+export function previewMaterial() {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uA: { value: null },
+      uB: { value: null },
+      uCropA: { value: new THREE.Vector4(1, 1, 0, 0) },
+      uCropB: { value: new THREE.Vector4(1, 1, 0, 0) },
+      uMix: { value: 0 },
+      uOpacity: { value: 0 },
+    },
+    vertexShader: /* glsl */ `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform sampler2D uA;
+      uniform sampler2D uB;
+      uniform vec4 uCropA;
+      uniform vec4 uCropB;
+      uniform float uMix;
+      uniform float uOpacity;
+      varying vec2 vUv;
+
+      void main() {
+        vec3 a = texture2D(uA, vUv * uCropA.xy + uCropA.zw).rgb;
+        vec3 b = texture2D(uB, vUv * uCropB.xy + uCropB.zw).rgb;
+        gl_FragColor = vec4(mix(a, b, uMix), uOpacity);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+  })
+}
+
+// How to crop one photograph to fill a rectangle: a repeat and an offset,
+// packed into the vec4 the shader takes.
+export function coverCrop(image, aspect, out) {
+  const photo = image.width / image.height
+  if (photo > aspect) out.set(aspect / photo, 1, (1 - aspect / photo) / 2, 0)
+  else out.set(1, photo / aspect, 0, (1 - photo / aspect) / 2)
+  return out
+}
+
 // ---------- Saturn ----------
 
 // The rings as a banded annulus rather than five line circles.

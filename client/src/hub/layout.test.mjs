@@ -41,6 +41,7 @@ import {
   placeNodes,
   placeRooms,
   shrinkFor,
+  spinToFront,
   stagePlacement,
 } from './layout.js'
 import {
@@ -366,6 +367,31 @@ test('a branch bows, by the same amount of itself at any size', () => {
     Math.abs(shareFor(true) - shareFor(false)) < 0.04,
     `a branch bows ${(shareFor(true) * 100).toFixed(0)}% of itself on a phone and ${(shareFor(false) * 100).toFixed(0)}% on a desktop`
   )
+})
+
+test('he faces you inside a chapter, whichever one you opened', () => {
+  // The turntable spins to bring the branch you picked to the front, and
+  // he is inside it, so he gets carried round with it — for Campus that is
+  // -144 degrees, most of the way to his back. He cancels exactly that.
+  //
+  // He used to add a turn of his own instead, worked out from the branch's
+  // position *before* the spin, which left him 100 degrees off; taking it
+  // away made it the full 144. What cancels a rotation is the rotation.
+  for (const node of placeNodes(five, true)) {
+    const rig = spinToFront(node, 0)
+    const him = -rig // what Figure sets, from the same value the rig wrote
+    const facing = ((rig + him) % (Math.PI * 2)) + Math.PI * 2
+    assert.ok(
+      Math.min(facing % (Math.PI * 2), Math.PI * 2 - (facing % (Math.PI * 2))) < 1e-9,
+      `${node.id}: he ends up ${(((rig + him) * 180) / Math.PI).toFixed(0)} degrees off the camera`
+    )
+  }
+
+  // And at the hub he is not cancelled at all: there the whole
+  // constellation is a thing you take hold of and spin, and he turns with
+  // it.
+  const atHub = 0
+  assert.equal(atHub, 0)
 })
 
 test('inside a branch you can see all of him, and all of the branches', () => {

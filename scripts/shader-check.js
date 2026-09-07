@@ -44,6 +44,10 @@ async function main() {
       m: shaders.orbitMaterial('#8ea6c4', 1),
       uniforms: ['uColor', 'uRadius', 'uOpacity'],
     },
+    preview: {
+      m: shaders.previewMaterial(),
+      uniforms: ['uA', 'uB', 'uCropA', 'uCropB', 'uMix', 'uOpacity'],
+    },
   }
 
   const data = {}

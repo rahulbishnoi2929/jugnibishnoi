@@ -25,7 +25,7 @@ const SHOULDER = H - HEAD_R * 2 * 1.5 // a head and a half from the top
 const HAND = 0.8 // fingertips reach mid-thigh
 const HALF_SHOULDER = 0.225 // two heads across, including the arms
 
-export default function Figure({ bob, scale = 1 }) {
+export default function Figure({ bob, spin, turned, scale = 1 }) {
   const group = useRef()
   const chest = useRef()
   const armL = useRef()
@@ -44,14 +44,20 @@ export default function Figure({ bob, scale = 1 }) {
     if (bob) bob.current = rise * scale
     chest.current.scale.y = 1 + Math.sin(t * 0.9) * 0.022
 
-    // He does not turn at all any more.
+    // Inside a chapter he keeps facing you while the ring turns around him.
     //
-    // He used to swing towards whichever branch you had travelled to,
-    // which was right when the camera swung round to the branch — but the
-    // turntable spins the branch to the front instead now, so the turn was
-    // being counted twice. Measured: the rig rotates -144 degrees to bring
-    // Campus forward and he then added 44 of his own, leaving him facing
-    // 100 degrees off the camera. Standing sideways.
+    // The turntable is what moves — it spins to bring the branch you picked
+    // to the front, and he is inside it, so he was being carried round with
+    // it. For Campus that is -144 degrees, which is most of the way to his
+    // back. He used to add a turn of his own on top, computed from the
+    // branch's position *before* the spin, which put him 44 degrees the
+    // other way and left him 100 degrees off. Taking that away only made it
+    // the full 144.
+    //
+    // What cancels it is the turntable's own angle, so that is what he
+    // reads. At the hub he turns with it, because there the whole
+    // constellation is a thing you take hold of and spin.
+    group.current.rotation.y = turned ? -(spin?.current ?? 0) : 0
 
     // Weight shifting from foot to foot, and arms that follow it.
     group.current.rotation.z = Math.sin(t * 0.45) * 0.016

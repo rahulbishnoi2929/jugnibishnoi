@@ -1,19 +1,25 @@
-import { Suspense, useMemo, useRef, useState } from 'react'
-import { useFrame, useLoader } from '@react-three/fiber'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useFrame } from '@react-three/fiber'
 import { Line, Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { cardFor, labelScaleFor } from './layout.js'
 import { setsFor } from '../lib/media.js'
+import { coverCrop, previewMaterial } from './shaders.js'
 
 // A chapter's own branches, growing out of its node the way the chapters
 // grow out of his head — but these are rectangles with a photograph in
 // them rather than dots, because by this point there is something to show.
 //
-// One texture per branch, and it is the 480px thumbnail rather than the
-// full frame: four previews cost about as much as one photograph.
+// The picture in each one changes every couple of seconds, crossfading
+// rather than cutting, so a branch shows you what is behind it instead of
+// one frozen frame. Six per branch at most: they are 480px thumbnails, so
+// six is about 45KB and a manageable number of textures.
 //
 // The size comes from layout.js and differs by viewport, because these sit
 // much nearer the camera than the point it is aimed at — see cardFor.
+const HOLD = 2.0 // seconds on each picture
+const FADE = 0.7 // seconds to cross from one to the next
+const MOST = 6 // how many of a branch's photographs to cycle through
 
 // Scratch for the billboarding, so the frame loop allocates nothing.
 const _parent = new THREE.Quaternion()
@@ -51,12 +57,20 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
   const label = useRef()
   const grew = useRef(0)
 
-  // The first photograph under this branch, if it has any. A branch with
-  // nothing in it yet still gets a frame — an empty one, which is honest.
-  const preview = useMemo(() => {
-    const sets = setsFor(chapterId, branch.id)
-    return sets[0]?.photos[0]?.thumb ?? null
+  // What this branch has to show, up to six of them. A branch with nothing
+  // in it yet still gets a frame — an empty one, which is honest.
+  const urls = useMemo(() => {
+    const all = setsFor(chapterId, branch.id).flatMap((set) => set.photos)
+    // Spread across the whole branch rather than the first six, so a
+    // preview samples the set instead of showing the start of it.
+    const step = Math.max(1, Math.floor(all.length / MOST))
+    return all.filter((_, i) => i % step === 0).slice(0, MOST).map((p) => p.thumb)
   }, [chapterId, branch.id])
+
+  const maps = usePictures(urls)
+  const material = useMemo(() => previewMaterial(), [])
+  useEffect(() => () => material.dispose(), [material])
+  const shown = useRef({ at: 0, a: 0, b: 1 })
 
   const curve = useMemo(() => {
     const mid = branch.parent.clone().lerp(branch.pos, 0.55)
@@ -120,6 +134,38 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
       label.current.style.opacity = (on ? (state === 'off' ? 0.35 : 1) : 0).toFixed(2)
       label.current.style.scale = labelScaleFor(zoom?.current ?? 1).toFixed(3)
     }
+
+    // Turn the page every couple of seconds, crossfading.
+    // Eased the same way the frame around it is, so the picture and its
+    // border arrive together rather than one after the other.
+    const u = material.uniforms
+    u.uOpacity.value = THREE.MathUtils.lerp(u.uOpacity.value, lit, k)
+    if (maps.length === 0) return
+    if (maps.length === 1) {
+      u.uA.value = u.uB.value = maps[0]
+      coverCrop(maps[0].image, W / H, u.uCropA.value)
+      u.uCropB.value.copy(u.uCropA.value)
+      u.uMix.value = 0
+      return
+    }
+
+    const s = shown.current
+    s.at += dt
+    if (s.at > HOLD + FADE) {
+      s.at -= HOLD + FADE
+      s.a = s.b
+      s.b = (s.b + 1) % maps.length
+    }
+    const a = maps[s.a % maps.length]
+    const b = maps[s.b % maps.length]
+    u.uA.value = a
+    u.uB.value = b
+    coverCrop(a.image, W / H, u.uCropA.value)
+    coverCrop(b.image, W / H, u.uCropB.value)
+    // Held, then eased across. smoothstep so neither end of the cross is a
+    // corner you can see.
+    const t = THREE.MathUtils.clamp((s.at - HOLD) / FADE, 0, 1)
+    u.uMix.value = t * t * (3 - 2 * t)
   })
 
   const pick = (e) => {
@@ -160,10 +206,8 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
         onClick={pick}
       >
         <planeGeometry args={[W, H]} />
-        {preview ? (
-          <Suspense fallback={<meshBasicMaterial color="#14161a" transparent opacity={0} />}>
-            <Picture url={preview} aspect={W / H} />
-          </Suspense>
+        {maps.length > 0 ? (
+          <primitive object={material} attach="material" />
         ) : (
           <meshBasicMaterial color="#14161a" transparent opacity={0} />
         )}
@@ -216,27 +260,34 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
   )
 }
 
-// The photograph itself, cropped to fill the rectangle the way the grid
-// crops its thumbnails — these are seventeen landscape to fifteen portrait,
-// and letterboxing half of them would look like a mistake.
-function Picture({ url, aspect }) {
-  const map = useLoader(THREE.TextureLoader, url)
+// The pictures on one branch, cycling.
+//
+// Loaded by hand rather than through useLoader, because useLoader suspends
+// and a preview that has not loaded should be an empty frame rather than a
+// hole in the scene while everything waits for it.
+function usePictures(urls) {
+  const [maps, setMaps] = useState([])
 
-  useMemo(() => {
-    map.colorSpace = THREE.SRGBColorSpace
-    const image = map.image
-    if (!image?.width) return
-    const plane = aspect
-    const photo = image.width / image.height
-    if (photo > plane) {
-      map.repeat.set(plane / photo, 1)
-      map.offset.set((1 - plane / photo) / 2, 0)
-    } else {
-      map.repeat.set(1, photo / plane)
-      map.offset.set(0, (1 - photo / plane) / 2)
+  useEffect(() => {
+    if (!urls.length) return
+    let live = true
+    const loader = new THREE.TextureLoader()
+    const loaded = []
+    urls.forEach((url, i) => {
+      loader.load(url, (map) => {
+        if (!live) return
+        map.colorSpace = THREE.SRGBColorSpace
+        loaded[i] = map
+        // Set as they arrive, so the first picture shows without waiting
+        // for the other five.
+        setMaps(loaded.filter(Boolean))
+      })
+    })
+    return () => {
+      live = false
+      loaded.forEach((m) => m?.dispose())
     }
-    map.needsUpdate = true
-  }, [map, aspect])
+  }, [urls])
 
-  return <meshBasicMaterial map={map} transparent opacity={0} toneMapped={false} />
+  return maps
 }
