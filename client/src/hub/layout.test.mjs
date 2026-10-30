@@ -67,9 +67,18 @@ const test = (name, fn) => {
   }
 }
 
-// Stand-ins: only the count matters to the ring maths.
-const five = [1, 2, 3, 4, 5].map((n) => ({ id: 'c' + n }))
-const three = [1, 2, 3].map((n) => ({ id: 'r' + n }))
+// The real content, not stand-ins.
+//
+// These were [1,2,3,4,5] and [1,2,3] with a comment saying only the count
+// matters to the ring maths — which is true, and is exactly why they had
+// to be the real counts. A sixth chapter was added and every one of these
+// tests still measured a ring of five, so nothing could have failed.
+//
+// Reading the files means adding a chapter is a change the suite sees.
+const read = (f) =>
+  JSON.parse(readFileSync(new URL('../content/' + f, import.meta.url), 'utf8'))
+const five = read('chapters.json').chapters
+const three = read('rooms.json').rooms
 
 // The scene as the camera sees it at a given zoom, on a given viewport.
 function sceneAt(zoom, width) {
@@ -410,10 +419,7 @@ test('no chapter has more branches than the fan has places', () => {
   // The wrap is gone, which means an extra branch would now read undefined
   // instead. This is the thing that catches it first — in CI, against the
   // real content, rather than in a browser.
-  const data = JSON.parse(
-    readFileSync(new URL('../content/chapters.json', import.meta.url), 'utf8')
-  )
-  for (const c of data.chapters) {
+  for (const c of five) {
     const n = (c.branches ?? []).length
     assert.ok(
       n <= FAN_SLOTS,
@@ -657,12 +663,13 @@ test('no two labels sit on top of each other', () => {
     return { x: ((n.x + 1) / 2) * w, y: ((1 - n.y) / 2) * h }
   }
 
+  // The real titles, because the width of a label is the length of the
+  // word in it. This list used to be typed out here, which meant the one
+  // test that measures label collisions was the one test that could not
+  // see a chapter being added.
   const named = [
-    ...placeNodes(
-      ['Soil', 'Grit', 'Campus', 'Build', 'Signal'].map((id) => ({ id })),
-      true
-    ),
-    ...placeRooms(['Games', 'The work', 'Blog'].map((id) => ({ id })), true),
+    ...placeNodes(five.map((c) => ({ id: c.title })), true),
+    ...placeRooms(three.map((r) => ({ id: r.title })), true),
   ]
   const half = 0.22 * fig
   const body = {

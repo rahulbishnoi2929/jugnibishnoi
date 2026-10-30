@@ -1,7 +1,7 @@
 import { asset } from '../lib/asset.js'
 
 export default function Chapter({ chapter, index }) {
-  const { id, title, years, place, lede, body, scene, artifacts = [] } = chapter
+  const { id, title, years, place, lede, body = [], scene, artifacts = [] } = chapter
 
   // Scenes are static .svg files, not inline SVG. As live DOM the field
   // re-rasterised behind a sticky element on every scroll frame and stalled

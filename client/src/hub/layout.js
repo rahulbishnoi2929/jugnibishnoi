@@ -87,7 +87,12 @@ export const fitFor = (w) => (w < 520 ? 1.35 : w < 760 ? 1.15 : 1)
 // below it, which is why the figure scale moved too — see figureFor.
 const RING = {
   wide: { chapters: { r: 3.0, y: 2.6 }, rooms: { r: 2.2, y: 2.15 } },
-  narrow: { chapters: { r: 1.55, y: 2.32 }, rooms: { r: 1.02, y: 1.63 } },
+  // 1.70, not 1.55: a sixth chapter arrived and Build and Signal started
+  // overlapping by 5 pixels on a phone. Widening the ring is what fixes
+  // that — re-phasing the rooms would not, because the collision is
+  // chapter against chapter. Measured over a full turn, 1.70 is clear and
+  // 1.85 starts running labels off the right edge.
+  narrow: { chapters: { r: 1.7, y: 2.32 }, rooms: { r: 1.02, y: 1.63 } },
 }
 
 
