@@ -8,7 +8,13 @@ export const me = {
     'Developer from Fazilka, Punjab. I build software for problems I have stood in the middle of.',
   // TODO: confirm which address you want public — this one or rahuldelu96@
   email: 'iamjugnii@gmail.com',
-  resume: '/resume.pdf', // TODO: drop the PDF in client/public/
+  // null until the file exists. It was '/resume.pdf' with nothing behind
+  // it, and because Pages serves index.html for anything it cannot find,
+  // clicking "Resume (PDF)" did not give an error — it quietly loaded the
+  // whole site again. The footer leaves the link out entirely while this
+  // is null; drop the PDF in client/public/ and set it back to
+  // '/resume.pdf' to switch it on.
+  resume: null,
 }
 
 export const links = [

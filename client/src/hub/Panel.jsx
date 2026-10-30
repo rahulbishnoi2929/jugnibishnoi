@@ -19,7 +19,12 @@ export default function Panel({
 }) {
   if (!chapter) return null
 
-  const media = mediaFor(chapter.id)
+  // A branch's photographs come through `gallery`, not from here. When a
+  // branch is open the chapter prop is the branch, so this was asking for
+  // the loose media of a chapter called 'sports' — a branch id in a
+  // chapter-id slot, which returned nothing only because no chapter
+  // happens to share a name with a branch.
+  const media = gallery ? [] : mediaFor(chapter.id)
 
   const {
     title,
@@ -113,7 +118,7 @@ function Artifact({ type, src, alt, caption, value, label, text, source }) {
     <figure className="panel-photo">
       <img
         src={src}
-        alt={alt === 'TODO' ? '' : alt}
+        alt={!alt || alt === 'TODO' ? '' : alt}
         loading="lazy"
         decoding="async"
         onError={(e) => {

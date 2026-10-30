@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useDisposable } from './dispose.js'
 import { Line } from '@react-three/drei'
 import { useLoader } from '@react-three/fiber'
 import * as THREE from 'three'
@@ -42,16 +43,19 @@ export default function Globe({ radius = 1.35 }) {
   // longitude 0 (its u=0 lands on -X), while the image puts longitude 0 at
   // u=0.5. The quarter turn between those is exactly 0.25.
   const earth = useLoader(THREE.TextureLoader, asset('/textures/earth.svg'))
-  useMemo(() => {
-    earth.wrapS = THREE.RepeatWrapping
-    earth.offset.x = 0.25
-    earth.colorSpace = THREE.SRGBColorSpace
-    earth.anisotropy = 4
-  }, [earth])
+  // Set straight out, not inside a useMemo. These four are idempotent and
+  // cost nothing, and useMemo is a cache React is allowed to throw away —
+  // using it to perform a side effect is borrowing a guarantee it does not
+  // give. useLoader caches the texture per URL, so a remount re-applies
+  // the same values to the same object.
+  earth.wrapS = THREE.RepeatWrapping
+  earth.offset.x = 0.25
+  earth.colorSpace = THREE.SRGBColorSpace
+  earth.anisotropy = 4
 
   // Latitude and longitude lines as one geometry, so the whole graticule
   // is a single draw call instead of two dozen.
-  const graticule = useMemo(() => {
+  const graticule = useDisposable(() => {
     const pts = []
     const push = (a, b) => pts.push(a.x, a.y, a.z, b.x, b.y, b.z)
 
@@ -82,7 +86,7 @@ export default function Globe({ radius = 1.35 }) {
   // State boundaries as one LineSegments rather than 59 Line components:
   // a single draw call, and vector geometry stays crisp at any zoom, which
   // a baked texture would not.
-  const states = useMemo(() => {
+  const states = useDisposable(() => {
     const pts = []
     for (const ring of stateData.rings) {
       for (let i = 0; i < ring.length; i++) {

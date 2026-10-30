@@ -1,6 +1,5 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import * as THREE from 'three'
 import { HEAD_R, HEAD_Y } from './layout.js'
 
 // Placeholder standing figure, built from primitives.
@@ -17,8 +16,6 @@ import { HEAD_R, HEAD_Y } from './layout.js'
 // down, the crotch at half the total height, shoulders two heads wide —
 // and the numbers are worked from those rather than nudged until they
 // looked right.
-export { HEAD_Y }
-
 const H = 1.95 // how tall he is
 const CROTCH = H / 2 // half height, which is where it falls on a person
 const SHOULDER = H - HEAD_R * 2 * 1.5 // a head and a half from the top
@@ -31,9 +28,8 @@ export default function Figure({ bob, spin, turned, scale = 1 }) {
   const armL = useRef()
   const armR = useRef()
 
-  useFrame((state, dt) => {
+  useFrame((state) => {
     const t = state.clock.elapsedTime
-    const k = 1 - Math.pow(0.004, Math.min(dt, 0.1))
 
     // Breathing. The old amplitude was 0.025 on a 1.8-unit figure, which
     // is invisible at any camera distance — this is the same idea, read.

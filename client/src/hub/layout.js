@@ -37,8 +37,6 @@ export const figureFor = (narrow) => (narrow ? 0.64 : 0.8)
 export const headFor = (narrow) =>
   new THREE.Vector3(0, (BODY_TOP + 0.02) * figureFor(narrow), 0)
 
-export const HEAD = headFor(false)
-
 // Two rings around him, each split evenly through a full circle.
 //
 // They used to fan across the front with the depth squashed to 0.42, which
@@ -119,7 +117,9 @@ export function placeRooms(rooms, narrow) {
 // room, overlapping its neighbours by 51 pixels and covering him.
 //
 // These are chosen from the measurement instead: about 78 pixels on a
-// phone, where four have to fit across 375, and about 130 on a desktop.
+// phone, where four have to fit across 375, and about 172 on a desktop
+// now that the row hangs over his head and has the full width of the
+// strip beside the reading panel.
 export const cardFor = (narrow) =>
   narrow ? { w: 0.58, h: 0.43 } : { w: 0.52, h: 0.386 }
 
@@ -159,8 +159,8 @@ export function branchCurve(head, node, segments = 40) {
 // Down and to the right on a desktop, where the reading panel is a column
 // down the left and the figure sits in the right half.
 //
-// A phone is not that. There the panel is a bottom sheet over 72% of the
-// screen, which leaves a band 375 by 227 above it — so the branches go in a
+// A phone is not that. There the panel is a bottom sheet over 60% of the
+// screen, which leaves a band 375 by 325 above it — so the branches go in a
 // row across that band instead. Measured before this existed, every one of
 // the four sat at x 410 to 465 on a 375-wide screen and below y 344 on a
 // band that ends at 227: the whole fan was off the side and under the
@@ -207,6 +207,10 @@ const FAN = {
   ],
 }
 
+// How many branches one chapter can have. The fan is a table of positions,
+// not a formula, so this is a real ceiling — see placeBranches.
+export const FAN_SLOTS = FAN.wide.length
+
 export function placeBranches(node, branches = [], narrow) {
   // The offsets are what we want to see on screen, but these nodes live
   // inside the turntable, which is counter-rotated by the node's own angle
@@ -217,11 +221,13 @@ export function placeBranches(node, branches = [], narrow) {
   const fan = narrow ? FAN.narrow : FAN.wide
 
   return branches.map((b, i) => {
-    // The narrow row is already sized for its screen; only the desktop
-    // column was ever scaled.
-    const k = 1
-    const [dx, dy, dz] = fan[i % fan.length]
-    const offset = new THREE.Vector3(dx * k, dy * k, dz * k).applyAxisAngle(
+    // No wrap. This used to read fan[i % fan.length], which meant a fifth
+    // branch would be placed exactly on top of the first — two
+    // photographs in the same pixels, and nothing anywhere to say so.
+    // There is a test over chapters.json holding every chapter to
+    // FAN_SLOTS, so an extra branch fails the build instead.
+    const [dx, dy, dz] = fan[i]
+    const offset = new THREE.Vector3(dx, dy, dz).applyAxisAngle(
       new THREE.Vector3(0, 1, 0),
       spin
     )
@@ -486,8 +492,6 @@ export function branchView(narrow) {
   // puts the row near the top of the free band and all of him under it.
   return { pos, look: new THREE.Vector3(0, -1.16, 0) }
 }
-
-export const BRANCH_VIEW = branchView(false)
 
 // The turntable angle that puts a node at the front of the ring, chosen as
 // the equivalent nearest the current angle so it takes the short way round

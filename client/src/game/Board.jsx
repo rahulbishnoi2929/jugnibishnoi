@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { COLS, ROWS, YOU, CPU, newBoard, drop, at, validMoves, result } from './engine.js'
+import { COLS, ROWS, YOU, CPU, newBoard, drop, validMoves, result } from './engine.js'
 import { bestMove } from './ai.js'
 import './board.css'
 

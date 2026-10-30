@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 // One photo, full screen, with what is known about it around the edges.
 //
@@ -28,10 +28,13 @@ export default function Plate({ photo, list, onClose, onMove }) {
   const closeButton = useRef(null)
 
   const index = list.findIndex((p) => p.id === photo.id)
-  const step = (by) => {
-    const next = list[index + by]
-    if (next) onMove(next)
-  }
+  const step = useCallback(
+    (by) => {
+      const next = list[index + by]
+      if (next) onMove(next)
+    },
+    [list, index, onMove]
+  )
 
   // The full 1600px file is only fetched when a plate opens, so the grid
   // costs thumbnails and nothing more. Reset on every change or the old
@@ -52,7 +55,7 @@ export default function Plate({ photo, list, onClose, onMove }) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [index, list])
+  }, [step])
 
   // Swipe, because on a phone that is how you move through photographs.
   const onTouchStart = (e) => {

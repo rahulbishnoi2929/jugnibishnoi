@@ -68,7 +68,7 @@ function Artifact({ type, src, alt, caption, value, label, text, source }) {
     <figure className="art-photo">
       <img
         src={src}
-        alt={alt === 'TODO' ? '' : alt}
+        alt={!alt || alt === 'TODO' ? '' : alt}
         loading="lazy"
         decoding="async"
         onError={(e) => {

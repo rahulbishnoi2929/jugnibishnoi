@@ -167,7 +167,6 @@ export function planetMaterial(color, centre, axis = [0, 1, 0], bands = 0) {
   return new THREE.ShaderMaterial({
     uniforms: {
       uColor: { value: new THREE.Color(color) },
-      uCentre: { value: new THREE.Vector3(centre[0], centre[1], centre[2]) },
       uAxis: { value: new THREE.Vector3(axis[0], axis[1], axis[2]).normalize() },
       uBands: { value: bands },
       uOpacity: { value: 1 },
@@ -275,11 +274,10 @@ export function coverCrop(image, aspect, out) {
 // the bright B ring, then the faint C ring. Banding it by radius in the
 // shader is what makes a twelve-pixel smudge read as rings, and on a
 // desktop it is plainly a ringed planet.
-export function ringMaterial(color, centre, inner, outer) {
+export function ringMaterial(color, inner, outer) {
   return new THREE.ShaderMaterial({
     uniforms: {
       uColor: { value: new THREE.Color(color) },
-      uCentre: { value: new THREE.Vector3(centre[0], centre[1], centre[2]) },
       uInner: { value: inner },
       uOuter: { value: outer },
       uOpacity: { value: 1 },

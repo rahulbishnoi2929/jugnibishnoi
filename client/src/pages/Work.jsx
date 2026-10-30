@@ -70,7 +70,7 @@ export default function Work() {
 
         <footer className="footer">
           <a href={`mailto:${me.email}`}>{me.email}</a>
-          <a href={asset(me.resume)}>Resume (PDF)</a>
+          {me.resume && <a href={asset(me.resume)}>Resume (PDF)</a>}
           <Link to="/">The long version ←</Link>
           <span className="note">Fazilka, Punjab</span>
         </footer>

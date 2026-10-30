@@ -8,6 +8,7 @@
 //
 // Run with: npm test
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import * as THREE from 'three'
 import {
   HOME_VIEW,
@@ -18,11 +19,11 @@ import {
   applyZoom,
   branchView,
   cardFor,
+  FAN_SLOTS,
   placeBranches,
   cosmicScale,
   cosmicStage,
   depthFade,
-  HEAD_R,
   HEAD_Y,
   BODY_TOP,
   branchCurve,
@@ -400,6 +401,27 @@ test('he faces you inside a chapter, whichever one you opened', () => {
   assert.equal(atHub, 0)
 })
 
+test('no chapter has more branches than the fan has places', () => {
+  // The fan is a table of four positions, not a formula. placeBranches used
+  // to index it with i % fan.length, so a fifth branch was placed exactly
+  // on top of the first: two photographs in the same pixels, no warning
+  // anywhere, and nothing on screen to suggest one was missing.
+  //
+  // The wrap is gone, which means an extra branch would now read undefined
+  // instead. This is the thing that catches it first — in CI, against the
+  // real content, rather than in a browser.
+  const data = JSON.parse(
+    readFileSync(new URL('../content/chapters.json', import.meta.url), 'utf8')
+  )
+  for (const c of data.chapters) {
+    const n = (c.branches ?? []).length
+    assert.ok(
+      n <= FAN_SLOTS,
+      `${c.id} has ${n} branches and the fan has ${FAN_SLOTS} places — add positions to FAN in layout.js`
+    )
+  }
+})
+
 test('a branch is drawn from him, and crosses no photograph', () => {
   // The rectangles hang on branches so the row reads as growing out of him
   // rather than floating over him. Which end the branch starts at is not a
@@ -733,7 +755,6 @@ const place = {
 }
 const _m = new THREE.Matrix4()
 const _s = new THREE.Vector3()
-const ORIGIN = new THREE.Vector3()
 
 // Where a point of a stage lands, in fractions of the viewport.
 function screenOf(stage, size, view, point) {
@@ -975,7 +996,6 @@ test('nothing has to travel across the frame', () => {
   // pan across two thirds of the screen. Now it is zero by construction,
   // and this is the assertion that says so rather than the comment.
   const view = outsideCamera(VIEWPORTS[0])
-  const halfW = view.dist * Math.tan(Math.PI / 9) * view.cam.aspect
 
   let zoom = 1
   let worst = 0

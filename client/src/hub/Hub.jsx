@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Shadow } from '@react-three/drei'
 import { useNavigate, useParams, Link } from 'react-router-dom'
@@ -86,13 +86,21 @@ export default function Hub() {
   )
   const openSub = branches.find((b) => b.id === sub) ?? null
 
-  const go = (next) => {
-    if (!next) return navigate('/')
-    const node = nodes.find((n) => n.id === next)
-    navigate(node?.kind === 'link' ? node.to : '/c/' + next)
-  }
-  const goSub = (next) =>
-    navigate(next ? '/c/' + active + '/' + next : '/c/' + active)
+  // Both are useCallback so the Escape handler can list them as the
+  // dependencies they are, rather than closing over whichever render it
+  // happened to be registered in.
+  const go = useCallback(
+    (next) => {
+      if (!next) return navigate('/')
+      const node = nodes.find((n) => n.id === next)
+      navigate(node?.kind === 'link' ? node.to : '/c/' + next)
+    },
+    [nodes, navigate]
+  )
+  const goSub = useCallback(
+    (next) => navigate(next ? '/c/' + active + '/' + next : '/c/' + active),
+    [active, navigate]
+  )
 
   // Drag to turn him — both ways. Nothing happens on hover: the
   // constellation moves when you take hold of it and not before.
@@ -142,13 +150,17 @@ export default function Hub() {
   // Held once the pointer has moved a few pixels, which is the point it
   // stops being a tap. That still buys what capture was there for — a drag
   // that leaves the window keeps sending moves and ends properly.
-  const held = useRef(false)
+  // Which pointer holds the capture, not whether one does. As a boolean it
+  // was only cleared when every finger had lifted, so putting a second
+  // finger down and lifting the first left it stuck true — and the finger
+  // still on the glass could never take capture of its own.
+  const held = useRef(null)
   const travel = useRef(0)
   const grab = (e) => {
-    if (held.current) return
+    if (held.current !== null) return
     try {
       e.currentTarget.setPointerCapture?.(e.pointerId)
-      held.current = true
+      held.current = e.pointerId
     } catch {}
   }
 
@@ -210,6 +222,9 @@ export default function Hub() {
 
   const onUp = (e) => {
     pointers.current.delete(e.pointerId)
+    // The pointer that was holding it has gone, so the next drag is free
+    // to take it rather than waiting for the screen to clear.
+    if (held.current === e.pointerId) held.current = null
     if (pointers.current.size < 2) pinch.current = null
     // One finger left after a pinch: re-anchor rather than resuming from a
     // stale point, which would snap the ring round.
@@ -218,7 +233,7 @@ export default function Hub() {
       from.current = { ...only }
     } else if (pointers.current.size === 0) {
       from.current = null
-      held.current = false
+      held.current = null
       travel.current = 0
       setDragging(false)
     }
@@ -266,7 +281,10 @@ export default function Hub() {
     want.current = Math.min(want.current, ZOOM_HUB_MAX)
     const node = nodes.find((n) => n.id === active)
     if (node) aim.current = spinToFront(node, drag.current.x)
-  }, [active])
+    // `nodes` belongs in here: it is rebuilt when the breakpoint flips, and
+    // without it turning the phone while a chapter was open left the
+    // turntable aimed at the angle the old ring had.
+  }, [active, nodes])
 
   // Escape is how people leave things.
   useEffect(() => {
@@ -282,7 +300,7 @@ export default function Hub() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [active, openSub, plate])
+  }, [active, openSub, plate, go, goSub])
 
   return (
     <div className={'hub' + (active ? ' is-travelled' : '')}>

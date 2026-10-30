@@ -109,8 +109,20 @@ function Node({ node, index, state, onPick, zoom, head }) {
       )
     }
     if (label.current) {
-      label.current.style.opacity =
-        state === 'off' ? 0 : (Math.max(0.3, depth) * hub * front).toFixed(3)
+      const shown = state === 'off' ? 0 : Math.max(0.3, depth) * hub * front
+      label.current.style.opacity = shown.toFixed(3)
+
+      // A label you cannot see must not take a click, and must not be
+      // read out or tabbed to. This is written from the same number the
+      // opacity is, because the two got out of step once already: on a
+      // phone the back half of the ring fades its text away, and those
+      // labels kept pointer-events because `front` is not the same thing
+      // as the muted state the stylesheet keys off. Four invisible
+      // buttons, in the middle of the screen, over the model.
+      const live = shown > 0.05
+      label.current.style.pointerEvents = live ? 'auto' : 'none'
+      label.current.tabIndex = live ? 0 : -1
+      label.current.setAttribute('aria-hidden', live ? 'false' : 'true')
 
       // Shrink the text by exactly what the model shrinks by. Html sizes
       // itself from camera distance only, so on its own the labels grew as
@@ -183,8 +195,13 @@ function Node({ node, index, state, onPick, zoom, head }) {
             (state === 'off' ? ' is-muted' : '')
           }
           style={{ '--node': node.accent }}
-          tabIndex={state === 'off' ? -1 : 0}
-          aria-hidden={state === 'off'}
+          // Only the value it starts at. Whether a label is clickable,
+          // focusable and announced is decided every frame from how
+          // visible it actually is — see the frame loop above. Starting
+          // closed is the safe end: a label that has not been drawn yet
+          // has not earned a click.
+          tabIndex={-1}
+          aria-hidden="true"
           onMouseEnter={() => state !== 'off' && setHover(true)}
           onMouseLeave={() => setHover(false)}
           onClick={() => onPick(node.id)}

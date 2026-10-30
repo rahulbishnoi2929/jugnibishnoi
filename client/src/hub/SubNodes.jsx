@@ -150,7 +150,15 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
       )
     }
     if (label.current) {
-      label.current.style.opacity = (on ? (state === 'off' ? 0.35 : 1) : 0).toFixed(2)
+      // Clickability follows visibility, the same way the chapter labels
+      // do it: these are at 0 for the first half-second while the row
+      // staggers in, and an invisible button is still a button.
+      const shown = on ? (state === 'off' ? 0.35 : 1) : 0
+      label.current.style.opacity = shown.toFixed(2)
+      const live = shown > 0.05
+      label.current.style.pointerEvents = live ? 'auto' : 'none'
+      label.current.tabIndex = live ? 0 : -1
+      label.current.setAttribute('aria-hidden', live ? 'false' : 'true')
       label.current.style.scale = labelScaleFor(zoom?.current ?? 1).toFixed(3)
     }
 
@@ -173,10 +181,10 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
     if (s.at > HOLD + FADE) {
       s.at -= HOLD + FADE
       s.a = s.b
-      s.b = (s.b + 1) % maps.length
+      s.b = nextLoaded(maps, s.b)
     }
-    const a = maps[s.a % maps.length]
-    const b = maps[s.b % maps.length]
+    const a = maps[s.a] ?? maps[nextLoaded(maps, -1)]
+    const b = maps[s.b] ?? a
     u.uA.value = a
     u.uB.value = b
     coverCrop(a.image, W / H, u.uCropA.value)
@@ -264,6 +272,9 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
             'sub-label' + (hover ? ' is-hot' : '') + (narrow ? ' is-on-photo' : '')
           }
           style={{ '--node': accent, opacity: 0 }}
+          // Starting values only; the frame loop owns these. See Nodes.
+          tabIndex={-1}
+          aria-hidden="true"
           onMouseEnter={() => setHover(true)}
           onMouseLeave={() => setHover(false)}
           onClick={() => onPick(branch.id)}
@@ -273,6 +284,17 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
       </Html>
     </group>
   )
+}
+
+// The next slot that has actually loaded, wrapping. The array is as long
+// as the branch's list of photographs and fills in as they arrive, so it
+// has holes in it until the last one lands.
+function nextLoaded(maps, from) {
+  for (let i = 1; i <= maps.length; i++) {
+    const j = (from + i + maps.length) % maps.length
+    if (maps[j]) return j
+  }
+  return from
 }
 
 // The pictures on one branch, cycling.
@@ -293,9 +315,11 @@ function usePictures(urls) {
         if (!live) return
         map.colorSpace = THREE.SRGBColorSpace
         loaded[i] = map
-        // Set as they arrive, so the first picture shows without waiting
-        // for the other five.
-        setMaps(loaded.filter(Boolean))
+        // A copy with its holes kept, so each picture stays in the slot it
+        // was asked for. It used to be compacted with filter(Boolean),
+        // which renumbered every slot each time one arrived out of order —
+        // the cycle jumped about while the set was still loading.
+        setMaps(loaded.slice())
       })
     })
     return () => {

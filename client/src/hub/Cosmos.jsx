@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { cosmicScale, cosmicStage, fitRadius, stagePlacement } from './layout.js'
+import { useDisposable } from './dispose.js'
 import { galaxy, solarSystem, starfield, universe } from './cosmos.js'
 import {
   orbitMaterial,
@@ -208,19 +209,22 @@ function Solar({ data }) {
     }, [data])
   )
 
-  const orbitLines = useMemo(() => orbitMaterial('#8ea6c4', data.radius), [data])
+  const orbitLines = useDisposable(() => orbitMaterial('#8ea6c4', data.radius), [data])
 
   // One material per planet, built once. Each carries its own centre so the
   // shader knows which way its sun is, and its own spin axis so the banding
   // runs the right way — across Jupiter's equator, and pole to pole on
   // Uranus, which is tipped ninety-eight degrees.
+  // An array of materials, so it needs its own teardown rather than the
+  // single-object hook.
   const lit = useMemo(
     () => data.planets.map((p) => planetMaterial(p.color, p.pos, p.axis, p.bands)),
     [data]
   )
+  useEffect(() => () => lit.forEach((m) => m.dispose()), [lit])
   const saturn = data.planets[5]
-  const rings = useMemo(
-    () => ringMaterial('#d8c68f', saturn.pos, saturn.size * 1.11, saturn.size * 2.27),
+  const rings = useDisposable(
+    () => ringMaterial('#d8c68f', saturn.size * 1.11, saturn.size * 2.27),
     [saturn]
   )
   // The rings lie in Saturn's equatorial plane, so their normal is its own
@@ -316,7 +320,7 @@ const Stars = forwardRef(function Stars(
   { layer, px, base, falloff, elliptical = false, visible = true },
   ref
 ) {
-  const geo = useMemo(() => {
+  const geo = useDisposable(() => {
     const g = new THREE.BufferGeometry()
     g.setAttribute('position', new THREE.BufferAttribute(layer.pos, 3))
     g.setAttribute('color', new THREE.BufferAttribute(layer.col, 3))
@@ -327,7 +331,7 @@ const Stars = forwardRef(function Stars(
     }
     return g
   }, [layer, elliptical])
-  const mat = useMemo(
+  const mat = useDisposable(
     () => starMaterial({ falloff, elliptical }),
     [falloff, elliptical]
   )
@@ -368,7 +372,7 @@ function Marker({ at, r }) {
 }
 
 function useGeo(pos) {
-  return useMemo(() => {
+  return useDisposable(() => {
     const g = new THREE.BufferGeometry()
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3))
     return g

@@ -757,12 +757,6 @@ function put(l, i, x, y, z, col, size) {
   l.siz[i] = size
 }
 
-const mix = (a, b, t) => [
-  a[0] + (b[0] - a[0]) * t,
-  a[1] + (b[1] - a[1]) * t,
-  a[2] + (b[2] - a[2]) * t,
-]
-
 function smoothstep(x, min, max) {
   const t = Math.max(0, Math.min(1, (x - min) / (max - min)))
   return t * t * (3 - 2 * t)

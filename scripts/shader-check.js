@@ -33,7 +33,7 @@ async function main() {
       uniforms: ['uColor', 'uCentre', 'uAxis', 'uBands', 'uOpacity'],
     },
     ring: {
-      m: shaders.ringMaterial('#d8c68f', [0.1, 0, 0.2], 0.04, 0.08),
+      m: shaders.ringMaterial('#d8c68f', 0.04, 0.08),
       uniforms: ['uColor', 'uInner', 'uOuter', 'uOpacity'],
     },
     ellipticalStar: {
