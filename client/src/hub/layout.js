@@ -173,47 +173,75 @@ export function branchCurve(head, node, segments = 40) {
 //
 // The row is spaced 0.69 apart, which is 86 pixels there — enough for a
 // photo rectangle between each with a gap.
+// Where a chapter's branches sit, keyed by how many there are.
+//
+// It used to be one table per viewport, because only Campus had branches
+// and Campus has four. Music has six playlists, and six is not four
+// spread wider — measured, six photo-cards on a phone only fit by
+// shrinking to 52 pixels across, which is a thumbnail you cannot read,
+// and six names in one row need 420 pixels of a 375-pixel screen however
+// evenly they are spaced.
+//
+// So six is a different shape, not a wider one: one row on a desktop,
+// where there is 896 pixels of strip to use, and two rows of three on a
+// phone, where there is not.
 const FAN = {
-  // A row over his head, the same shape as the phone's, because a column
-  // beside him is not what a branch coming off a head looks like.
-  //
-  // Aiming the camera 1.85 units to his left used to push him right and
-  // leave the strip beside him for the pictures. That is where the column
-  // lived. The aim is 1.2 now, which lands him at x 933 on a 1440 screen —
-  // the free strip between the reading panel and the right edge is centred
-  // on 935 — and the pictures go above him instead.
-  //
-  // Worth the move on its own: the row has the full width of that strip
-  // rather than the leftovers, so a preview went from 137x97 pixels to
-  // 172x135. Swept over aim, camera distance, card size and span; this was
-  // the largest card that cleared the panel, the top edge and his head.
-  //
-  // Shifted 0.1 to his left, which is parallax and not taste: the node is
-  // three units nearer the lens than he is, so a rectangle at world x 0
-  // projects 39 pixels right of a man at world x 0. This cancels it, and
-  // the row comes out centred on him within 6 pixels.
-  wide: [
-    [-1.05, -0.346, 0],
-    [-0.417, -0.115, 0],
-    [0.217, -0.115, 0],
-    [0.85, -0.346, 0],
-  ],
-  // All four leave at the same angle. A flat row cannot do that — the ones
-  // nearest the middle have less width to fall across, so they hung at -44
-  // while the outer two sat at -22. Matching them means the row is a shallow
-  // arc rather than a line, and it costs height: the inner pair rise 29
-  // pixels, which is why the panel gave up another four per cent of the
-  // screen to make room.
-  narrow: [
-    [-1.04, -0.379, 0],
-    [-0.35, -0.127, 0],
-    [0.35, -0.127, 0],
-    [1.04, -0.379, 0],
-  ],
+  wide: {
+    // Four: the Campus row. An arc rather than a column — measured, the
+    // old one left the node at -32, -56, -66 and -75 degrees, four
+    // photographs on a rope. A branch leaves its trunk rising, levels off
+    // and then dips under its own weight, which is what these do now.
+    //
+    // Shifted 0.1 to his left, which is parallax and not taste: the node
+    // is three units nearer the lens than he is, so a rectangle at world
+    // x 0 projects 39 pixels right of a man at world x 0.
+    4: [
+      [-1.05, -0.346, 0],
+      [-0.417, -0.115, 0],
+      [0.217, -0.115, 0],
+      [0.85, -0.346, 0],
+    ],
+    // Six: one row, rising 14 degrees out of the node. 896 pixels wide
+    // with 91 between neighbours, which is the widest that stays clear of
+    // the right edge — 1.3 runs off it.
+    6: [
+      [-1.2, -0.299, 0],
+      [-0.76, -0.189, 0],
+      [-0.32, -0.080, 0],
+      [0.22, -0.080, 0],
+      [0.66, -0.189, 0],
+      [1.1, -0.299, 0],
+    ],
+  },
+  narrow: {
+    // Four: all leave at the same angle. A flat row cannot do that — the
+    // ones nearest the middle have less width to fall across, so they
+    // hung at -44 while the outer two sat at -22.
+    4: [
+      [-1.04, -0.379, 0],
+      [-0.35, -0.127, 0],
+      [0.35, -0.127, 0],
+      [1.04, -0.379, 0],
+    ],
+    // Six: two rows of three. The band between a phone's status bar and
+    // the top of his head is 116 pixels, which is two rows and no more.
+    // 294 wide with 51 between neighbours, top edge at 51 against a
+    // status bar that ends at 47.
+    6: [
+      [-0.82, -0.022, 0],
+      [0, 0.06, 0],
+      [0.82, -0.022, 0],
+      [-0.82, -0.422, 0],
+      [0, -0.34, 0],
+      [0.82, -0.422, 0],
+    ],
+  },
 }
 
-// How many branches one chapter can have. The fan is a table of positions,
-// not a formula, so this is a real ceiling — see placeBranches.
+// Which branch counts there are positions for, on a given viewport.
+export const fanCounts = (narrow) =>
+  Object.keys(narrow ? FAN.narrow : FAN.wide).map(Number)
+
 export const FAN_SLOTS = FAN.wide.length
 
 export function placeBranches(node, branches = [], narrow) {
@@ -223,14 +251,16 @@ export function placeBranches(node, branches = [], narrow) {
   // without this the fan swung round and opened behind the panel.
   const spin = node.angle ?? 0
 
-  const fan = narrow ? FAN.narrow : FAN.wide
+  const table = narrow ? FAN.narrow : FAN.wide
+  const fan = table[branches.length]
+  // No wrap and no nearest-fit. A table keyed by count means a chapter
+  // with a count nobody has laid out is a question for whoever adds it,
+  // not something to be approximated on screen — this used to index four
+  // positions with i % 4, so a fifth branch landed exactly on the first.
+  // A test over chapters.json holds every chapter to a count that exists.
+  if (!fan) return []
 
   return branches.map((b, i) => {
-    // No wrap. This used to read fan[i % fan.length], which meant a fifth
-    // branch would be placed exactly on top of the first — two
-    // photographs in the same pixels, and nothing anywhere to say so.
-    // There is a test over chapters.json holding every chapter to
-    // FAN_SLOTS, so an extra branch fails the build instead.
     const [dx, dy, dz] = fan[i]
     const offset = new THREE.Vector3(dx, dy, dz).applyAxisAngle(
       new THREE.Vector3(0, 1, 0),

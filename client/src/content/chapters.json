@@ -189,7 +189,16 @@
       "title": "Music",
       "years": "soon",
       "accent": "#F0689E",
+      "lede": "You can tell a lot about a person from his playlist.",
       "body": [],
+      "branches": [
+        { "id": "chatpate", "title": "Chatpate" },
+        { "id": "sukoon", "title": "Sukoon" },
+        { "id": "lovable", "title": "Lovable" },
+        { "id": "yaadaan", "title": "Yaadaan" },
+        { "id": "rap", "title": "Rap" },
+        { "id": "silent", "title": "Silent" }
+      ],
       "todo": [
         "Years. Where this sits against the other five decides where it lands on the ring — they are in chronological order and spinning walks the years",
         "Playing, listening, or making? The chapter reads differently for each",

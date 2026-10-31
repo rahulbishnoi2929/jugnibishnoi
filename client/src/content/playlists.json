@@ -1,0 +1,65 @@
+{
+  "_readme": [
+    "Six playlists, one per branch of the Music chapter.",
+    "",
+    "A song is a YouTube link and a name. Paste the link — the whole URL,",
+    "or just the id after v= — and write what it is. The thumbnail comes",
+    "down from YouTube on its own; there is nothing to upload and no audio",
+    "file anywhere in this repository, which is both the legal position and",
+    "the reason adding a song takes ten seconds.",
+    "",
+    "  { \"yt\": \"https://www.youtube.com/watch?v=dQw4w9WgXcQ\", \"title\": \"Song name\", \"artist\": \"Who made it\" }",
+    "  { \"yt\": \"dQw4w9WgXcQ\", \"title\": \"Song name\" }",
+    "",
+    "`artist` is optional. `mood` is not yours to edit lightly — it is what",
+    "the whole site turns into while that playlist is playing.",
+    "",
+    "Order is the order they play in. The first one starts when the",
+    "playlist is opened."
+  ],
+
+  "playlists": [
+    {
+      "id": "chatpate",
+      "title": "Chatpate",
+      "mood": "disco",
+      "lede": "The loud ones.",
+      "songs": []
+    },
+    {
+      "id": "sukoon",
+      "title": "Sukoon",
+      "mood": "calm",
+      "lede": "For when it needs to be quiet.",
+      "songs": []
+    },
+    {
+      "id": "lovable",
+      "title": "Lovable",
+      "mood": "warm",
+      "lede": "",
+      "songs": []
+    },
+    {
+      "id": "yaadaan",
+      "title": "Yaadaan",
+      "mood": "memory",
+      "lede": "The ones that are about a year, not a song.",
+      "songs": []
+    },
+    {
+      "id": "rap",
+      "title": "Rap",
+      "mood": "hard",
+      "lede": "",
+      "songs": []
+    },
+    {
+      "id": "silent",
+      "title": "Silent",
+      "mood": "still",
+      "lede": "Almost nothing.",
+      "songs": []
+    }
+  ]
+}

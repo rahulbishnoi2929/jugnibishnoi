@@ -19,7 +19,7 @@ import {
   applyZoom,
   branchView,
   cardFor,
-  FAN_SLOTS,
+  fanCounts,
   placeBranches,
   cosmicScale,
   cosmicStage,
@@ -79,6 +79,7 @@ const read = (f) =>
   JSON.parse(readFileSync(new URL('../content/' + f, import.meta.url), 'utf8'))
 const five = read('chapters.json').chapters
 const three = read('rooms.json').rooms
+const byId = (id) => five.find((c) => c.id === id)
 
 // The scene as the camera sees it at a given zoom, on a given viewport.
 function sceneAt(zoom, width) {
@@ -410,21 +411,96 @@ test('he faces you inside a chapter, whichever one you opened', () => {
   assert.equal(atHub, 0)
 })
 
-test('no chapter has more branches than the fan has places', () => {
-  // The fan is a table of four positions, not a formula. placeBranches used
-  // to index it with i % fan.length, so a fifth branch was placed exactly
-  // on top of the first: two photographs in the same pixels, no warning
+test('every chapter has a fan laid out for its number of branches', () => {
+  // The fan is a table of positions keyed by count, not a formula. It used
+  // to be four positions indexed with i % 4, so a fifth branch was placed
+  // exactly on top of the first: two things in the same pixels, no warning
   // anywhere, and nothing on screen to suggest one was missing.
   //
-  // The wrap is gone, which means an extra branch would now read undefined
-  // instead. This is the thing that catches it first — in CI, against the
-  // real content, rather than in a browser.
+  // Now an unlaid-out count draws nothing at all, which is quieter and
+  // worse. This is the thing that catches it — in CI, against the real
+  // content, rather than by someone noticing a chapter looks empty.
   for (const c of five) {
     const n = (c.branches ?? []).length
-    assert.ok(
-      n <= FAN_SLOTS,
-      `${c.id} has ${n} branches and the fan has ${FAN_SLOTS} places — add positions to FAN in layout.js`
-    )
+    if (n === 0) continue
+    for (const narrow of [true, false]) {
+      const where = narrow ? 'phone' : 'desktop'
+      assert.ok(
+        fanCounts(narrow).includes(n),
+        `${c.id} has ${n} branches and the ${where} fan is laid out for ${fanCounts(narrow).join(', ')} — add positions to FAN in layout.js`
+      )
+      assert.equal(
+        placeBranches({ ...c, pos: new THREE.Vector3(), angle: 0 }, c.branches, narrow).length,
+        n,
+        `${c.id} placed the wrong number of branches on ${where}`
+      )
+    }
+  }
+})
+
+test('the six playlists fit above him, on both screens', () => {
+  // Six is not four spread wider. Measured: six photo-cards on a phone
+  // only fit by shrinking to 52 pixels across, and six names in one row
+  // need 420 pixels of a 375-pixel screen however evenly they are spaced.
+  // So the phone gets two rows of three and the desktop gets one row of
+  // six, and this is the assertion that both still hold.
+  //
+  // A playlist branch is a name under a dot, not a photograph, so what is
+  // measured here is the text: its width is the length of the word in it.
+  const music = byId('music')
+  const SCREENS = [
+    { name: 'phone', w: 375, h: 812, safeTop: 47, wall: 0, px: 12 },
+    { name: 'desktop', w: 1440, h: 820, safeTop: 0, wall: 430, px: 15 },
+  ]
+
+  for (const s of SCREENS) {
+    const narrow = s.w < 520
+    const pos = new THREE.Vector3()
+    const look = new THREE.Vector3()
+    applyZoom(branchView(narrow), fitFor(s.w), pos, look)
+    const cam = new THREE.PerspectiveCamera(40, s.w / s.h, 0.1, 100)
+    cam.position.copy(pos)
+    cam.lookAt(look)
+    cam.updateMatrixWorld()
+    const at = (v) => {
+      const n = v.clone().project(cam)
+      return { x: ((n.x + 1) / 2) * s.w, y: ((1 - n.y) / 2) * s.h }
+    }
+
+    const node = placeNodes(five, narrow)[five.indexOf(music)]
+    const spun = node.pos.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), -node.angle)
+    const subs = placeBranches({ ...node, pos: spun, angle: 0 }, music.branches, narrow)
+    assert.equal(subs.length, 6, `${s.name}: ${subs.length} playlists placed, not 6`)
+
+    const fig = figureFor(narrow)
+    const crown = at(new THREE.Vector3(0, BODY_TOP * fig, 0))
+
+    const boxes = subs.map((b) => {
+      const c = at(b.pos)
+      const w = b.title.length * s.px * 0.58 + 14
+      return { l: c.x - w / 2, r: c.x + w / 2, t: c.y - 9, b: c.y + s.px + 6, id: b.id }
+    })
+
+    for (const box of boxes) {
+      assert.ok(box.t > s.safeTop, `${s.name}: ${box.id} runs off the top at ${box.t.toFixed(0)}`)
+      assert.ok(box.l > s.wall, `${s.name}: ${box.id} is behind the panel at ${box.l.toFixed(0)}`)
+      assert.ok(box.r < s.w, `${s.name}: ${box.id} runs off the right at ${box.r.toFixed(0)}`)
+      assert.ok(
+        box.b + 4 < crown.y,
+        `${s.name}: ${box.id} reaches ${box.b.toFixed(0)} and his head is at ${crown.y.toFixed(0)}`
+      )
+    }
+
+    // Names must not touch. Only pairs that share a row band can.
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i]
+        const b = boxes[j]
+        if (Math.min(a.b, b.b) - Math.max(a.t, b.t) <= 0) continue
+        const gap = Math.max(a.l, b.l) - Math.min(a.r, b.r)
+        assert.ok(gap > 0, `${s.name}: ${a.id} and ${b.id} overlap by ${(-gap).toFixed(0)}px`)
+      }
+    }
   }
 })
 
@@ -438,7 +514,7 @@ test('a branch is drawn from him, and crosses no photograph', () => {
   // Sampled at 41 points per curve against every rectangle that is not its
   // own. From the node that put 39 points inside a photograph on a desktop
   // and 42 on a phone. From his head it is zero, which is what this holds.
-  const SUBS = ['competition', 'hackathon', 'sports', 'friends'].map((id) => ({ id }))
+  const SUBS = byId('campus').branches
   const SCREENS = [
     { name: 'phone', w: 375, h: 812 },
     { name: 'desktop', w: 1440, h: 820 },
@@ -458,7 +534,7 @@ test('a branch is drawn from him, and crosses no photograph', () => {
       return { x: ((n.x + 1) / 2) * s.w, y: ((1 - n.y) / 2) * s.h }
     }
 
-    const campus = placeNodes(five, narrow)[2]
+    const campus = placeNodes(five, narrow)[five.indexOf(byId('campus'))]
     const spun = campus.pos.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), -campus.angle)
     const subs = placeBranches({ ...campus, pos: spun, angle: 0 }, SUBS, narrow)
     const card = cardFor(narrow)
@@ -500,7 +576,7 @@ test('inside a branch you can see all of him, and all of the branches', () => {
   //
   // Two things have to fit in the band the panel leaves free: the row of
   // photo branches, and him. This is the assertion that they do.
-  const SUBS = ['competition', 'hackathon', 'sports', 'friends'].map((id) => ({ id }))
+  const SUBS = byId('campus').branches
 
   const SCREENS = [
     // The panel is a bottom sheet at 60vh on a phone and a left column on
@@ -538,7 +614,7 @@ test('inside a branch you can see all of him, and all of the branches', () => {
     )
 
     // The branch row, with room under each for its label.
-    const campus = placeNodes(five, narrow)[2]
+    const campus = placeNodes(five, narrow)[five.indexOf(byId('campus'))]
     const spun = campus.pos.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), -campus.angle)
     const subs = placeBranches({ ...campus, pos: spun, angle: 0 }, SUBS, narrow)
     const card = cardFor(narrow)
