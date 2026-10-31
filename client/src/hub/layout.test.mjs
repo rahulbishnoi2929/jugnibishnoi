@@ -439,18 +439,21 @@ test('every chapter has a fan laid out for its number of branches', () => {
 })
 
 test('the six playlists fit above him, on both screens', () => {
-  // Six is not four spread wider. Measured: six photo-cards on a phone
-  // only fit by shrinking to 52 pixels across, and six names in one row
-  // need 420 pixels of a 375-pixel screen however evenly they are spaced.
-  // So the phone gets two rows of three and the desktop gets one row of
-  // six, and this is the assertion that both still hold.
+  // Six rectangles, not four spread wider. On a phone the band between the
+  // status bar and the top of his head is 116 pixels, and two rows of
+  // 49-pixel cards with a gap is 109 of it — four pixels of slack in the
+  // whole arrangement, which is why both the card size and the row
+  // separation came off a sweep rather than a guess.
   //
-  // A playlist branch is a name under a dot, not a photograph, so what is
-  // measured here is the text: its width is the length of the word in it.
+  // A desktop takes all six in one row at 113 across. Campus gets 172 for
+  // four; six of anything is smaller, and that is the trade for keeping
+  // the same structure rather than inventing a second one.
   const music = byId('music')
   const SCREENS = [
-    { name: 'phone', w: 375, h: 812, safeTop: 47, wall: 0, px: 12 },
-    { name: 'desktop', w: 1440, h: 820, safeTop: 0, wall: 430, px: 15 },
+    { name: 'phone', w: 375, h: 812, safeTop: 47, wall: 0, label: 0 },
+    // On a desktop the name hangs under its card, so it counts against
+    // the space below; on a phone it sits on the card's bottom edge.
+    { name: 'desktop', w: 1440, h: 820, safeTop: 0, wall: 430, label: 20 },
   ]
 
   for (const s of SCREENS) {
@@ -472,13 +475,15 @@ test('the six playlists fit above him, on both screens', () => {
     const subs = placeBranches({ ...node, pos: spun, angle: 0 }, music.branches, narrow)
     assert.equal(subs.length, 6, `${s.name}: ${subs.length} playlists placed, not 6`)
 
+    const card = cardFor(narrow, subs.length)
     const fig = figureFor(narrow)
     const crown = at(new THREE.Vector3(0, BODY_TOP * fig, 0))
 
     const boxes = subs.map((b) => {
       const c = at(b.pos)
-      const w = b.title.length * s.px * 0.58 + 14
-      return { l: c.x - w / 2, r: c.x + w / 2, t: c.y - 9, b: c.y + s.px + 6, id: b.id }
+      const hw = Math.abs(at(new THREE.Vector3(b.pos.x + card.w / 2, b.pos.y, b.pos.z)).x - c.x)
+      const hh = Math.abs(at(new THREE.Vector3(b.pos.x, b.pos.y + card.h / 2, b.pos.z)).y - c.y)
+      return { l: c.x - hw, r: c.x + hw, t: c.y - hh, b: c.y + hh + s.label, id: b.id }
     })
 
     for (const box of boxes) {
@@ -491,7 +496,7 @@ test('the six playlists fit above him, on both screens', () => {
       )
     }
 
-    // Names must not touch. Only pairs that share a row band can.
+    // Rectangles must not touch. Only pairs sharing a row band can.
     for (let i = 0; i < boxes.length; i++) {
       for (let j = i + 1; j < boxes.length; j++) {
         const a = boxes[i]
@@ -501,6 +506,10 @@ test('the six playlists fit above him, on both screens', () => {
         assert.ok(gap > 0, `${s.name}: ${a.id} and ${b.id} overlap by ${(-gap).toFixed(0)}px`)
       }
     }
+
+    // And big enough to be worth looking at and tapping.
+    const w = boxes[0].r - boxes[0].l
+    assert.ok(w >= 48, `${s.name}: a playlist card is only ${w.toFixed(0)}px across`)
   }
 })
 
@@ -537,7 +546,7 @@ test('a branch is drawn from him, and crosses no photograph', () => {
     const campus = placeNodes(five, narrow)[five.indexOf(byId('campus'))]
     const spun = campus.pos.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), -campus.angle)
     const subs = placeBranches({ ...campus, pos: spun, angle: 0 }, SUBS, narrow)
-    const card = cardFor(narrow)
+    const card = cardFor(narrow, SUBS.length)
 
     const box = subs.map((b) => {
       const c = at(b.pos)
@@ -617,7 +626,7 @@ test('inside a branch you can see all of him, and all of the branches', () => {
     const campus = placeNodes(five, narrow)[five.indexOf(byId('campus'))]
     const spun = campus.pos.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), -campus.angle)
     const subs = placeBranches({ ...campus, pos: spun, angle: 0 }, SUBS, narrow)
-    const card = cardFor(narrow)
+    const card = cardFor(narrow, SUBS.length)
     for (const b of subs) {
       const p = at(b.pos)
       // Measured at the branch's own depth, not at the distance the camera

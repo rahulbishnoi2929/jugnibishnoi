@@ -125,8 +125,24 @@ export function placeRooms(rooms, narrow) {
 // phone, where four have to fit across 375, and about 172 on a desktop
 // now that the row hangs over his head and has the full width of the
 // strip beside the reading panel.
-export const cardFor = (narrow) =>
-  narrow ? { w: 0.58, h: 0.43 } : { w: 0.52, h: 0.386 }
+// Different per viewport, and it has to be: the branches sit at z +3 on a
+// desktop while the camera aims at a point 6.7 away, so they are barely
+// three units from the lens and a rectangle drawn at one size comes out
+// enormous.
+//
+// And different per count, for the same reason the fan is. Six cards is
+// not four cards spread wider — on a phone the band between the status
+// bar and the top of his head is 116 pixels, which is two rows of 49 and
+// nothing more. These are the largest that fit, measured: 64x49 on a
+// phone in two rows of three, 113x109 on a desktop in one row of six.
+export const cardFor = (narrow, count = 4) =>
+  count > 4
+    ? narrow
+      ? { w: 0.46, h: 0.341 }
+      : { w: 0.34, h: 0.252 }
+    : narrow
+      ? { w: 0.58, h: 0.43 }
+      : { w: 0.52, h: 0.386 }
 
 // The curve a branch takes from his head out to its node.
 //
@@ -201,16 +217,16 @@ const FAN = {
       [0.217, -0.115, 0],
       [0.85, -0.346, 0],
     ],
-    // Six: one row, rising 14 degrees out of the node. 896 pixels wide
-    // with 91 between neighbours, which is the widest that stays clear of
-    // the right edge — 1.3 runs off it.
+    // Six: one row of cards, rising 14 degrees out of the node. 113
+    // pixels across with 25 between them, which is the largest that keeps
+    // the outermost clear of the right-hand edge.
     6: [
-      [-1.2, -0.299, 0],
-      [-0.76, -0.189, 0],
-      [-0.32, -0.080, 0],
-      [0.22, -0.080, 0],
-      [0.66, -0.189, 0],
-      [1.1, -0.299, 0],
+      [-1.05, -0.2618, 0],
+      [-0.63, -0.1571, 0],
+      [-0.21, -0.0524, 0],
+      [0.21, -0.0524, 0],
+      [0.63, -0.1571, 0],
+      [1.05, -0.2618, 0],
     ],
   },
   narrow: {
@@ -224,16 +240,18 @@ const FAN = {
       [1.04, -0.379, 0],
     ],
     // Six: two rows of three. The band between a phone's status bar and
-    // the top of his head is 116 pixels, which is two rows and no more.
-    // 294 wide with 51 between neighbours, top edge at 51 against a
-    // status bar that ends at 47.
+    // the top of his head is 116 pixels, and two rows of 49-pixel cards
+    // with a gap is 109 of it — so the top edge lands at 50 against a
+    // status bar ending at 47, and the bottom at 159 against a crown at
+    // 163. There is four pixels of slack in the whole arrangement, which
+    // is why every one of these numbers came off a sweep.
     6: [
-      [-0.82, -0.022, 0],
-      [0, 0.06, 0],
-      [0.82, -0.022, 0],
-      [-0.82, -0.422, 0],
-      [0, -0.34, 0],
-      [0.82, -0.422, 0],
+      [-0.7, -0.075, 0],
+      [0, -0.04, 0],
+      [0.7, -0.075, 0],
+      [-0.7, -0.475, 0],
+      [0, -0.44, 0],
+      [0.7, -0.475, 0],
     ],
   },
 }

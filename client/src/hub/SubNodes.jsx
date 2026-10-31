@@ -4,7 +4,7 @@ import { Line, Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { branchCurve, cardFor, headFor, labelScaleFor } from './layout.js'
 import { setsFor } from '../lib/media.js'
-import { isPlaylist, playlistFor } from '../lib/playlists.js'
+import { playlistFor } from '../lib/playlists.js'
 import { coverCrop, previewMaterial } from './shaders.js'
 
 // A chapter's own branches, growing out of its node the way the chapters
@@ -32,27 +32,10 @@ const _parent = new THREE.Quaternion()
 const _face = new THREE.Quaternion()
 
 export default function SubNodes({ branches, chapterId, narrow, accent, active, onPick, zoom }) {
-  const card = cardFor(narrow)
+  const card = cardFor(narrow, branches.length)
   return (
     <group>
-      {branches.map((b, i) =>
-        // A playlist is a name and a mood, not a photograph, so it does
-        // not get a photo-card. That is not only taste: six cards do not
-        // fit — measured, they would have to shrink to 52 pixels across
-        // on a phone, which is a thumbnail nobody can read. The artwork
-        // belongs in the song list, where there is room for it.
-        isPlaylist(b.id) ? (
-          <NameNode
-            key={b.id}
-            branch={b}
-            index={i}
-            narrow={narrow}
-            accent={accent}
-            state={!active ? 'idle' : active === b.id ? 'on' : 'off'}
-            zoom={zoom}
-            onPick={onPick}
-          />
-        ) : (
+      {branches.map((b, i) => (
         <SubNode
           key={b.id}
           branch={b}
@@ -60,115 +43,20 @@ export default function SubNodes({ branches, chapterId, narrow, accent, active, 
           chapterId={chapterId}
           card={card}
           narrow={narrow}
-          accent={accent}
+          accent={tintFor(b.id, accent)}
           state={!active ? 'idle' : active === b.id ? 'on' : 'off'}
           zoom={zoom}
           onPick={onPick}
         />
-        )
-      )}
+      ))}
     </group>
   )
 }
 
-// A playlist branch: a dot in its own colour with its name under it, on
-// the same curve out of his head that everything else here grows on.
-function NameNode({ branch, index, narrow, accent, state, onPick, zoom }) {
-  const [hover, setHover] = useState(false)
-  const dot = useRef()
-  const line = useRef()
-  const label = useRef()
-  const grew = useRef(0)
-
-  // Each playlist wears its own mood rather than the chapter's pink, so
-  // the ring tells you what the six are before you have opened any.
-  const tint = useMemo(() => {
-    const mood = playlistFor(branch.id)?.mood
-    return MOOD_INK[mood] ?? accent
-  }, [branch.id, accent])
-
-  const curve = useMemo(
-    () => branchCurve(headFor(narrow), branch.pos, 36),
-    [branch.pos, narrow]
-  )
-
-  useFrame((_, dt) => {
-    const k = 1 - Math.pow(0.000004, Math.min(dt, 0.1))
-    grew.current = Math.min(1, grew.current + dt * 1.6)
-    const on = grew.current > index * 0.12
-
-    const lit = !on ? 0 : state === 'off' ? 0.3 : hover || state === 'on' ? 1 : 0.82
-    const size = !on ? 0 : hover || state === 'on' ? 1.5 : 1
-
-    dot.current.scale.setScalar(THREE.MathUtils.lerp(dot.current.scale.x, size, k))
-    dot.current.material.opacity = THREE.MathUtils.lerp(dot.current.material.opacity, lit, k)
-    if (line.current) {
-      line.current.material.opacity = THREE.MathUtils.lerp(
-        line.current.material.opacity,
-        lit * 0.5,
-        k
-      )
-    }
-    if (label.current) {
-      // Same rule as everywhere else on this page: a label you cannot see
-      // does not take a click, a tab stop or a screen reader's attention.
-      const shown = !on ? 0 : state === 'off' ? 0.35 : 1
-      label.current.style.opacity = shown.toFixed(2)
-      const live = shown > 0.05
-      label.current.style.pointerEvents = live ? 'auto' : 'none'
-      label.current.tabIndex = live ? 0 : -1
-      label.current.setAttribute('aria-hidden', live ? 'false' : 'true')
-      label.current.style.scale = labelScaleFor(zoom?.current ?? 1).toFixed(3)
-    }
-  })
-
-  return (
-    <group>
-      <Line ref={line} points={curve} color={tint} transparent opacity={0} lineWidth={1.2} />
-
-      <mesh
-        ref={dot}
-        position={branch.pos}
-        onPointerOver={(e) => {
-          e.stopPropagation()
-          setHover(true)
-          document.body.style.cursor = 'pointer'
-        }}
-        onPointerOut={() => {
-          setHover(false)
-          document.body.style.cursor = ''
-        }}
-        onClick={(e) => {
-          e.stopPropagation()
-          onPick(branch.id)
-        }}
-      >
-        <sphereGeometry args={[0.055, 18, 18]} />
-        <meshBasicMaterial color={tint} transparent opacity={0} />
-      </mesh>
-
-      <Html position={branch.pos} center distanceFactor={3.2} zIndexRange={[9, 0]}
-        style={{ pointerEvents: 'none' }}>
-        <button
-          ref={label}
-          className={'sub-label is-name' + (hover ? ' is-hot' : '')}
-          style={{ '--node': tint, opacity: 0 }}
-          tabIndex={-1}
-          aria-hidden="true"
-          onMouseEnter={() => setHover(true)}
-          onMouseLeave={() => setHover(false)}
-          onClick={() => onPick(branch.id)}
-        >
-          {branch.title}
-        </button>
-      </Html>
-    </group>
-  )
-}
-
-// The colour each mood lends its branch. The same six values the
-// stylesheet uses for --mood-ink; they live in both places because one is
-// CSS and one is a three.js material, and there is no shared language.
+// A playlist wears its own mood rather than the chapter's pink, so the six
+// of them tell you what they are before you have opened any. Same six
+// values the stylesheet uses for --mood-ink; they live in both places
+// because one is CSS and the other is a three.js material.
 const MOOD_INK = {
   disco: '#ff4d9d',
   calm: '#6fd3c7',
@@ -177,6 +65,7 @@ const MOOD_INK = {
   hard: '#c8f03c',
   still: '#8d93a8',
 }
+const tintFor = (id, fallback) => MOOD_INK[playlistFor(id)?.mood] ?? fallback
 
 function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, onPick, zoom }) {
   const W = size.w
@@ -191,6 +80,12 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
   // What this branch has to show, up to six of them. A branch with nothing
   // in it yet still gets a frame — an empty one, which is honest.
   const urls = useMemo(() => {
+    // A playlist shows its songs' artwork, which YouTube already has —
+    // same rectangle, same two-second cycle, different evidence. This is
+    // what a Campus branch does with photographs.
+    const playlist = playlistFor(branch.id)
+    if (playlist) return playlist.songs.slice(0, MOST).map((s) => s.thumb)
+
     const all = setsFor(chapterId, branch.id).flatMap((set) => set.photos)
     // Spread across the whole branch rather than the first six, so a
     // preview samples the set instead of showing the start of it.

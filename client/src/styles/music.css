@@ -243,24 +243,3 @@
 .playlist-empty { margin-top: var(--s4); font-size: 14px; color: var(--ink-dim); }
 .playlist-empty code { font-family: var(--mono); font-size: 12px; color: var(--mood-ink); }
 
-/* A playlist branch's name, out in the 3D scene rather than in the panel.
-   Bigger and plainer than a photo caption, because here the word is the
-   whole thing you are tapping. */
-.sub-label.is-name {
-  padding: 6px 10px;
-  border: 1px solid color-mix(in srgb, var(--node) 42%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--bg) 72%, transparent);
-  color: var(--node);
-  font-family: var(--mono);
-  font-size: 13px;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  transform: translateY(16px);
-  transition: background 160ms var(--ease), border-color 160ms var(--ease);
-}
-.sub-label.is-name.is-hot,
-.sub-label.is-name:hover {
-  background: color-mix(in srgb, var(--node) 20%, var(--bg));
-  border-color: var(--node);
-}
