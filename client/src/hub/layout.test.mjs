@@ -22,6 +22,7 @@ import {
   HEAD_R,
   offerView,
   offerCard,
+  PALM_X,
   fanCounts,
   placeBranches,
   cosmicScale,
@@ -558,7 +559,7 @@ test('he holds the six playlists out, on every screen there is', () => {
     // lens once: end-on, behind a torso of the same colour, and covered by
     // the cards they were holding. A hand must come out below the cards,
     // outside them, and still be on the screen.
-    const hand = at(new THREE.Vector3(narrow ? 0.43 : 0.53, narrow ? 0.76 : 0.94, narrow ? 0.32 : 0.4))
+    const hand = at(new THREE.Vector3(narrow ? PALM_X.narrow : PALM_X.wide, narrow ? 0.78 : 0.975, narrow ? 0.283 : 0.354))
     const lowest = Math.max(...boxes.map((b) => b.b))
     const widest = Math.max(...boxes.map((b) => b.r))
     assert.ok(hand.y > lowest, `${name}: his hand at ${hand.y.toFixed(0)} is behind the cards, which reach ${lowest.toFixed(0)}`)

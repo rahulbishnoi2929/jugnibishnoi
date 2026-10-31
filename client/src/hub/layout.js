@@ -317,9 +317,12 @@ export function placeBranches(node, branches = [], narrow, offered = false, shee
 // spread by OFFER_OUT the hand arrives at these, in world units after his
 // own scale. Figure.jsx owns those two angles; if they move, so does this.
 const PALM = {
-  wide: { y: 0.94, z: 0.4 },
-  narrow: { y: 0.76, z: 0.32 },
+  wide: { y: 0.975, z: 0.354 },
+  narrow: { y: 0.78, z: 0.283 },
 }
+// How far out each hand reaches, which is what the cards have to stay
+// inside of for the gesture to be visible at all.
+export const PALM_X = { wide: 0.539, narrow: 0.431 }
 
 // Six cards above the palms, in two rows of three on every screen.
 //
@@ -344,21 +347,21 @@ const PALM = {
 // bottom of a breath, while the test said everything was fine.
 const OFFER = {
   phone: {
-    span: 0.22, lift: 0.36, drop: 0.03, row: 0.19, out: 0.18,
+    span: 0.22, lift: 0.34, drop: 0.03, row: 0.19, out: 0.18,
     card: { w: 0.19, h: 0.141 },
     view: { pos: [0, 1.3, 2.2], look: [0, 0.3, 0] },
   },
   tablet: {
-    span: 0.22, lift: 0.26, drop: 0.03, row: 0.16, out: 0.18,
+    span: 0.22, lift: 0.3, drop: 0.03, row: 0.16, out: 0.18,
     card: { w: 0.19, h: 0.141 },
-    view: { pos: [0, 1.0, 3.2], look: [0, 0.54, 0] },
+    view: { pos: [0, 1.4, 3.2], look: [0, 0.54, 0] },
   },
   desktop: {
-    span: 0.26, lift: 0.36, drop: 0.03, row: 0.22, out: 0.18,
+    span: 0.26, lift: 0.34, drop: 0.03, row: 0.19, out: 0.18,
     card: { w: 0.22, h: 0.163 },
     // Aimed left only here, because only here is there a column of panel
     // to make room for. On a sheet it looks straight at him.
-    view: { pos: [0, 1.5, 2.6], look: [-0.55, 0.7, 0] },
+    view: { pos: [0, 1.7, 2.6], look: [-0.55, 0.7, 0] },
   },
 }
 

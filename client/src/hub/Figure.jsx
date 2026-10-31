@@ -23,6 +23,7 @@ const CROTCH = H / 2 // half height, which is where it falls on a person
 const SHOULDER = H - HEAD_R * 2 * 1.5 // a head and a half from the top
 const HAND = 0.8 // fingertips reach mid-thigh
 const HALF_SHOULDER = 0.225 // two heads across, including the arms
+const UPPER_ARM = (SHOULDER - HAND) / 2 // the elbow sits halfway down
 
 export default function Figure({ bob, spin, turned, scale = 1, offering, vibe }) {
   const group = useRef()
@@ -31,6 +32,8 @@ export default function Figure({ bob, spin, turned, scale = 1, offering, vibe })
   const chest = useRef()
   const armL = useRef()
   const armR = useRef()
+  const elbowL = useRef()
+  const elbowR = useRef()
   const head = useRef()
   const legL = useRef()
   const legR = useRef()
@@ -88,6 +91,8 @@ export default function Figure({ bob, spin, turned, scale = 1, offering, vibe })
 
     armL.current.rotation.set(p.armL.x, 0, p.armL.z)
     armR.current.rotation.set(p.armR.x, 0, p.armR.z)
+    elbowL.current.rotation.x = p.armL.elbow
+    elbowR.current.rotation.x = p.armR.elbow
 
     // The legs absorb the dip rather than riding it, and shorten to meet
     // the pelvis that came down. That is a knee bend, and without it the
@@ -138,21 +143,37 @@ export default function Figure({ bob, spin, turned, scale = 1, offering, vibe })
           </mesh>
         ))}
 
-        {/* arms — pivot at the shoulder, not the middle, so the sway reads */}
+        {/* Arms, in two pieces with an elbow between them.
+            One capsule on a shoulder can only swing like a pendulum,
+            which is most of why the first dance read as a mannequin: a
+            shoulder is one joint and a person dancing uses two. It is
+            also what the offering gesture needs — the upper arm goes
+            down and out, the forearm comes forward, palm up. */}
         {[
-          ['armL', armL, -1],
-          ['armR', armR, 1],
-        ].map(([key, ref, s]) => (
+          ['armL', armL, elbowL, -1],
+          ['armR', armR, elbowR, 1],
+        ].map(([key, ref, bend, s]) => (
           <group key={key} ref={ref} position={[s * HALF_SHOULDER, SHOULDER - 0.02, 0]}>
-            <mesh position={[0, -(SHOULDER - HAND) / 2, 0]} rotation={[0, 0, s * 0.06]}>
-              <capsuleGeometry args={[0.05, SHOULDER - HAND - 0.1, 6, 16]} />
+            <mesh position={[0, -UPPER_ARM / 2, 0]} rotation={[0, 0, s * 0.06]}>
+              <capsuleGeometry args={[0.05, UPPER_ARM - 0.08, 6, 16]} />
               <meshStandardMaterial color="#1b1d21" roughness={0.85} />
             </mesh>
-            {/* a hand, so the arm ends rather than stopping */}
-            <mesh position={[0, -(SHOULDER - HAND), 0]}>
-              <sphereGeometry args={[0.052, 16, 16]} />
+            <mesh position={[0, -UPPER_ARM, 0]}>
+              <sphereGeometry args={[0.046, 14, 14]} />
               <meshStandardMaterial color="#1b1d21" roughness={0.85} />
             </mesh>
+
+            <group ref={bend} position={[0, -UPPER_ARM, 0]}>
+              <mesh position={[0, -UPPER_ARM / 2, 0]}>
+                <capsuleGeometry args={[0.045, UPPER_ARM - 0.08, 6, 16]} />
+                <meshStandardMaterial color="#1b1d21" roughness={0.85} />
+              </mesh>
+              {/* a hand, so the arm ends rather than stopping */}
+              <mesh position={[0, -UPPER_ARM, 0]}>
+                <sphereGeometry args={[0.052, 16, 16]} />
+                <meshStandardMaterial color="#1b1d21" roughness={0.85} />
+              </mesh>
+            </group>
           </group>
         ))}
 
