@@ -17,7 +17,6 @@
     "Order is the order they play in. The first one starts when the",
     "playlist is opened."
   ],
-
   "playlists": [
     {
       "id": "chatpate",
@@ -45,7 +44,103 @@
       "title": "Yaadaan",
       "mood": "memory",
       "lede": "The ones that are about a year, not a song.",
-      "songs": []
+      "songs": [
+        {
+          "yt": "eBX54DRL8dY",
+          "title": "Neendran Ni Aundian – Babbu Maan",
+          "artist": "Catrack Entertainment"
+        },
+        {
+          "yt": "KcJyWwgNwIo",
+          "title": "Pyar",
+          "artist": "Release"
+        },
+        {
+          "yt": "mpmDL7dNLFs",
+          "title": "Pagal Shayar",
+          "artist": "Babbu Maan"
+        },
+        {
+          "yt": "usWp5bIydYU",
+          "title": "Mere Dil Wich",
+          "artist": "Babbu Maan"
+        },
+        {
+          "yt": "T6dWf22OWL8",
+          "title": "Vichhorha song mp3",
+          "artist": "Ajay dj"
+        },
+        {
+          "yt": "jMa544lZomc",
+          "title": "Babbu Maan - Mil Gayi Pind De Morh Tey",
+          "artist": "Swag Music"
+        },
+        {
+          "yt": "yOUbcqO8awA",
+          "title": "Garry Sandhu - Din Raat - Goyal Music",
+          "artist": "Goyal Music Official"
+        },
+        {
+          "yt": "JiDwPKsfK0E",
+          "title": "SHIV DI KITAAB - GURVINDER BRAR",
+          "artist": "Mad 4 Music"
+        },
+        {
+          "yt": "Bez5xgICf8A",
+          "title": "apna dil dega ni sada dil leja ni",
+          "artist": "전직은행원 손나은"
+        },
+        {
+          "yt": "j6YBoosz1gs",
+          "title": "Channa - gippy grewal",
+          "artist": "Amrinder Gill Songs"
+        },
+        {
+          "yt": "DzaxtmNF91w",
+          "title": "Garry Sandhu Ft. Roach Killa",
+          "artist": "Fresh Media Records"
+        },
+        {
+          "yt": "LM3NOvVktcs",
+          "title": "\"Jaan Jaan Jelly\"",
+          "artist": "T-Series Apna Punjab"
+        },
+        {
+          "yt": "bg2DqLCI5n8",
+          "title": "Sohneyo Narazgi Te Nahi",
+          "artist": "Soni Pabla Music"
+        },
+        {
+          "yt": "iMz31mRcb2Y",
+          "title": "New Punjabi Songs 2013",
+          "artist": "Mad 4 Music"
+        },
+        {
+          "yt": "ek9uNxOFTzM",
+          "title": "Hashar",
+          "artist": "Babbu Maan"
+        },
+        {
+          "yt": "AbQt6zySbic",
+          "title": "Afwaah",
+          "artist": "Speed Records"
+        },
+        {
+          "yt": "fgvoAt_Qqj8",
+          "title": "Bukal Vich",
+          "artist": "Geeta Zaildar"
+        },
+        {
+          "yt": "TFPUtn9Wnog",
+          "title": "Babbu Maan : \"Bootta\" Full Video Song",
+          "artist": "T-Series Apna Punjab"
+        },
+        {
+          "yt": "AaU9LSUPlTE",
+          "title": "Sajjan Rumaal De Geya – Babbu Maan",
+          "artist": "Catrack Entertainment"
+        }
+      ]
     },
     {
       "id": "rap",
