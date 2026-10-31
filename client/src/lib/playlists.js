@@ -20,7 +20,7 @@ export const playlists = data.playlists.map((p) => ({
 const byId = new Map(playlists.map((p) => [p.id, p]))
 
 // Branch ids are playlist ids. Chapter branches are named for what they
-// hold, so Music's six are chatpate, sukoon, lovable, yaadaan, rap and
+// hold, so Music's six are chatpate, anytime, lovable, yaadaan, rap and
 // silent — which is also why ids have to stay unique across chapters.
 export const playlistFor = (id) => byId.get(id) ?? null
 export const isPlaylist = (id) => byId.has(id)
