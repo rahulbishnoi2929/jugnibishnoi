@@ -46,7 +46,7 @@ function dropArtist(s, artist) {
 // does not need a dash in front of it — half of these just run straight
 // on from the name.
 const TAIL =
-  /\s*[-–—:]?\s*\b(?:\d+K(?:\s*\/\s*\d+K)?\s*)?(?:full\s+video\s+song|full\s+video|full\s+song|full\s+audio|music\s+video|video\s+song|audio\s+song|song\s+lyrics|with\s+lyrics|lyrics|full\s+hd)\b.*$/i
+  /\s*[-–—:]?\s*\b(?:\d+K(?:\s*\/\s*\d+K)?\s*)?(?:full\s+video\s+song|full\s+video|full\s+song|full\s+audio|music\s+video|video\s+song|audio\s+song|song\s+lyrics|with\s+lyrics|lyrics|lyrical|full\s+hd|new\s+songs?\s*\d{4}|official\s+video|official)\b.*$/i
 
 function clean(title, artist) {
   // The artist comes off first, because it can be on either side of a
@@ -65,6 +65,10 @@ function clean(title, artist) {
     // without them is usually part of the name, as in "VOID: Diljit
     // Dosanjh", so that one is left alone.
     .replace(/\s+l\s+/g, ' | ')
+    // The danda is a full stop in Devanagari and a separator here, used
+    // exactly the way a pipe is: "Jahaan Tum Ho Slowed+Reverb Song ।
+    // Shrey Singhal".
+    .replace(/\s*।\s*/g, ' | ')
     .replace(/\s+:\s+/g, ' | ')
     .replace(/\([^)]*\)/g, ' ')
     .replace(/\[[^\]]*\]/g, ' ')
@@ -153,12 +157,18 @@ if (!list) {
   process.exit(1)
 }
 
+// Songs taken out on purpose stay out. Without this, re-importing a
+// playlist quietly undoes the curation: a duplicate deleted last week is
+// still in the playlist on YouTube, so it comes straight back.
+const dropped = new Set(list.removed ?? [])
 const already = new Set(list.songs.map((s) => s.yt))
-const added = songs.filter((s) => !already.has(s.yt))
+const added = songs.filter((s) => !already.has(s.yt) && !dropped.has(s.yt))
 list.songs.push(...added)
 writeFileSync(file, JSON.stringify(data, null, 2) + '\n')
 
 console.log(`${added.length} added to "${target}" (${list.songs.length} total)`)
+const skipped = songs.filter((s) => dropped.has(s.yt)).length
+if (skipped) console.log(`${skipped} skipped — listed under "removed"`)
 if (blocked.length) {
   console.log(`\n${blocked.length} left out — embedding is blocked, so they would not play:`)
   for (const id of blocked) console.log(`  https://youtu.be/${id}`)
