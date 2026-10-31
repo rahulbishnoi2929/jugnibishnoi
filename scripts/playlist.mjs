@@ -140,14 +140,68 @@ for (const id of ids) {
     continue
   }
   const { title, author_name } = await res.json()
-  const artist = artistOf(author_name)
-  songs.push({ yt: id, title: clean(title, artist), artist })
+  songs.push({ yt: id, raw: title, artist: artistOf(author_name) })
   process.stdout.write('.')
 }
 process.stdout.write('\n')
 
 const file = new URL('../client/src/content/playlists.json', import.meta.url)
 const data = JSON.parse(readFileSync(file, 'utf8'))
+
+// Every artist name already known, from this batch and from everything
+// imported before it.
+//
+// This is the rule that does what no amount of keyword-stripping could:
+// "Diljit Dosanjh: Love Ya" on the Saregama channel has the artist in the
+// title and a label in the artist field, so there is nothing to match it
+// against — unless you have seen Diljit Dosanjh be an artist somewhere
+// else, which by the fourth playlist you have.
+//
+// Longest first, so "Arjan Dhillon" is taken off before "Arjan" would be.
+// Capped at three words and five characters to keep it to names: a label
+// called "Music" would otherwise eat half of every title.
+const known = [
+  ...new Set([
+    ...songs.map((s) => s.artist),
+    ...data.playlists.flatMap((p) => p.songs.map((s) => s.artist)),
+  ]),
+]
+  .filter((a) => a && a.length > 4 && a.split(/\s+/).length <= 3)
+  .sort((a, b) => b.length - a.length)
+
+function dropKnown(title) {
+  // Repeated until it stops changing, because one pass is
+  // order-dependent and that is not a detail. "VOID: Diljit Dosanjh
+  // Intense" only ends with "Diljit Dosanjh" once "Intense" has gone, and
+  // the list is longest-first, so the longer name is tested while it is
+  // still buried. Four passes is well past what any real title needs.
+  let s = title
+  for (let pass = 0; pass < 4; pass++) {
+    const before = s
+    for (const a of known) {
+      const low = s.toLowerCase()
+      const al = a.toLowerCase()
+      if (low.startsWith(al)) {
+        const rest = s.slice(a.length).replace(/^\s*[-–—:|,.]?\s*/, '')
+        if (rest) {
+          s = rest
+          continue
+        }
+      }
+      if (low.endsWith(al)) {
+        const head = s.slice(0, s.length - a.length).replace(/\s*[-–—:|,.]?\s*$/, '')
+        if (head) s = head
+      }
+    }
+    if (s === before) break
+  }
+  return s.trim()
+}
+
+for (const s of songs) {
+  s.title = dropKnown(clean(s.raw, s.artist)) || clean(s.raw, s.artist) || s.raw
+  delete s.raw
+}
 const list = data.playlists.find((p) => p.id === target)
 if (!list) {
   console.error(
