@@ -20,6 +20,8 @@ import {
   placeBranches,
   HOME_VIEW,
   branchView,
+  offerView,
+  offerCard,
   spinToFront,
   applyZoom,
   ZOOM_MIN,
@@ -56,8 +58,19 @@ export default function Hub() {
   const [narrow, setNarrow] = useState(
     () => typeof window !== 'undefined' && window.innerWidth < 520
   )
+  // Two breakpoints, and they are not the same one. 520 is where he is
+  // drawn smaller; 900 is where the reading panel stops being a column
+  // down the left and becomes a sheet across the bottom (hub.css). The
+  // band between them is full-size figure with a sheet, which is its own
+  // composition and the one the offer view got wrong when it had two.
+  const [sheet, setSheet] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth <= 900
+  )
   useEffect(() => {
-    const onResize = () => setNarrow(window.innerWidth < 520)
+    const onResize = () => {
+      setNarrow(window.innerWidth < 520)
+      setSheet(window.innerWidth <= 900)
+    }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
@@ -75,16 +88,24 @@ export default function Hub() {
   const openable = nodes.filter((n) => n.kind !== 'link')
   const active = openable.some((n) => n.id === id) ? id : null
   const chapter = openable.find((n) => n.id === active)
+  // Music is framed differently because it behaves differently: he holds
+  // the playlists out, so the camera comes in to where his hands are
+  // rather than looking at a fan of branches off the ring.
+  const offering = active === 'music'
   const view = useMemo(
-    () => (active ? branchView(narrow) : HOME_VIEW),
-    [active, narrow]
+    () =>
+      offering ? offerView(narrow, sheet) : active ? branchView(narrow) : HOME_VIEW,
+    [active, offering, narrow, sheet]
   )
 
   // A chapter's own branches, and which of them is open.
   const activeNode = nodes.find((n) => n.id === active)
   const branches = useMemo(
-    () => (activeNode ? placeBranches(activeNode, activeNode.branches, narrow) : []),
-    [activeNode, narrow]
+    () =>
+      activeNode
+        ? placeBranches(activeNode, activeNode.branches, narrow, offering, sheet)
+        : [],
+    [activeNode, narrow, offering, sheet]
   )
   const openSub = branches.find((b) => b.id === sub) ?? null
 
@@ -100,6 +121,10 @@ export default function Hub() {
     [nodes, navigate]
   )
   const music = useMusic()
+  // Read every frame by the figure, so it must not be state: he grooves
+  // while something is playing and settles when it stops.
+  const vibing = useRef(false)
+  vibing.current = !!music?.now?.playing
   const goSub = useCallback(
     (next) => {
       // Opening a playlist starts it. This has to happen on the tap
@@ -402,6 +427,8 @@ export default function Hub() {
                       spin={spin}
                       turned={!!active}
                       scale={figureFor(narrow)}
+                      offering={offering}
+                      vibe={vibing}
                     />
 
                     {/* Everything growing out of his head rides with it. */}
@@ -418,6 +445,7 @@ export default function Hub() {
                         <SubNodes
                           branches={branches}
                           chapterId={active}
+                          card={offering ? offerCard(narrow, sheet) : null}
                           narrow={narrow}
                           accent={activeNode.accent}
                           active={sub}

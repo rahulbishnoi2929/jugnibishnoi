@@ -262,12 +262,28 @@ export const fanCounts = (narrow) =>
 
 export const FAN_SLOTS = FAN.wide.length
 
-export function placeBranches(node, branches = [], narrow) {
+export function placeBranches(node, branches = [], narrow, offered = false, sheet = false) {
   // The offsets are what we want to see on screen, but these nodes live
   // inside the turntable, which is counter-rotated by the node's own angle
   // while its chapter is open. Pre-rotating by that angle cancels it out —
   // without this the fan swung round and opened behind the panel.
   const spin = node.angle ?? 0
+
+  // Music's branches are the offer, not a fan off the node. They are
+  // already in world coordinates relative to him, so the node's position
+  // is not added — only the turntable's rotation is cancelled, the same
+  // way it is for everything else here.
+  if (offered) {
+    const places = offerFan(narrow, sheet)
+    return branches.map((b, i) => {
+      const [dx, dy, dz] = places[i]
+      const pos = new THREE.Vector3(dx, dy, dz).applyAxisAngle(
+        new THREE.Vector3(0, 1, 0),
+        spin
+      )
+      return { ...b, parent: node.pos, pos, offered: true }
+    })
+  }
 
   const table = narrow ? FAN.narrow : FAN.wide
   const fan = table[branches.length]
@@ -286,6 +302,88 @@ export function placeBranches(node, branches = [], narrow) {
     )
     return { ...b, parent: node.pos, pos: node.pos.clone().add(offset) }
   })
+}
+
+
+// ---------- Music: he holds the playlists out ----------
+//
+// Music does not use the branch fan. The others hang their branches off
+// the chapter node on the ring; here he puts his hands out and the cards
+// sit on his palms, so they are placed against the figure rather than
+// against the ring, and nothing is drawn connecting them.
+//
+// Where his palms land is not a guess. The arm pivots at the shoulder and
+// the hand is a fixed distance down it, so with the arm at OFFER_ARM and
+// spread by OFFER_OUT the hand arrives at these, in world units after his
+// own scale. Figure.jsx owns those two angles; if they move, so does this.
+const PALM = {
+  wide: { y: 0.94, z: 0.4 },
+  narrow: { y: 0.76, z: 0.32 },
+}
+
+// Six cards above the palms, in two rows of three on every screen.
+//
+// One arrangement, not three. Six across was tried and only fits a wide
+// desktop: at 800 pixels the reading panel takes 52 per cent of the width
+// and the row ran off the right-hand edge. Two rows of three survives 360
+// pixels and 1920 alike, which is what the branch fan had to do too.
+//
+// Three profiles, because two breakpoints cross here and they are not the
+// same one. He is drawn smaller below 520; the reading panel stops being
+// a column down the left and becomes a sheet across the bottom below 900.
+// The band between those is a full-size figure with a sheet, which is its
+// own composition — and the one that broke when this had only two cases.
+//
+// Every number swept over nine viewports, against four things that are
+// easy to lose: the cards clear of the panel and the screen edges, clear
+// of his face, clear of each other, and his hands visible — below the
+// cards, outside them, and still on the screen.
+const OFFER = {
+  phone: {
+    span: 0.22, lift: 0.3, drop: 0.03, row: 0.16, out: 0.18,
+    card: { w: 0.19, h: 0.141 },
+    view: { pos: [0, 1.1, 2.2], look: [0, 0.3, 0] },
+  },
+  tablet: {
+    span: 0.22, lift: 0.3, drop: 0.03, row: 0.19, out: 0.18,
+    card: { w: 0.19, h: 0.141 },
+    view: { pos: [0, 1.2, 2.8], look: [0, 0.6, 0] },
+  },
+  desktop: {
+    span: 0.26, lift: 0.36, drop: 0.03, row: 0.22, out: 0.18,
+    card: { w: 0.22, h: 0.163 },
+    // Aimed left only here, because only here is there a column of panel
+    // to make room for. On a sheet it looks straight at him.
+    view: { pos: [0, 1.5, 2.6], look: [-0.55, 0.7, 0] },
+  },
+}
+
+const profile = (narrow, sheet) =>
+  narrow ? OFFER.phone : sheet ? OFFER.tablet : OFFER.desktop
+
+export function offerFan(narrow, sheet) {
+  const palm = narrow ? PALM.narrow : PALM.wide
+  const o = profile(narrow, sheet)
+  const z = palm.z + o.out
+  const at = (x, extra = 0) => [
+    x,
+    palm.y + o.lift - Math.abs(x) * o.drop - extra,
+    z,
+  ]
+  const xs = [-o.span, 0, o.span]
+  return [...xs.map((x) => at(x)), ...xs.map((x) => at(x, o.row))]
+}
+
+// Between 80 and 164 pixels across depending on the screen, which is the
+// camera doing the work rather than three card sizes.
+export const offerCard = (narrow, sheet) => profile(narrow, sheet).card
+
+export function offerView(narrow, sheet) {
+  const { view } = profile(narrow, sheet)
+  return {
+    pos: new THREE.Vector3(...view.pos),
+    look: new THREE.Vector3(...view.look),
+  }
 }
 
 // Where the camera sits when nothing is selected.

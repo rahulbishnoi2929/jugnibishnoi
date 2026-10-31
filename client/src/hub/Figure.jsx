@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
+import * as THREE from 'three'
 import { HEAD_R, HEAD_Y } from './layout.js'
 
 // Placeholder standing figure, built from primitives.
@@ -22,18 +23,51 @@ const SHOULDER = H - HEAD_R * 2 * 1.5 // a head and a half from the top
 const HAND = 0.8 // fingertips reach mid-thigh
 const HALF_SHOULDER = 0.225 // two heads across, including the arms
 
-export default function Figure({ bob, spin, turned, scale = 1 }) {
+// How far an arm swings forward to hold something out. Measured rather
+// than eyeballed: at -1.3 radians the hand lands at y 1.34, z 0.73 in his
+// own units, which is chest height and far enough in front to put a card
+// on. Lower and he is pointing at the floor; higher and he is surrendering.
+const OFFER_ARM = -0.95
+// And spread, so the two hands are not one hand. The sign matters and is
+// easy to get backwards: Euler XYZ applies the z turn first, so on the
+// arm at negative x a positive z swings the hand *inward*. Measured at
+// 0.26 the two palms ended up five centimetres apart, which is cupping
+// rather than offering.
+const OFFER_OUT = 0.62
+
+export default function Figure({ bob, spin, turned, scale = 1, offering, vibe }) {
   const group = useRef()
   const chest = useRef()
   const armL = useRef()
   const armR = useRef()
+  const head = useRef()
+  const hips = useRef()
+  // Both eased rather than switched, because the whole point of the pose
+  // is the moving into it. Held as refs so neither costs a render.
+  const open = useRef(0)
+  const groove = useRef(0)
 
-  useFrame((state) => {
+  useFrame((state, dt) => {
     const t = state.clock.elapsedTime
+    const k = 1 - Math.pow(0.02, Math.min(dt, 0.1))
+    open.current = THREE.MathUtils.lerp(open.current, offering ? 1 : 0, k)
+    // Slower in than out: arriving at a groove should feel like settling
+    // into it, and stopping the music should stop him fairly promptly.
+    const toward = vibe?.current ? 1 : 0
+    groove.current = THREE.MathUtils.lerp(
+      groove.current,
+      toward,
+      1 - Math.pow(toward ? 0.25 : 0.02, Math.min(dt, 0.1))
+    )
+    const g = groove.current
 
-    // Breathing. The old amplitude was 0.025 on a 1.8-unit figure, which
-    // is invisible at any camera distance — this is the same idea, read.
-    const rise = Math.sin(t * 0.9) * 0.12
+    // Breathing, and on top of it the bounce. 0.86 Hz is a slow nod —
+    // somewhere near 50 to the bar, which is vibing rather than dancing.
+    // He was asked to move slowly, and a figure made of capsules looks
+    // foolish doing anything else.
+    const beat = t * 5.4
+    const rise =
+      Math.sin(t * 0.9) * 0.12 + g * Math.abs(Math.sin(beat)) * 0.055 - g * 0.02
     group.current.position.y = rise
     // The branches grow out of his head, so they need to know where it is —
     // and in the same units, which means after his own scale.
@@ -56,10 +90,30 @@ export default function Figure({ bob, spin, turned, scale = 1 }) {
     group.current.rotation.y = turned ? -(spin?.current ?? 0) : 0
 
     // Weight shifting from foot to foot, and arms that follow it.
-    group.current.rotation.z = Math.sin(t * 0.45) * 0.016
+    group.current.rotation.z = Math.sin(t * 0.45) * 0.016 + g * Math.sin(beat / 2) * 0.07
+
+    // Weight going from one foot to the other, which is what a body
+    // actually does to a beat and what the shoulders-only version missed.
+    if (hips.current) hips.current.position.x = g * Math.sin(beat / 2) * 0.035
+
+    // A nod, a half-beat behind the bounce so it reads as following the
+    // music rather than being wound by the same crank.
+    if (head.current) {
+      head.current.rotation.x = g * Math.sin(beat - 0.6) * 0.1
+      head.current.rotation.z = g * Math.sin(beat / 2 + 0.4) * 0.06
+    }
+
     const sway = Math.sin(t * 0.7)
-    armL.current.rotation.x = sway * 0.22
-    armR.current.rotation.x = -sway * 0.22
+    // Idle: arms hang and swing a little. Offering: they come up and out,
+    // palms where a card can sit. The groove rides on top of whichever
+    // pose he is in, so he keeps the cards up while he moves.
+    const idleX = sway * 0.22
+    armL.current.rotation.x = THREE.MathUtils.lerp(idleX, OFFER_ARM, open.current)
+      + g * Math.sin(beat) * 0.05
+    armR.current.rotation.x = THREE.MathUtils.lerp(-idleX, OFFER_ARM, open.current)
+      + g * Math.sin(beat + Math.PI) * 0.05
+    armL.current.rotation.z = open.current * -OFFER_OUT
+    armR.current.rotation.z = open.current * OFFER_OUT
   })
 
   return (
@@ -69,7 +123,7 @@ export default function Figure({ bob, spin, turned, scale = 1 }) {
     <group scale={scale}>
       <group ref={group}>
         {/* head */}
-        <mesh position={[0, HEAD_Y, 0]} castShadow>
+        <mesh ref={head} position={[0, HEAD_Y, 0]} castShadow>
           <sphereGeometry args={[HEAD_R, 32, 32]} />
           <meshStandardMaterial color="#1b1d21" roughness={0.7} metalness={0.05} />
         </mesh>
@@ -113,7 +167,9 @@ export default function Figure({ bob, spin, turned, scale = 1 }) {
           </group>
         ))}
 
-        {/* legs, half his height, and feet on the ground */}
+        {/* legs, half his height, and feet on the ground. Grouped so the
+            weight can shift from one to the other on a beat. */}
+        <group ref={hips}>
         {[-1, 1].map((s) => (
           <group key={s} position={[s * 0.082, 0, 0]}>
             <mesh position={[0, CROTCH / 2 + 0.03, 0]} castShadow>
@@ -126,6 +182,7 @@ export default function Figure({ bob, spin, turned, scale = 1 }) {
             </mesh>
           </group>
         ))}
+        </group>
       </group>
     </group>
   )

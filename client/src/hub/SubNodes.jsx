@@ -31,8 +31,8 @@ const MOST = 6 // how many of a branch's photographs to cycle through
 const _parent = new THREE.Quaternion()
 const _face = new THREE.Quaternion()
 
-export default function SubNodes({ branches, chapterId, narrow, accent, active, onPick, zoom }) {
-  const card = cardFor(narrow, branches.length)
+export default function SubNodes({ branches, chapterId, narrow, accent, active, onPick, zoom, card: given }) {
+  const card = given ?? cardFor(narrow, branches.length)
   return (
     <group>
       {branches.map((b, i) => (
@@ -223,14 +223,19 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
 
   return (
     <group>
-      <Line
-        ref={line}
-        points={curve}
-        color={accent}
-        transparent
-        opacity={0}
-        lineWidth={state === 'on' || hover ? 2 : 1}
-      />
+      {/* No branch on the offer. He is holding these out, and a line
+          from his head to something in his own hand is not a branch, it
+          is a tangle. */}
+      {!branch.offered && (
+        <Line
+          ref={line}
+          points={curve}
+          color={accent}
+          transparent
+          opacity={0}
+          lineWidth={state === 'on' || hover ? 2 : 1}
+        />
+      )}
 
       <mesh
         ref={card}

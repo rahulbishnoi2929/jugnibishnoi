@@ -19,6 +19,9 @@ import {
   applyZoom,
   branchView,
   cardFor,
+  HEAD_R,
+  offerView,
+  offerCard,
   fanCounts,
   placeBranches,
   cosmicScale,
@@ -438,78 +441,100 @@ test('every chapter has a fan laid out for its number of branches', () => {
   }
 })
 
-test('the six playlists fit above him, on both screens', () => {
-  // Six rectangles, not four spread wider. On a phone the band between the
-  // status bar and the top of his head is 116 pixels, and two rows of
-  // 49-pixel cards with a gap is 109 of it — four pixels of slack in the
-  // whole arrangement, which is why both the card size and the row
-  // separation came off a sweep rather than a guess.
+test('he holds the six playlists out, on every screen there is', () => {
+  // Music does not use the branch fan. He puts his hands out and the cards
+  // sit on his palms, so what is measured is the offer: the camera that
+  // frames it, the cards against his chest, and his face.
   //
-  // A desktop takes all six in one row at 113 across. Campus gets 172 for
-  // four; six of anything is smaller, and that is the trade for keeping
-  // the same structure rather than inventing a second one.
+  // Eight viewports, because this broke on the ones in between. Six cards
+  // across only ever fitted a wide desktop — at 800 pixels the panel takes
+  // 52 per cent of the width and the row ran off the edge — and the first
+  // version of the camera had two cases where the layout has three: the
+  // figure shrinks below 520, the panel becomes a bottom sheet below 900,
+  // and the band between them is its own thing.
   const music = byId('music')
   const SCREENS = [
-    { name: 'phone', w: 375, h: 812, safeTop: 47, wall: 0, label: 0 },
-    // On a desktop the name hangs under its card, so it counts against
-    // the space below; on a phone it sits on the card's bottom edge.
-    { name: 'desktop', w: 1440, h: 820, safeTop: 0, wall: 430, label: 20 },
+    [360, 780], [375, 812], [414, 896],
+    [560, 900], [768, 1024],
+    [1024, 768], [1440, 820], [1920, 1080],
   ]
 
-  for (const s of SCREENS) {
-    const narrow = s.w < 520
+  for (const [w, h] of SCREENS) {
+    const narrow = w < 520
+    const sheet = w <= 900
+    // hub.css: a sheet at 60vh, else a left column of min(46ch, 52vw),
+    // where 46ch measures about 430 on this stack.
+    const wall = sheet ? 0 : Math.min(430, w * 0.52)
+    const free = sheet ? Math.round(h * 0.4) : h
+    const safeTop = narrow ? 47 : 0
+    const name = `${w}x${h}`
+
     const pos = new THREE.Vector3()
     const look = new THREE.Vector3()
-    applyZoom(branchView(narrow), fitFor(s.w), pos, look)
-    const cam = new THREE.PerspectiveCamera(40, s.w / s.h, 0.1, 100)
+    applyZoom(offerView(narrow, sheet), fitFor(w), pos, look)
+    const cam = new THREE.PerspectiveCamera(40, w / h, 0.1, 100)
     cam.position.copy(pos)
     cam.lookAt(look)
     cam.updateMatrixWorld()
     const at = (v) => {
       const n = v.clone().project(cam)
-      return { x: ((n.x + 1) / 2) * s.w, y: ((1 - n.y) / 2) * s.h }
+      return { x: ((n.x + 1) / 2) * w, y: ((1 - n.y) / 2) * h }
     }
 
     const node = placeNodes(five, narrow)[five.indexOf(music)]
-    const spun = node.pos.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), -node.angle)
-    const subs = placeBranches({ ...node, pos: spun, angle: 0 }, music.branches, narrow)
-    assert.equal(subs.length, 6, `${s.name}: ${subs.length} playlists placed, not 6`)
+    // angle 0 is where the turntable has settled by the time you are
+    // looking at this; placeBranches pre-rotates to cancel that spin.
+    const subs = placeBranches({ ...node, angle: 0 }, music.branches, narrow, true, sheet)
+    assert.equal(subs.length, 6, `${name}: ${subs.length} cards offered, not 6`)
 
-    const card = cardFor(narrow, subs.length)
     const fig = figureFor(narrow)
     const crown = at(new THREE.Vector3(0, BODY_TOP * fig, 0))
+    const chin = at(new THREE.Vector3(0, (HEAD_Y - HEAD_R) * fig, 0))
+    assert.ok(crown.y > safeTop, `${name}: his head is off the top at ${crown.y.toFixed(0)}`)
 
+    const card = offerCard(narrow, sheet)
     const boxes = subs.map((b) => {
       const c = at(b.pos)
       const hw = Math.abs(at(new THREE.Vector3(b.pos.x + card.w / 2, b.pos.y, b.pos.z)).x - c.x)
       const hh = Math.abs(at(new THREE.Vector3(b.pos.x, b.pos.y + card.h / 2, b.pos.z)).y - c.y)
-      return { l: c.x - hw, r: c.x + hw, t: c.y - hh, b: c.y + hh + s.label, id: b.id }
+      return { l: c.x - hw, r: c.x + hw, t: c.y - hh, b: c.y + hh, id: b.id }
     })
 
     for (const box of boxes) {
-      assert.ok(box.t > s.safeTop, `${s.name}: ${box.id} runs off the top at ${box.t.toFixed(0)}`)
-      assert.ok(box.l > s.wall, `${s.name}: ${box.id} is behind the panel at ${box.l.toFixed(0)}`)
-      assert.ok(box.r < s.w, `${s.name}: ${box.id} runs off the right at ${box.r.toFixed(0)}`)
+      assert.ok(box.l > wall, `${name}: ${box.id} is behind the panel at ${box.l.toFixed(0)}`)
+      assert.ok(box.r < w, `${name}: ${box.id} runs off the right at ${box.r.toFixed(0)}`)
+      assert.ok(box.t > safeTop, `${name}: ${box.id} runs off the top at ${box.t.toFixed(0)}`)
+      assert.ok(box.b < free, `${name}: ${box.id} reaches ${box.b.toFixed(0)}, under a panel at ${free}`)
+      // In front of his chest is the point. Over his face is not.
       assert.ok(
-        box.b + 4 < crown.y,
-        `${s.name}: ${box.id} reaches ${box.b.toFixed(0)} and his head is at ${crown.y.toFixed(0)}`
+        box.t > chin.y,
+        `${name}: ${box.id} starts at ${box.t.toFixed(0)}, above his chin at ${chin.y.toFixed(0)}`
       )
     }
 
-    // Rectangles must not touch. Only pairs sharing a row band can.
     for (let i = 0; i < boxes.length; i++) {
       for (let j = i + 1; j < boxes.length; j++) {
         const a = boxes[i]
         const b = boxes[j]
         if (Math.min(a.b, b.b) - Math.max(a.t, b.t) <= 0) continue
         const gap = Math.max(a.l, b.l) - Math.min(a.r, b.r)
-        assert.ok(gap > 0, `${s.name}: ${a.id} and ${b.id} overlap by ${(-gap).toFixed(0)}px`)
+        assert.ok(gap > 8, `${name}: ${a.id} and ${b.id} are ${gap.toFixed(0)}px apart`)
       }
     }
 
-    // And big enough to be worth looking at and tapping.
-    const w = boxes[0].r - boxes[0].l
-    assert.ok(w >= 48, `${s.name}: a playlist card is only ${w.toFixed(0)}px across`)
+    const cw = boxes[0].r - boxes[0].l
+    assert.ok(cw >= 78, `${name}: an offered card is only ${cw.toFixed(0)}px across`)
+
+    // And the gesture has to be visible. His arms pointed straight at the
+    // lens once: end-on, behind a torso of the same colour, and covered by
+    // the cards they were holding. A hand must come out below the cards,
+    // outside them, and still be on the screen.
+    const hand = at(new THREE.Vector3(narrow ? 0.43 : 0.53, narrow ? 0.76 : 0.94, narrow ? 0.32 : 0.4))
+    const lowest = Math.max(...boxes.map((b) => b.b))
+    const widest = Math.max(...boxes.map((b) => b.r))
+    assert.ok(hand.y > lowest, `${name}: his hand at ${hand.y.toFixed(0)} is behind the cards, which reach ${lowest.toFixed(0)}`)
+    assert.ok(hand.x > widest, `${name}: his hand at ${hand.x.toFixed(0)} is inside the cards, which reach ${widest.toFixed(0)}`)
+    assert.ok(hand.x < w - 6, `${name}: his hand is off the right edge at ${hand.x.toFixed(0)}`)
   }
 })
 
