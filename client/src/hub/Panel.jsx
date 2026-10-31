@@ -1,6 +1,8 @@
 import { lazy, Suspense } from 'react'
 import { mediaFor } from '../lib/media.js'
 import Gallery from './Gallery.jsx'
+import Playlist from '../music/Playlist.jsx'
+import { isPlaylist } from '../lib/playlists.js'
 
 // The game only loads if you go and play it.
 const Board = lazy(() => import('../game/Board.jsx'))
@@ -70,8 +72,12 @@ export default function Panel({
           <Artifact key={i} {...a} />
         ))}
 
+        {/* A playlist branch opens its songs; a photo branch opens its
+            photographs. Same slot, same drill-down, different evidence. */}
+        {gallery && isPlaylist(gallery.branch) && <Playlist id={gallery.branch} />}
+
         {/* Whatever is sitting in src/photos/<id>/ right now. */}
-        {gallery && (
+        {gallery && !isPlaylist(gallery.branch) && (
           <Gallery
             chapterId={gallery.chapter}
             branchId={gallery.branch}

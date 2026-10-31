@@ -12,6 +12,8 @@ import Cosmos from './Cosmos.jsx'
 import SubNodes from './SubNodes.jsx'
 import Panel from './Panel.jsx'
 import Plate from './Plate.jsx'
+import { useMusic } from '../music/context.js'
+import { isPlaylist } from '../lib/playlists.js'
 import {
   placeNodes,
   placeRooms,
@@ -97,9 +99,17 @@ export default function Hub() {
     },
     [nodes, navigate]
   )
+  const music = useMusic()
   const goSub = useCallback(
-    (next) => navigate(next ? '/c/' + active + '/' + next : '/c/' + active),
-    [active, navigate]
+    (next) => {
+      // Opening a playlist starts it. This has to happen on the tap
+      // itself: a phone will not let anything make a noise except in
+      // direct response to a gesture, and the tap that opened the
+      // playlist is the only gesture there is.
+      if (next && isPlaylist(next)) music?.open(next)
+      navigate(next ? '/c/' + active + '/' + next : '/c/' + active)
+    },
+    [active, navigate, music]
   )
 
   // Drag to turn him — both ways. Nothing happens on hover: the

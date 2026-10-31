@@ -1,0 +1,266 @@
+/* ---------- the moods ---------- */
+
+/* The site takes its colour from whatever is playing, not from where you
+   are standing. Chatpate turns it disco; Silent settles it down.
+
+   Written as a data attribute on the root so one line of JS moves the
+   whole site, and the wash below transitions rather than cuts -- he asked
+   for it to change "with transition", and a hard cut between two
+   backgrounds is most of what would make this feel like a gimmick.
+
+   --mood-ink is the colour the music lends to everything; --mood-glow is
+   the wash behind the page; --mood-beat is how much is moving, which is
+   the difference between disco and still. */
+:root {
+  --mood-ink: var(--accent);
+  --mood-glow: transparent;
+  --mood-beat: 0;
+}
+
+:root[data-mood='disco']  { --mood-ink: #ff4d9d; --mood-glow: #6d1038; --mood-beat: 1; }
+:root[data-mood='calm']   { --mood-ink: #6fd3c7; --mood-glow: #10332f; --mood-beat: 0; }
+:root[data-mood='warm']   { --mood-ink: #ffa07a; --mood-glow: #4a2220; --mood-beat: 0.25; }
+:root[data-mood='memory'] { --mood-ink: #d9b26a; --mood-glow: #332a1b; --mood-beat: 0.15; }
+:root[data-mood='hard']   { --mood-ink: #c8f03c; --mood-glow: #23290a; --mood-beat: 0.7; }
+:root[data-mood='still']  { --mood-ink: #8d93a8; --mood-glow: #14161d; --mood-beat: 0; }
+
+/* The wash itself. Behind everything, above nothing, never takes a
+   pointer. The anti-goal was text you cannot read over a disco, so this
+   stays a tint and does not try to be a light show. */
+.mood-wash {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1200ms var(--ease), background 1200ms var(--ease);
+  background:
+    radial-gradient(120% 80% at 50% 0%, var(--mood-glow) 0%, transparent 62%),
+    radial-gradient(90% 70% at 12% 100%, var(--mood-glow) 0%, transparent 58%);
+}
+:root[data-mood] .mood-wash { opacity: 0.6; }
+
+/* Only the moods that said they were moving, move. */
+:root[data-mood='disco'] .mood-wash,
+:root[data-mood='hard'] .mood-wash {
+  animation: mood-pulse 1500ms ease-in-out infinite;
+}
+@keyframes mood-pulse {
+  50% { opacity: 0.85; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mood-wash { animation: none; }
+}
+
+/* ---------- the dock ---------- */
+
+/* Always mounted, because it is the iframe's home and re-parenting an
+   iframe reloads it. Empty and out of the way until something plays. */
+.dock {
+  position: fixed;
+  right: var(--s3);
+  bottom: var(--s3);
+  z-index: 40;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--s3);
+  width: min(380px, calc(100vw - var(--s3) * 2));
+  padding: var(--s2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-raised) 92%, transparent);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 40px rgb(0 0 0 / 0.45);
+  transform: translateY(140%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 420ms var(--ease), opacity 420ms var(--ease);
+}
+.dock.is-on {
+  transform: none;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Small, and genuinely visible. YouTube will not play in a hidden player
+   and their terms ask that it not be obscured, so rather than cheat that
+   with a one-pixel iframe it is sized to read as artwork. */
+.dock-screen {
+  width: 72px;
+  height: 72px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #000;
+}
+/* The frame is 16:9 and the slot is square, so the video is widened and
+   cropped to its middle, which is where the picture in a music video is. */
+.dock-screen > div,
+.dock-screen iframe {
+  width: 128px;
+  height: 72px;
+  margin-left: -28px;
+  border: 0;
+  display: block;
+}
+
+.dock-text { min-width: 0; }
+.dock-title,
+.dock-sub {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dock-title { font-size: 14px; color: var(--ink); }
+.dock-sub {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--mood-ink);
+  transition: color 1200ms var(--ease);
+}
+
+.dock-keys { display: flex; align-items: center; gap: 2px; }
+.dock-keys button {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink-dim);
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 160ms var(--ease), background 160ms var(--ease);
+}
+.dock-keys button:hover:not(:disabled) {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--mood-ink) 18%, transparent);
+}
+.dock-keys button:disabled { opacity: 0.3; cursor: default; }
+.dock-keys .is-play { color: var(--mood-ink); font-size: 15px; }
+.dock-keys .is-stop { font-size: 11px; }
+
+/* A phone has no side to dock to, so it becomes a bar across the bottom. */
+@media (max-width: 560px) {
+  .dock {
+    right: 0;
+    left: 0;
+    bottom: 0;
+    width: auto;
+    border-radius: 12px 12px 0 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+    padding: var(--s2) var(--s3);
+    padding-bottom: calc(var(--s2) + env(safe-area-inset-bottom, 0px));
+  }
+  .dock-screen { width: 52px; height: 52px; }
+  .dock-screen > div,
+  .dock-screen iframe { width: 92px; height: 52px; margin-left: -20px; }
+}
+
+/* ---------- the list ---------- */
+
+.playlist {
+  list-style: none;
+  margin: var(--s4) 0 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.track {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  padding: var(--s2);
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  text-align: left;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 160ms var(--ease);
+}
+.track:hover,
+.track:focus-visible { background: color-mix(in srgb, var(--mood-ink) 12%, transparent); }
+.track.is-here { background: color-mix(in srgb, var(--mood-ink) 18%, transparent); }
+
+.track-art {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg);
+}
+.track-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.track-badge {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  color: #fff;
+  background: rgb(0 0 0 / 0.42);
+  opacity: 0;
+  transition: opacity 160ms var(--ease);
+}
+.track:hover .track-badge,
+.track.is-here .track-badge { opacity: 1; }
+
+.track-text { min-width: 0; display: grid; gap: 1px; }
+.track-title,
+.track-artist { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.track-title { font-size: 15px; }
+.track-artist { font-size: 12px; color: var(--ink-dim); }
+.track.is-here .track-title { color: var(--mood-ink); }
+
+/* Three bars, because a still list gives you no way to tell which row is
+   the one making the noise. */
+.track-bars { display: flex; align-items: flex-end; gap: 2px; height: 14px; }
+.track-bars i {
+  width: 3px;
+  height: 100%;
+  border-radius: 1px;
+  background: var(--mood-ink);
+  animation: track-bar 900ms ease-in-out infinite;
+}
+.track-bars i:nth-child(2) { animation-delay: 150ms; }
+.track-bars i:nth-child(3) { animation-delay: 320ms; }
+@keyframes track-bar {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .track-bars i { animation: none; transform: scaleY(0.6); }
+}
+
+.playlist-empty { margin-top: var(--s4); font-size: 14px; color: var(--ink-dim); }
+.playlist-empty code { font-family: var(--mono); font-size: 12px; color: var(--mood-ink); }
+
+/* A playlist branch's name, out in the 3D scene rather than in the panel.
+   Bigger and plainer than a photo caption, because here the word is the
+   whole thing you are tapping. */
+.sub-label.is-name {
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--node) 42%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  color: var(--node);
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transform: translateY(16px);
+  transition: background 160ms var(--ease), border-color 160ms var(--ease);
+}
+.sub-label.is-name.is-hot,
+.sub-label.is-name:hover {
+  background: color-mix(in srgb, var(--node) 20%, var(--bg));
+  border-color: var(--node);
+}
