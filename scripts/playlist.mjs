@@ -19,32 +19,62 @@ if (!target || !link) {
   process.exit(1)
 }
 
-// YouTube gives every artist an auto-generated "- Topic" channel, and the
-// name in front of it is the real artist — better than most channel names.
-const artistOf = (a) => (a ?? '').replace(/\s*-\s*Topic$/i, '').trim()
+// YouTube gives every artist an auto-generated "- Topic" channel, and a
+// label-run "VEVO" one. The name in front of either is the real artist,
+// which is better than most channel names you get.
+const artistOf = (a) =>
+  (a ?? '')
+    .replace(/\s*-\s*Topic$/i, '')
+    .replace(/VEVO$/i, '')
+    .trim()
 
-// Titles carry the label, the year, "Official Video", the channel's own
-// name, and a tail of keywords after a pipe. This cannot be perfect —
-// they are typed by whoever uploaded them — so it takes the safe cuts and
-// leaves the rest to you.
-// "Babbu Maan - Pagal Shayar" on the Babbu Maan channel is just "Pagal
-// Shayar". Done as a prefix test rather than a built regular expression:
-// an artist name is arbitrary text, and escaping it into a pattern is the
-// kind of thing that works until someone is called AC/DC.
-function dropArtist(s, artist) {
-  if (!artist || !s.toLowerCase().startsWith(artist.toLowerCase())) return s
-  const rest = s.slice(artist.length).trimStart()
-  if (!/^[-–—:|]/.test(rest)) return s
-  const left = rest.slice(1).trim()
-  // Only if something is actually left. "Diljit Dosanjh" on the Diljit
-  // Dosanjh channel is all the title there is.
-  return left || s
+// Comparing names by their letters and digits only.
+//
+// A VEVO channel is the artist with the spaces taken out — 50CentVEVO,
+// LuisFonsiVEVO, KendrickLamarVEVO — so "50Cent" has to match "50 Cent"
+// in a title or the rule never fires on the one playlist that is nearly
+// all VEVO. It also makes punctuation stop mattering, which is free.
+const key = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
+
+// What is left after a name at the front, or null if it is not there.
+function afterName(title, name) {
+  const want = key(name)
+  if (!want) return null
+  let got = ''
+  let i = 0
+  for (; i < title.length && got.length < want.length; i++) {
+    const c = title[i].toLowerCase()
+    if (/[a-z0-9]/.test(c)) got += c
+  }
+  if (got !== want) return null
+  const rest = title.slice(i).replace(/^\s*[-–—:|,.]?\s*/, '').trim()
+  return rest || null
 }
 
+// And before a name at the end.
+function beforeName(title, name) {
+  const want = key(name)
+  if (!want) return null
+  let got = ''
+  let i = title.length
+  for (; i > 0 && got.length < want.length; i--) {
+    const c = title[i - 1].toLowerCase()
+    if (/[a-z0-9]/.test(c)) got = c + got
+  }
+  if (got !== want) return null
+  const head = title.slice(0, i).replace(/\s*[-–—:|,.]?\s*$/, '').trim()
+  return head || null
+}
+
+// "Babbu Maan - Pagal Shayar" on the Babbu Maan channel is just "Pagal
+// Shayar". Only ever when something is left behind: "Diljit Dosanjh" on
+// the Diljit Dosanjh channel is all the title there is.
+const dropArtist = (s, artist) => afterName(s, artist) ?? s
+
 // The tail YouTube puts after a song's name: "Full Song", "8K/4K Music
-// Video", "Song Lyrics". Separate from the keyword rule above because it
-// does not need a dash in front of it — half of these just run straight
-// on from the name.
+// Video", "Song Lyrics". Separate from the keyword rule inside clean()
+// because it needs no dash in front of it — half of these run straight on
+// from the name.
 const TAIL =
   /\s*[-–—:]?\s*\b(?:\d+K(?:\s*\/\s*\d+K)?\s*)?(?:full\s+video\s+song|full\s+video|full\s+song|full\s+audio|music\s+video|video\s+song|audio\s+song|song\s+lyrics|with\s+lyrics|lyrics|lyrical|full\s+hd|new\s+songs?\s*\d{4}|official\s+video|official)\b.*$/i
 
@@ -169,6 +199,18 @@ const known = [
   .filter((a) => a && a.length > 4 && a.split(/\s+/).length <= 3)
   .sort((a, b) => b.length - a.length)
 
+// A last tidy, after every name has been taken off.
+//
+// Stripping a featured artist leaves the "ft." behind pointing at
+// nothing — "Luis Fonsi - Despacito ft. Daddy Yankee" becomes "Despacito
+// ft" once both names are gone — and taking a name off the front can
+// leave its punctuation, since "The Notorious B.I.G. - Big Poppa" ends
+// the name on a full stop and the dash is the next character but one.
+const LEAD = /^[\s\-–—:|,.]+/
+const DANGLE = /[\s,]+(ft|feat|featuring|with|x|&)\.?$/i
+const tidy = (s) =>
+  s.replace(LEAD, '').replace(DANGLE, '').replace(/[\s,\-–—]+$/, '').trim()
+
 function dropKnown(title) {
   // Repeated until it stops changing, because one pass is
   // order-dependent and that is not a detail. "VOID: Diljit Dosanjh
@@ -179,19 +221,7 @@ function dropKnown(title) {
   for (let pass = 0; pass < 4; pass++) {
     const before = s
     for (const a of known) {
-      const low = s.toLowerCase()
-      const al = a.toLowerCase()
-      if (low.startsWith(al)) {
-        const rest = s.slice(a.length).replace(/^\s*[-–—:|,.]?\s*/, '')
-        if (rest) {
-          s = rest
-          continue
-        }
-      }
-      if (low.endsWith(al)) {
-        const head = s.slice(0, s.length - a.length).replace(/\s*[-–—:|,.]?\s*$/, '')
-        if (head) s = head
-      }
+      s = afterName(s, a) ?? beforeName(s, a) ?? s
     }
     if (s === before) break
   }
@@ -199,7 +229,8 @@ function dropKnown(title) {
 }
 
 for (const s of songs) {
-  s.title = dropKnown(clean(s.raw, s.artist)) || clean(s.raw, s.artist) || s.raw
+  const once = clean(s.raw, s.artist)
+  s.title = tidy(dropKnown(once)) || tidy(once) || once || s.raw
   delete s.raw
 }
 const list = data.playlists.find((p) => p.id === target)

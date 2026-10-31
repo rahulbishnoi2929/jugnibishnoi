@@ -63,7 +63,7 @@ const MOOD_INK = {
   warm: '#ffa07a',
   memory: '#d9b26a',
   hard: '#c8f03c',
-  still: '#8d93a8',
+  intense: '#ff5a3c',
 }
 const tintFor = (id, fallback) => MOOD_INK[playlistFor(id)?.mood] ?? fallback
 
