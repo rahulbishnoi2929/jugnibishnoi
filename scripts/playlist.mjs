@@ -41,6 +41,13 @@ function dropArtist(s, artist) {
   return left || s
 }
 
+// The tail YouTube puts after a song's name: "Full Song", "8K/4K Music
+// Video", "Song Lyrics". Separate from the keyword rule above because it
+// does not need a dash in front of it — half of these just run straight
+// on from the name.
+const TAIL =
+  /\s*[-–—:]?\s*\b(?:\d+K(?:\s*\/\s*\d+K)?\s*)?(?:full\s+video\s+song|full\s+video|full\s+song|full\s+audio|music\s+video|video\s+song|audio\s+song|song\s+lyrics|with\s+lyrics|lyrics|full\s+hd)\b.*$/i
+
 function clean(title, artist) {
   // The artist comes off first, because it can be on either side of a
   // separator. "Diljit Dosanjh : Love Like This : Official Audio" splits
@@ -66,6 +73,11 @@ function clean(title, artist) {
 
   // And again, in case the segment we kept was "Artist - Song".
   s = dropArtist(s.trim(), artist)
+
+  // Only if it leaves something. A song really called "Lyrics" would
+  // otherwise come out blank, and a wrong title beats no title.
+  const trimmed = s.replace(TAIL, '').trim()
+  if (trimmed) s = trimmed
   return s.replace(/\s{2,}/g, ' ').replace(/\s*[-–—,]\s*$/, '').trim()
 }
 
