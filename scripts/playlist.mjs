@@ -206,7 +206,11 @@ const known = [
 // ft" once both names are gone — and taking a name off the front can
 // leave its punctuation, since "The Notorious B.I.G. - Big Poppa" ends
 // the name on a full stop and the dash is the next character but one.
-const LEAD = /^[\s\-–—:|,.]+/
+// Leading wreckage: punctuation a stripped name left behind, and a "Ft."
+// pointing at whoever is left. Only ft/feat/featuring, never a bare "x"
+// or "with" — "X Gon Give It To Ya" and "With You" are song titles, and
+// a rule that eats those is worse than the mess it tidies.
+const LEAD = /^(?:[\s\-–—:|,.]+|\s*(?:ft|feat|featuring)\.?\s+)+/i
 const DANGLE = /[\s,]+(ft|feat|featuring|with|x|&)\.?$/i
 const tidy = (s) =>
   s.replace(LEAD, '').replace(DANGLE, '').replace(/[\s,\-–—]+$/, '').trim()
