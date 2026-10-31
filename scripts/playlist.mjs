@@ -47,6 +47,10 @@ function clean(title, artist) {
   // to "Diljit Dosanjh" if you cut at the separator before taking the
   // name off, which throws the song away and keeps the singer.
   let s = dropArtist(title, artist)
+    // "Lyrical: Dupatta Tera Nau Rang Da" is a label on the front, not
+    // part of the name. Only when it is one of these words and only when
+    // a colon follows it, so "VOID: Diljit Dosanjh" is left alone.
+    .replace(/^\s*(lyrical|full\s+video|full\s+song|official\s+video|official\s+audio|video\s+song|audio|video)\s*:\s*/i, '')
 
   s = s
     // A lone lowercase l between spaces is a pipe someone typed wrong,
@@ -65,12 +69,19 @@ function clean(title, artist) {
   return s.replace(/\s{2,}/g, ' ').replace(/\s*[-–—,]\s*$/, '').trim()
 }
 
-const listId = link.match(/[?&]list=([\w-]+)/)?.[1] ?? link
-const page = await fetch(`https://www.youtube.com/playlist?list=${listId}`, {
-  headers: { 'accept-language': 'en-US,en;q=0.9' },
-}).then((r) => r.text())
+// A whole playlist, or just one song. Both are links someone pastes, and
+// having to think about which is which is a reason not to bother.
+const listId = link.match(/[?&]list=([\w-]+)/)?.[1] ?? null
+const single = listId ? null : link.match(/[?&]v=([\w-]{11})/)?.[1] ?? link.match(/^[\w-]{11}$/)?.[0]
 
-const name = page.match(/<title>([^<]*)<\/title>/)?.[1]?.replace(/ - YouTube$/, '')
+let page = ''
+let name = single ? 'one song' : null
+if (listId) {
+  page = await fetch(`https://www.youtube.com/playlist?list=${listId}`, {
+    headers: { 'accept-language': 'en-US,en;q=0.9' },
+  }).then((r) => r.text())
+  name = page.match(/<title>([^<]*)<\/title>/)?.[1]?.replace(/ - YouTube$/, '')
+}
 
 // Every video in the page, in order, de-duplicated.
 //
@@ -88,8 +99,15 @@ for (const m of page.matchAll(/"videoId":"([\w-]{11})"/g)) {
     ids.push(m[1])
   }
 }
+if (single) ids.push(single)
 if (!ids.length) {
-  console.error('No videos found. Is the playlist public or unlisted?')
+  // YouTube shows "The playlist does not exist" for a private one as well
+  // as for a deleted one — from outside they look the same. Unlisted is
+  // enough; it does not have to be public.
+  console.error('No videos found.')
+  console.error('YouTube only shows a playlist to the person who owns it while')
+  console.error('it is set to Private. Open it on YouTube and set it to Unlisted,')
+  console.error('then try again. Or paste one video link and this adds that song.')
   process.exit(1)
 }
 console.log(`"${name}" — ${ids.length} videos`)

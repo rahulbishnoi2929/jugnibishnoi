@@ -23,7 +23,13 @@
       "title": "Chatpate",
       "mood": "disco",
       "lede": "The loud ones.",
-      "songs": []
+      "songs": [
+        {
+          "yt": "cS5O8wrRPns",
+          "title": "Dupatta Tera Nau Rang Da",
+          "artist": "T-Series"
+        }
+      ]
     },
     {
       "id": "sukoon",
