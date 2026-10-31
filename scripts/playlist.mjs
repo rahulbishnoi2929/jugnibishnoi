@@ -27,26 +27,42 @@ const artistOf = (a) => (a ?? '').replace(/\s*-\s*Topic$/i, '').trim()
 // name, and a tail of keywords after a pipe. This cannot be perfect —
 // they are typed by whoever uploaded them — so it takes the safe cuts and
 // leaves the rest to you.
+// "Babbu Maan - Pagal Shayar" on the Babbu Maan channel is just "Pagal
+// Shayar". Done as a prefix test rather than a built regular expression:
+// an artist name is arbitrary text, and escaping it into a pattern is the
+// kind of thing that works until someone is called AC/DC.
+function dropArtist(s, artist) {
+  if (!artist || !s.toLowerCase().startsWith(artist.toLowerCase())) return s
+  const rest = s.slice(artist.length).trimStart()
+  if (!/^[-–—:|]/.test(rest)) return s
+  const left = rest.slice(1).trim()
+  // Only if something is actually left. "Diljit Dosanjh" on the Diljit
+  // Dosanjh channel is all the title there is.
+  return left || s
+}
+
 function clean(title, artist) {
-  let s = title
-    // A lone lowercase l between spaces is a pipe someone typed wrong.
-    // It is common enough in this corner of YouTube to be worth knowing.
+  // The artist comes off first, because it can be on either side of a
+  // separator. "Diljit Dosanjh : Love Like This : Official Audio" splits
+  // to "Diljit Dosanjh" if you cut at the separator before taking the
+  // name off, which throws the song away and keeps the singer.
+  let s = dropArtist(title, artist)
+
+  s = s
+    // A lone lowercase l between spaces is a pipe someone typed wrong,
+    // and a colon with spaces either side is a separator too. A colon
+    // without them is usually part of the name, as in "VOID: Diljit
+    // Dosanjh", so that one is left alone.
     .replace(/\s+l\s+/g, ' | ')
+    .replace(/\s+:\s+/g, ' | ')
     .replace(/\([^)]*\)/g, ' ')
     .replace(/\[[^\]]*\]/g, ' ')
     .replace(/\s*\|.*$/, '')
-    .replace(/\s*[-\u2013\u2014]\s*(official|full|latest|new|lyrical|audio|video)[^-\u2013\u2014]*$/i, '')
+    .replace(/\s*[-–—]\s*(official|full|latest|new|lyrical|audio|video)[^-–—]*$/i, '')
 
-  // "Babbu Maan - Pagal Shayar" on the Babbu Maan channel is just
-  // "Pagal Shayar". Done as a prefix test rather than a built regular
-  // expression: an artist name is arbitrary text, and escaping it into a
-  // pattern is the kind of thing that works until someone is called
-  // AC/DC.
-  if (artist && s.toLowerCase().startsWith(artist.toLowerCase())) {
-    const rest = s.slice(artist.length).trimStart()
-    if (/^[-–—:]/.test(rest)) s = rest.slice(1).trimStart()
-  }
-  return s.replace(/\s{2,}/g, ' ').replace(/\s*[-\u2013\u2014,]\s*$/, '').trim()
+  // And again, in case the segment we kept was "Artist - Song".
+  s = dropArtist(s.trim(), artist)
+  return s.replace(/\s{2,}/g, ' ').replace(/\s*[-–—,]\s*$/, '').trim()
 }
 
 const listId = link.match(/[?&]list=([\w-]+)/)?.[1] ?? link
