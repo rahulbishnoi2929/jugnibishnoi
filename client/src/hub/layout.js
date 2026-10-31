@@ -334,20 +334,24 @@ const PALM = {
 // The band between those is a full-size figure with a sheet, which is its
 // own composition — and the one that broke when this had only two cases.
 //
-// Every number swept over nine viewports, against four things that are
+// Every number swept over ten viewports, against five things that are
 // easy to lose: the cards clear of the panel and the screen edges, clear
-// of his face, clear of each other, and his hands visible — below the
-// cards, outside them, and still on the screen.
+// of his face, clear of each other, his hands visible — below the cards,
+// outside them, still on the screen — and all of it held through the
+// whole of his breathing and his knee bend, because the cards are in his
+// hands and ride with him. That last one was added after a card was found
+// reaching 28 pixels under the reading panel on a 560-wide tablet at the
+// bottom of a breath, while the test said everything was fine.
 const OFFER = {
   phone: {
-    span: 0.22, lift: 0.3, drop: 0.03, row: 0.16, out: 0.18,
+    span: 0.22, lift: 0.36, drop: 0.03, row: 0.19, out: 0.18,
     card: { w: 0.19, h: 0.141 },
-    view: { pos: [0, 1.1, 2.2], look: [0, 0.3, 0] },
+    view: { pos: [0, 1.3, 2.2], look: [0, 0.3, 0] },
   },
   tablet: {
-    span: 0.22, lift: 0.3, drop: 0.03, row: 0.19, out: 0.18,
+    span: 0.22, lift: 0.26, drop: 0.03, row: 0.16, out: 0.18,
     card: { w: 0.19, h: 0.141 },
-    view: { pos: [0, 1.2, 2.8], look: [0, 0.6, 0] },
+    view: { pos: [0, 1.0, 3.2], look: [0, 0.54, 0] },
   },
   desktop: {
     span: 0.26, lift: 0.36, drop: 0.03, row: 0.22, out: 0.18,

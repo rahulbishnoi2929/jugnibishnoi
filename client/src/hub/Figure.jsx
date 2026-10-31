@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { HEAD_R, HEAD_Y } from './layout.js'
+import { posture } from './pose.js'
 
 // Placeholder standing figure, built from primitives.
 //
@@ -23,27 +24,18 @@ const SHOULDER = H - HEAD_R * 2 * 1.5 // a head and a half from the top
 const HAND = 0.8 // fingertips reach mid-thigh
 const HALF_SHOULDER = 0.225 // two heads across, including the arms
 
-// How far an arm swings forward to hold something out. Measured rather
-// than eyeballed: at -1.3 radians the hand lands at y 1.34, z 0.73 in his
-// own units, which is chest height and far enough in front to put a card
-// on. Lower and he is pointing at the floor; higher and he is surrendering.
-const OFFER_ARM = -0.95
-// And spread, so the two hands are not one hand. The sign matters and is
-// easy to get backwards: Euler XYZ applies the z turn first, so on the
-// arm at negative x a positive z swings the hand *inward*. Measured at
-// 0.26 the two palms ended up five centimetres apart, which is cupping
-// rather than offering.
-const OFFER_OUT = 0.62
-
 export default function Figure({ bob, spin, turned, scale = 1, offering, vibe }) {
   const group = useRef()
+  const upper = useRef()
+  const hips = useRef()
   const chest = useRef()
   const armL = useRef()
   const armR = useRef()
   const head = useRef()
-  const hips = useRef()
-  // Both eased rather than switched, because the whole point of the pose
-  // is the moving into it. Held as refs so neither costs a render.
+  const legL = useRef()
+  const legR = useRef()
+  // Both eased rather than switched, because the point of a pose is the
+  // moving into it. Refs, so neither costs a render.
   const open = useRef(0)
   const groove = useRef(0)
 
@@ -51,69 +43,62 @@ export default function Figure({ bob, spin, turned, scale = 1, offering, vibe })
     const t = state.clock.elapsedTime
     const k = 1 - Math.pow(0.02, Math.min(dt, 0.1))
     open.current = THREE.MathUtils.lerp(open.current, offering ? 1 : 0, k)
-    // Slower in than out: arriving at a groove should feel like settling
-    // into it, and stopping the music should stop him fairly promptly.
+    // Slower in than out: settling into a groove should feel like
+    // settling, and stopping the music should stop him fairly promptly.
     const toward = vibe?.current ? 1 : 0
     groove.current = THREE.MathUtils.lerp(
       groove.current,
       toward,
       1 - Math.pow(toward ? 0.25 : 0.02, Math.min(dt, 0.1))
     )
-    const g = groove.current
 
-    // Breathing, and on top of it the bounce. 0.86 Hz is a slow nod —
-    // somewhere near 50 to the bar, which is vibing rather than dancing.
-    // He was asked to move slowly, and a figure made of capsules looks
-    // foolish doing anything else.
-    const beat = t * 5.4
-    const rise =
-      Math.sin(t * 0.9) * 0.12 + g * Math.abs(Math.sin(beat)) * 0.055 - g * 0.02
-    group.current.position.y = rise
-    // The branches grow out of his head, so they need to know where it is —
-    // and in the same units, which means after his own scale.
-    if (bob) bob.current = rise * scale
-    chest.current.scale.y = 1 + Math.sin(t * 0.9) * 0.022
+    // Everything he is doing comes from one place. pose.js has no React in
+    // its import graph, so a renderer and a test can ask it the same
+    // question — which is the only reason any of this was tunable: a dance
+    // measured only by reloading the page is a dance tuned by squinting.
+    const p = posture(t, { open: open.current, groove: groove.current })
 
-    // Inside a chapter he keeps facing you while the ring turns around him.
-    //
-    // The turntable is what moves — it spins to bring the branch you picked
-    // to the front, and he is inside it, so he was being carried round with
-    // it. For Campus that is -144 degrees, which is most of the way to his
-    // back. He used to add a turn of his own on top, computed from the
-    // branch's position *before* the spin, which put him 44 degrees the
-    // other way and left him 100 degrees off. Taking that away only made it
-    // the full 144.
-    //
-    // What cancels it is the turntable's own angle, so that is what he
-    // reads. At the hub he turns with it, because there the whole
-    // constellation is a thing you take hold of and spin.
+    group.current.position.y = p.bodyY
+    group.current.rotation.z = p.bodyRoll
+    // The branches grow out of his head, so they need to know where it is,
+    // and in the same units — which means after his own scale. The dip
+    // counts: his head goes down with his chest when his knees bend.
+    if (bob) bob.current = (p.bodyY + p.dip) * scale
+
+    // Inside a chapter he keeps facing you while the ring turns around
+    // him. The turntable is what moves — it spins to bring the branch you
+    // picked to the front, and he is inside it, so he was being carried
+    // round with it. What cancels that is the turntable's own angle, so
+    // that is what he reads. At the hub he turns with it, because there
+    // the whole constellation is a thing you take hold of and spin.
     group.current.rotation.y = turned ? -(spin?.current ?? 0) : 0
 
-    // Weight shifting from foot to foot, and arms that follow it.
-    group.current.rotation.z = Math.sin(t * 0.45) * 0.016 + g * Math.sin(beat / 2) * 0.07
+    // Hips lead and shoulders answer. A body that turns in one piece is a
+    // mannequin on a turntable.
+    upper.current.position.y = p.dip
+    upper.current.rotation.y = p.upperTurn
+    upper.current.rotation.z = p.upperLean
+    hips.current.position.x = p.hipsX
+    hips.current.position.y = p.dip
+    hips.current.rotation.y = p.hipsTurn
 
-    // Weight going from one foot to the other, which is what a body
-    // actually does to a beat and what the shoulders-only version missed.
-    if (hips.current) hips.current.position.x = g * Math.sin(beat / 2) * 0.035
+    chest.current.scale.y = p.chestY
+    head.current.rotation.x = p.headNod
+    head.current.rotation.z = p.headTilt
 
-    // A nod, a half-beat behind the bounce so it reads as following the
-    // music rather than being wound by the same crank.
-    if (head.current) {
-      head.current.rotation.x = g * Math.sin(beat - 0.6) * 0.1
-      head.current.rotation.z = g * Math.sin(beat / 2 + 0.4) * 0.06
+    armL.current.rotation.set(p.armL.x, 0, p.armL.z)
+    armR.current.rotation.set(p.armR.x, 0, p.armR.z)
+
+    // The legs absorb the dip rather than riding it, and shorten to meet
+    // the pelvis that came down. That is a knee bend, and without it the
+    // whole figure sank on every beat and put its feet through the floor —
+    // measured, they travelled 0.19 vertically, and the ground does not
+    // move.
+    for (const [ref, side] of [[legL, p.legL], [legR, p.legR]]) {
+      ref.current.rotation.x = side.x
+      ref.current.position.y = side.lift - p.dip
+      ref.current.scale.y = p.legSquash
     }
-
-    const sway = Math.sin(t * 0.7)
-    // Idle: arms hang and swing a little. Offering: they come up and out,
-    // palms where a card can sit. The groove rides on top of whichever
-    // pose he is in, so he keeps the cards up while he moves.
-    const idleX = sway * 0.22
-    armL.current.rotation.x = THREE.MathUtils.lerp(idleX, OFFER_ARM, open.current)
-      + g * Math.sin(beat) * 0.05
-    armR.current.rotation.x = THREE.MathUtils.lerp(-idleX, OFFER_ARM, open.current)
-      + g * Math.sin(beat + Math.PI) * 0.05
-    armL.current.rotation.z = open.current * -OFFER_OUT
-    armR.current.rotation.z = open.current * OFFER_OUT
   })
 
   return (
@@ -122,6 +107,10 @@ export default function Figure({ bob, spin, turned, scale = 1, offering, vibe })
     // branches follow is the rise you can see.
     <group scale={scale}>
       <group ref={group}>
+        {/* Everything above the waist, so it can turn against the hips.
+            The counter-rotation between the two is most of what reads as
+            dancing rather than swaying. */}
+        <group ref={upper}>
         {/* head */}
         <mesh ref={head} position={[0, HEAD_Y, 0]} castShadow>
           <sphereGeometry args={[HEAD_R, 32, 32]} />
@@ -167,11 +156,17 @@ export default function Figure({ bob, spin, turned, scale = 1, offering, vibe })
           </group>
         ))}
 
+        </group>
+
         {/* legs, half his height, and feet on the ground. Grouped so the
-            weight can shift from one to the other on a beat. */}
+            weight can shift from one to the other on a beat, and each one
+            held separately so it can take its own step and its own bend. */}
         <group ref={hips}>
-        {[-1, 1].map((s) => (
-          <group key={s} position={[s * 0.082, 0, 0]}>
+        {[
+          ['L', legL, -1],
+          ['R', legR, 1],
+        ].map(([key, ref, s]) => (
+          <group key={key} ref={ref} position={[s * 0.082, 0, 0]}>
             <mesh position={[0, CROTCH / 2 + 0.03, 0]} castShadow>
               <capsuleGeometry args={[0.068, CROTCH - 0.13, 6, 16]} />
               <meshStandardMaterial color="#1b1d21" roughness={0.85} />
