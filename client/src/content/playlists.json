@@ -1118,6 +1118,19 @@
           "title": "2Pac - Can't C Me"
         }
       ]
+    },
+    {
+      "id": "random",
+      "title": "Random",
+      "mood": "scatter",
+      "lede": "",
+      "songs": [
+        {
+          "yt": "Dzcxq4tVpIE",
+          "artist": "Universal Music India",
+          "title": "Falguni Pathak- Aiyo Rama"
+        }
+      ]
     }
   ]
 }

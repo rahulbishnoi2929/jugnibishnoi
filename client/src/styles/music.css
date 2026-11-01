@@ -28,6 +28,7 @@
 :root[data-mood='memory'] { --mood-ink: #d9b26a; --mood-glow: #332a1b; --mood-beat: 0.15; --wave-time: 18s; --wave-rise: 0.42; }
 :root[data-mood='hard'] { --mood-ink: #c8f03c; --mood-glow: #23290a; --mood-beat: 0.7; --wave-time: 7s; --wave-rise: 0.88; }
 :root[data-mood='intense'] { --mood-ink: #ff5a3c; --mood-glow: #5c1405; --mood-beat: 1; --wave-time: 4s; --wave-rise: 1.15; }
+:root[data-mood='scatter'] { --mood-ink: #9d8cff; --mood-glow: #241b4a; --mood-beat: 0.45; --wave-time: 11s; --wave-rise: 0.62; }
 
 /* The wash itself. Behind everything, above nothing, never takes a
    pointer. The anti-goal was text you cannot read over a disco, so this

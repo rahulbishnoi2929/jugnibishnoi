@@ -429,9 +429,18 @@ test('every chapter has a fan laid out for its number of branches', () => {
   // Now an unlaid-out count draws nothing at all, which is quieter and
   // worse. This is the thing that catches it — in CI, against the real
   // content, rather than by someone noticing a chapter looks empty.
+  const playlists = new Set(
+    JSON.parse(
+      readFileSync(new URL('../content/playlists.json', import.meta.url), 'utf8')
+    ).playlists.map((p) => p.id)
+  )
   for (const c of five) {
     const n = (c.branches ?? []).length
     if (n === 0) continue
+    // Music does not use the fan. Its branches are the offer — placed
+    // against the figure rather than off the node — and they have their
+    // own test.
+    if (c.branches.every((b) => playlists.has(b.id))) continue
     for (const narrow of [true, false]) {
       const where = narrow ? 'phone' : 'desktop'
       assert.ok(
@@ -522,7 +531,7 @@ test('a swipe carries on, and a nudge stops where it was put', () => {
   assert.equal(stalled.left.toFixed(6), capped.left.toFixed(6))
 })
 
-test('he holds the six playlists out, on every screen there is', () => {
+test('he holds the playlists out, on every screen there is', () => {
   // Music does not use the branch fan. He puts his hands out and the cards
   // sit on his palms, so what is measured is the offer: the camera that
   // frames it, the cards against his chest, and his face.
@@ -550,9 +559,10 @@ test('he holds the six playlists out, on every screen there is', () => {
     const safeTop = narrow ? 47 : 0
     const name = `${w}x${h}`
 
+    const count = music.branches.length
     const pos = new THREE.Vector3()
     const look = new THREE.Vector3()
-    applyZoom(offerView(narrow, sheet), fitFor(w), pos, look)
+    applyZoom(offerView(narrow, sheet, count), fitFor(w), pos, look)
     const cam = new THREE.PerspectiveCamera(40, w / h, 0.1, 100)
     cam.position.copy(pos)
     cam.lookAt(look)
@@ -566,7 +576,7 @@ test('he holds the six playlists out, on every screen there is', () => {
     // angle 0 is where the turntable has settled by the time you are
     // looking at this; placeBranches pre-rotates to cancel that spin.
     const subs = placeBranches({ ...node, angle: 0 }, music.branches, narrow, true, sheet)
-    assert.equal(subs.length, 6, `${name}: ${subs.length} cards offered, not 6`)
+    assert.equal(subs.length, count, `${name}: ${subs.length} cards offered, not ${count}`)
 
     const fig = figureFor(narrow)
     const crown = at(new THREE.Vector3(0, BODY_TOP * fig, 0))
@@ -591,7 +601,7 @@ test('he holds the six playlists out, on every screen there is', () => {
     }
     const ride = [sink * fig, 0, lift * fig]
 
-    const card = offerCard(narrow, sheet)
+    const card = offerCard(narrow, sheet, count)
     const boxes = subs.map((b) => {
       const c = at(b.pos)
       const hw = Math.abs(at(new THREE.Vector3(b.pos.x + card.w / 2, b.pos.y, b.pos.z)).x - c.x)

@@ -100,8 +100,8 @@ export default function Hub() {
   const offering = active === 'music'
   const view = useMemo(
     () =>
-      offering ? offerView(narrow, sheet) : active ? branchView(narrow) : HOME_VIEW,
-    [active, offering, narrow, sheet]
+      offering ? offerView(narrow, sheet, activeNode?.branches?.length ?? 6) : active ? branchView(narrow) : HOME_VIEW,
+    [active, offering, narrow, sheet, activeNode?.branches?.length]
   )
 
   // A chapter's own branches, and which of them is open.
@@ -483,7 +483,7 @@ export default function Hub() {
                         <SubNodes
                           branches={branches}
                           chapterId={active}
-                          card={offering ? offerCard(narrow, sheet) : null}
+                          card={offering ? offerCard(narrow, sheet, branches.length) : null}
                           narrow={narrow}
                           accent={activeNode.accent}
                           active={sub}

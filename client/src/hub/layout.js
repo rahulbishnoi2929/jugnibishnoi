@@ -274,7 +274,7 @@ export function placeBranches(node, branches = [], narrow, offered = false, shee
   // is not added — only the turntable's rotation is cancelled, the same
   // way it is for everything else here.
   if (offered) {
-    const places = offerFan(narrow, sheet)
+    const places = offerFan(narrow, sheet, branches.length)
     return branches.map((b, i) => {
       const [dx, dy, dz] = places[i]
       const pos = new THREE.Vector3(dx, dy, dz).applyAxisAngle(
@@ -365,28 +365,60 @@ const OFFER = {
   },
 }
 
-const profile = (narrow, sheet) =>
-  narrow ? OFFER.phone : sheet ? OFFER.tablet : OFFER.desktop
 
-export function offerFan(narrow, sheet) {
+// Seven of them is a different arrangement and a different camera, not
+// the six-card one with an extra card dropped in. Four across then three,
+// swept over the same ten viewports.
+const SEVEN = {
+  phone: {
+    span: 0.3, lift: 0.3, drop: 0.03, row: 0.16, out: 0.18,
+    card: { w: 0.16, h: 0.119 },
+    view: { pos: [0, 1.1, 2.2], look: [0, 0.4, 0] },
+  },
+  tablet: {
+    span: 0.34, lift: 0.26, drop: 0.03, row: 0.16, out: 0.18,
+    card: { w: 0.18, h: 0.134 },
+    view: { pos: [0, 1.2, 3.2], look: [0, 0.54, 0] },
+  },
+  desktop: {
+    span: 0.34, lift: 0.3, drop: 0.03, row: 0.19, out: 0.18,
+    card: { w: 0.2, h: 0.148 },
+    view: { pos: [0, 1.5, 2.6], look: [-0.55, 0.7, 0] },
+  },
+}
+
+const profile = (narrow, sheet, count = 6) => {
+  const row = count > 6 ? SEVEN : OFFER
+  return narrow ? row.phone : sheet ? row.tablet : row.desktop
+}
+
+export function offerFan(narrow, sheet, count = 6) {
   const palm = narrow ? PALM.narrow : PALM.wide
-  const o = profile(narrow, sheet)
+  const o = profile(narrow, sheet, count)
   const z = palm.z + o.out
   const at = (x, extra = 0) => [
     x,
     palm.y + o.lift - Math.abs(x) * o.drop - extra,
     z,
   ]
+  // Six is three and three; seven is four and three, with the lower row
+  // tucked inside the upper one so the stack reads as a hand of cards
+  // rather than a grid. Both swept over ten viewports.
+  if (count > 6) {
+    const top = [-1, -1 / 3, 1 / 3, 1].map((u) => u * o.span)
+    const bottom = [-0.66, 0, 0.66].map((u) => u * o.span)
+    return [...top.map((x) => at(x)), ...bottom.map((x) => at(x, o.row))]
+  }
   const xs = [-o.span, 0, o.span]
   return [...xs.map((x) => at(x)), ...xs.map((x) => at(x, o.row))]
 }
 
 // Between 80 and 164 pixels across depending on the screen, which is the
 // camera doing the work rather than three card sizes.
-export const offerCard = (narrow, sheet) => profile(narrow, sheet).card
+export const offerCard = (narrow, sheet, count = 6) => profile(narrow, sheet, count).card
 
-export function offerView(narrow, sheet) {
-  const { view } = profile(narrow, sheet)
+export function offerView(narrow, sheet, count = 6) {
+  const { view } = profile(narrow, sheet, count)
   return {
     pos: new THREE.Vector3(...view.pos),
     look: new THREE.Vector3(...view.look),
