@@ -198,7 +198,9 @@
         { "id": "yaadaan", "title": "Yaadaan" },
         { "id": "rap", "title": "Rap" },
         { "id": "intensity", "title": "High Intensity" },
-        { "id": "favourites", "title": "Personal Favourites" }
+        { "id": "favourites", "title": "Personal Favourites" },
+        { "id": "hr", "title": "HR Iconic" },
+        { "id": "party", "title": "Party" }
       ],
       "todo": [
         "Years. Where this sits against the other five decides where it lands on the ring — they are in chronological order and spinning walks the years",

@@ -66,12 +66,19 @@ const MOOD_INK = {
   hard: '#c8f03c',
   intense: '#ff5a3c',
   favourite: '#9d8cff',
+  iconic: '#ffb000',
+  party: '#3ad6ff',
 }
 const tintFor = (id, fallback) => MOOD_INK[playlistFor(id)?.mood] ?? fallback
 
 function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, onPick, zoom, count }) {
   const W = size.w
   const H = size.h
+  // A name under its picture needs a gap under the picture. Nine cards
+  // are stacked three deep with no such gap, so the name goes on the art
+  // — the same thing a phone already does, for the same reason: there is
+  // something directly below it that the name would otherwise land on.
+  const onArt = narrow
   const [hover, setHover] = useState(false)
   const card = useRef()
   const frame = useRef()
@@ -291,7 +298,7 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
       <Html
         position={[
           branch.pos.x,
-          branch.pos.y - H / 2 + (narrow ? 0.07 : -0.09),
+          branch.pos.y - H / 2 + (onArt ? (count > 8 ? H * 0.42 : 0.07) : -0.09),
           branch.pos.z,
         ]}
         center
@@ -304,7 +311,10 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
         <button
           ref={label}
           className={
-            'sub-label' + (hover ? ' is-hot' : '') + (narrow ? ' is-on-photo' : '')
+            'sub-label' +
+            (hover ? ' is-hot' : '') +
+            (onArt ? ' is-on-photo' : '') +
+            (count > 8 ? ' is-tight' : '')
           }
           style={{ '--node': accent, opacity: 0 }}
           // Starting values only; the frame loop owns these. See Nodes.

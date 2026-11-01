@@ -387,8 +387,42 @@ const SEVEN = {
   },
 }
 
+// Nine, which is two arrangements and two card shapes — see offerFan
+// for why. The wide screens get five then four, 4:3, with the name
+// under each the way six and seven have it. A phone gets three rows of
+// three, 16:9, with the names on the art: five across will not go at a
+// size worth tapping, and a third row only fits if the card is short.
+//
+// Found by scripts/offer-sweep.mjs, which tries numbers against the
+// checks the layout test makes and a stricter rule about cards keeping
+// away from each other. Five pixels spare on a 360 phone, nine on a
+// tablet. A tenth playlist will not go in this — run the sweep and it
+// will say so rather than leave you to find out on a phone.
+const NINE = {
+  phone: {
+    span: 0.191, lift: 0.425, drop: 0.058, row: 0.125, out: 0.186,
+    card: { w: 0.156, h: 0.091 },
+    view: { pos: [0, 1.55, 2.03], look: [0, 0.22, 0] },
+  },
+  tablet: {
+    span: 0.378, lift: 0.292, drop: 0.036, row: 0.149, out: 0.257,
+    card: { w: 0.153, h: 0.11 },
+    view: { pos: [0, 1.36, 2.81], look: [0, 0.58, 0] },
+  },
+  desktop: {
+    span: 0.379, lift: 0.286, drop: 0.037, row: 0.155, out: 0.166,
+    card: { w: 0.151, h: 0.109 },
+    view: { pos: [0, 1.5, 2.6], look: [-0.55, 0.8, 0] },
+  },
+}
+
+
+// Keyed by how many he is holding, so a sweep can try numbers against
+// the real layout rather than against a copy of it that has drifted.
+export const PROFILES = { 6: OFFER, 7: SEVEN, 9: NINE }
+
 const profile = (narrow, sheet, count = 6) => {
-  const row = count > 6 ? SEVEN : OFFER
+  const row = count > 8 ? PROFILES[9] : count > 6 ? PROFILES[7] : PROFILES[6]
   return narrow ? row.phone : sheet ? row.tablet : row.desktop
 }
 
@@ -404,6 +438,27 @@ export function offerFan(narrow, sheet, count = 6) {
   // Six is three and three; seven is four and three, with the lower row
   // tucked inside the upper one so the stack reads as a hand of cards
   // rather than a grid. Both swept over ten viewports.
+  // Nine is two arrangements, because a phone and a desktop disagree
+  // about what is scarce. Across the wide screens it is five then four,
+  // which keeps the cards the shape the other counts use and leaves a
+  // gap under each for its name. On a phone five across cannot be done
+  // — the narrowest here is 360 wide, a card has to stay 66 across to
+  // be worth tapping, and five of those with gaps comes to 366 before
+  // the edges — so it is three rows of three, with the names on the art
+  // the way a phone already does them.
+  if (count > 8) {
+    if (narrow) {
+      const xs = [-o.span, 0, o.span]
+      return [
+        ...xs.map((x) => at(x)),
+        ...xs.map((x) => at(x, o.row)),
+        ...xs.map((x) => at(x, o.row * 2)),
+      ]
+    }
+    const top = [-1, -0.5, 0, 0.5, 1].map((u) => u * o.span)
+    const bottom = [-0.75, -0.25, 0.25, 0.75].map((u) => u * o.span)
+    return [...top.map((x) => at(x)), ...bottom.map((x) => at(x, o.row))]
+  }
   if (count > 6) {
     const top = [-1, -1 / 3, 1 / 3, 1].map((u) => u * o.span)
     const bottom = [-0.66, 0, 0.66].map((u) => u * o.span)

@@ -216,6 +216,23 @@ export function MusicProvider({ children }) {
     setQueue([])
   }, [])
 
+  // The mood of whatever is on, written where the stylesheet can see it.
+  //
+  // Every colour in here hangs off :root[data-mood] — the wash behind the
+  // page, the waves, the ink. Nothing had ever set it, so the whole thing
+  // was dead: the wash rendered at nought opacity, the waves never rose,
+  // and a playlist sounded different without the page looking it. It goes
+  // on the document rather than in React state because what it tints is
+  // the whole page, including the parts a route has unmounted.
+  useEffect(() => {
+    const mood = list?.mood
+    if (!mood) return
+    document.documentElement.dataset.mood = mood
+    return () => {
+      delete document.documentElement.dataset.mood
+    }
+  }, [list?.mood])
+
   // Space, arrows, M. Only once something is playing, and never while
   // the caret is in a field or on a button that does its own thing with
   // the key — space on a focused button is a click, and stealing that

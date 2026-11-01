@@ -29,6 +29,8 @@
 :root[data-mood='hard'] { --mood-ink: #c8f03c; --mood-glow: #23290a; --mood-beat: 0.7; --wave-time: 7s; --wave-rise: 0.88; }
 :root[data-mood='intense'] { --mood-ink: #ff5a3c; --mood-glow: #5c1405; --mood-beat: 1; --wave-time: 4s; --wave-rise: 1.15; }
 :root[data-mood='favourite'] { --mood-ink: #9d8cff; --mood-glow: #241b4a; --mood-beat: 0.45; --wave-time: 11s; --wave-rise: 0.62; }
+:root[data-mood='iconic'] { --mood-ink: #ffb000; --mood-glow: #3d2600; --mood-beat: 0.85; --wave-time: 6.5s; --wave-rise: 0.95; }
+:root[data-mood='party'] { --mood-ink: #3ad6ff; --mood-glow: #06324a; --mood-beat: 1; --wave-time: 4.5s; --wave-rise: 1.1; }
 
 /* The wash itself. Behind everything, above nothing, never takes a
    pointer. The anti-goal was text you cannot read over a disco, so this
@@ -49,6 +51,8 @@
 /* Only the moods that said they were moving, move. */
 :root[data-mood='disco'] .mood-wash,
 :root[data-mood='intense'] .mood-wash,
+:root[data-mood='iconic'] .mood-wash,
+:root[data-mood='party'] .mood-wash,
 :root[data-mood='hard'] .mood-wash {
   animation: mood-pulse 1500ms ease-in-out infinite;
 }

@@ -76,7 +76,7 @@ const dropArtist = (s, artist) => afterName(s, artist) ?? s
 // because it needs no dash in front of it — half of these run straight on
 // from the name.
 const TAIL =
-  /\s*[-–—:]?\s*\b(?:\d+K(?:\s*\/\s*\d+K)?\s*)?(?:full\s+video\s+song|full\s+video|full\s+song|full\s+audio|music\s+video|video\s+song|audio\s+song|song\s+lyrics|with\s+lyrics|lyrics|lyrical|full\s+hd|new\s+songs?\s*\d{4}|official\s+video|official)\b.*$/i
+  /\s*[-–—:]?\s*\b(?:\d+K(?:\s*\/\s*\d+K)?\s*)?(?:full\s+video\s+song|full\s+video|full\s+song|full\s+audio|music\s+video|video\s+song|audio\s+song|song\s+lyrics|with\s+lyrics|lyric\s+video|lyrics|lyrical|full\s+hd|m\s*\/\s*v|new\s+(?:haryanvi|punjabi|hindi)\s+songs?|new\s+dj\s+song|dj\s+song|new\s+songs?\s*\d{4}|official\s+video|official)\b.*$/i
 
 function clean(title, artist) {
   // The artist comes off first, because it can be on either side of a
@@ -99,6 +99,12 @@ function clean(title, artist) {
     // exactly the way a pipe is: "Jahaan Tum Ho Slowed+Reverb Song ।
     // Shrey Singhal".
     .replace(/\s*।\s*/g, ' | ')
+    // A hash is a pipe too. These uploads tag the song rather than
+    // describing it: "<name> #Mahari Dhaani #New Haryanvi Song #Ajay
+    // Hooda #Anjali Raghav #TR #NDJMusic", which is a name followed by
+    // seven tags. Only with a space in front of it, so a title that
+    // really contains one is left alone.
+    .replace(/\s+#\s*/g, ' | ')
     .replace(/\s+:\s+/g, ' | ')
     .replace(/\([^)]*\)/g, ' ')
     .replace(/\[[^\]]*\]/g, ' ')
@@ -112,7 +118,14 @@ function clean(title, artist) {
   // otherwise come out blank, and a wrong title beats no title.
   const trimmed = s.replace(TAIL, '').trim()
   if (trimmed) s = trimmed
-  return s.replace(/\s{2,}/g, ' ').replace(/\s*[-–—,]\s*$/, '').trim()
+  return s
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s*[-–—,]\s*$/, '')
+    // Quotes around the whole of it. Half of one playlist came through as
+    // 'One Bottle Down' and "Birthday Bash" — the upload quotes the song
+    // because the rest of the line is a cast list.
+    .replace(/^(["'‘’“”])([\s\S]*)\1$/, '$2')
+    .trim()
 }
 
 // A whole playlist, or just one song. Both are links someone pastes, and
@@ -232,9 +245,15 @@ function dropKnown(title) {
   return s.trim()
 }
 
+// Each fallback has to be a name, not merely a non-empty string.
+// "Birthday Bash" arrived wrapped in quotes with its insides stripped
+// either side, and what came out was a single double-quote character —
+// which is truthy, so it was kept and shown as the name of the song.
+const real = (x) => (x && /[\p{L}\p{N}]/u.test(x) ? x : null)
 for (const s of songs) {
   const once = clean(s.raw, s.artist)
-  s.title = tidy(dropKnown(once)) || tidy(once) || once || s.raw
+  s.title =
+    real(tidy(dropKnown(once))) ?? real(tidy(once)) ?? real(once) ?? s.raw
   delete s.raw
 }
 const list = data.playlists.find((p) => p.id === target)

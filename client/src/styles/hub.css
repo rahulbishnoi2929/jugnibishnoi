@@ -373,6 +373,21 @@
 
 /* On a phone the name sits along the bottom edge of its photograph rather
    than under it, so it needs something to be legible against. */
+/* Nine names, on nine cards that are a third narrower than six are.
+   'Personal Favourites' does not go on one line at that size, so it is
+   allowed two and held to the width of the picture under it — a name
+   wider than its own card is a name lying across its neighbour. */
+.sub-label.is-tight {
+  max-width: 62px;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.12;
+  font-size: 0.6em;
+  /* Hugging the words, because at nine the name is most of the card it
+     sits on and every pixel of padding is a pixel of artwork. */
+  padding: 2px 4px;
+}
+
 .sub-label.is-on-photo {
   background: linear-gradient(
     0deg,
