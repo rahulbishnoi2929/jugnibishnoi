@@ -22,7 +22,12 @@ export default function Playlist({ id }) {
   }
 
   return (
-    <ol className="playlist">
+    <>
+      <p className="playlist-count">
+        {list.songs.length} songs
+        {now.id === id ? ' · playing' : ''}
+      </p>
+      <ol className="playlist">
       {list.songs.map((song, i) => {
         const here = now.id === id && now.index === i
         return (
@@ -53,6 +58,7 @@ export default function Playlist({ id }) {
           </li>
         )
       })}
-    </ol>
+      </ol>
+    </>
   )
 }

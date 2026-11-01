@@ -46,6 +46,7 @@ export default function SubNodes({ branches, chapterId, narrow, accent, active, 
           accent={tintFor(b.id, accent)}
           state={!active ? 'idle' : active === b.id ? 'on' : 'off'}
           zoom={zoom}
+          count={branches.length}
           onPick={onPick}
         />
       ))}
@@ -68,7 +69,7 @@ const MOOD_INK = {
 }
 const tintFor = (id, fallback) => MOOD_INK[playlistFor(id)?.mood] ?? fallback
 
-function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, onPick, zoom }) {
+function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, onPick, zoom, count }) {
   const W = size.w
   const H = size.h
   const [hover, setHover] = useState(false)
@@ -136,7 +137,14 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
   useFrame((state3, dt) => {
     const k = 1 - Math.pow(0.000004, Math.min(dt, 0.1))
     grew.current = Math.min(1, grew.current + dt * 1.6)
-    const on = grew.current > index * 0.18
+    // They arrive one after another, spread across the whole of `grew`
+    // rather than a fixed step each.
+    //
+    // It was index * 0.18, which is fine until there are seven of them:
+    // grew is capped at 1 and the seventh needed 1.08, so the playlist
+    // you were actually in was the one card that never appeared. A delay
+    // measured as a fraction of however many there are cannot do that.
+    const on = grew.current >= (count > 1 ? index / (count - 1) : 0) * 0.85
 
     const lit = !on ? 0 : state === 'off' ? 0.25 : hover || state === 'on' ? 1 : 0.85
     const size = !on ? 0 : hover || state === 'on' ? 1.06 : 1
