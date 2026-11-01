@@ -2,7 +2,11 @@
   position: relative;
   height: 100vh;
   overflow: hidden;
-  background: var(--bg);
+  /* No background of its own. body carries the page colour, and this is
+     a positioned element that comes after the wave layer in the document
+     — so an opaque background here paints straight over it, which is
+     exactly what it did. The canvas above is alpha:true, so the waves
+     show through everything that is not actually drawn. */
 }
 
 /* the chapter's world, full bleed */

@@ -89,6 +89,7 @@ export default function Figure({ bob, spin, turned, scale = 1, offering, vibe })
 
     chest.current.scale.y = p.chestY
     head.current.rotation.x = p.headNod
+    head.current.rotation.y = p.headTurn
     head.current.rotation.z = p.headTilt
 
     armL.current.rotation.set(p.armL.x, p.armL.y, p.armL.z)

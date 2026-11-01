@@ -60,12 +60,6 @@ export function posture(t, { open = 0, groove = 0, idle = true } = {}) {
   const breath = idle ? Math.sin(t * 0.9) * 0.12 * (1 - 0.6 * g) : 0
   const sway = Math.sin(t * 0.7)
 
-  // Shaped, not sinusoidal. A pure sine spends most of its time in the
-  // middle, which is why the first version floated: it never arrived
-  // anywhere. This spends longer at the extremes, so he is at the top or
-  // the bottom of a beat rather than forever travelling between them.
-  const hit = punch(Math.sin(beat))
-
   // A beat is not a sine. A body snaps to it and recovers slowly, and a
   // sine arrives exactly as gently as it leaves — which is why the whole
   // thing still read as floating however big the numbers got. Quick up
@@ -100,21 +94,24 @@ export function posture(t, { open = 0, groove = 0, idle = true } = {}) {
     // Shorter by exactly as much as the pelvis came down, so the top of
     // the leg still meets it.
     legSquash: (LEG + dip) / LEG,
-    bodyRoll: Math.sin(t * 0.45) * 0.016 + gp * side * 0.022,
+    bodyRoll: Math.sin(t * 0.45) * 0.016 + gp * side * 0.014,
     chestY: 1 + Math.sin(t * 0.9) * 0.022 + gp * drop * 0.02,
 
     // Hips lead and the shoulders answer. A body that turns in one piece
     // is a mannequin on a turntable; the counter-rotation between the two
     // is most of what reads as dancing rather than swaying.
-    hipsX: gp * side * 0.028,
+    hipsX: gp * side * 0.02,
     hipsTurn: gp * side * 0.24,
-    upperTurn: gp * -side * 0.2,
-    upperLean: gp * side * 0.025,
+    upperTurn: gp * -side * 0.12,
+    upperLean: gp * side * 0.015,
 
     // A nod, a fraction behind the bounce so it follows the music rather
     // than being wound by the same crank.
-    headNod: gp * punch(Math.sin(beat - 0.6)) * 0.15,
-    headTilt: gp * -side * 0.05,
+    headNod: gp * (accent * 0.22 - 0.08),
+    headTilt: gp * -side * 0.035,
+    // And a turn, on the weight shift rather than the beat, so the head
+    // is doing two things at two rates the way a real one does.
+    headTurn: gp * -side * 0.13,
 
     // Arms. Idle they hang and swing; offering they come up and out,
     // palms where a card can sit. The groove rides on top of whichever
@@ -124,25 +121,31 @@ export function posture(t, { open = 0, groove = 0, idle = true } = {}) {
     // The forearm leads the upper arm by about a quarter of a beat, which
     // is what makes an arm look thrown rather than carried.
     armL: {
-      x: lerp(sway * 0.22, OFFER_ARM, open) + gp * hit * 0.22,
-      // The shoulder's own long axis. Without this the arm is a pendulum
-      // in one plane and the elbow may as well not be there.
-      y: open * OFFER_TURN + gp * (accent - 0.5) * 0.4,
-      z: open * -OFFER_OUT + gp * side * 0.09 - gp * accent * 0.1,
-      // The forearm carries the accent, which is what a forearm does: the
-      // upper arm holds a position and the forearm hits the beat.
-      elbow: lerp(IDLE_ELBOW, OFFER_ELBOW, open) - gp * (accent * 0.42 + punch(Math.sin(beat + 1.6)) * 0.2),
-      // And the wrist lags it, because a hand is always a fraction behind
-      // the arm that threw it.
+      // Most of the pump is in the spread, not the pitch, and that is
+      // geometry rather than taste. With the arms out at 49 degrees, a
+      // shoulder pitch swings the hand along a tilted arc — measured,
+      // 86 pixels sideways for 101 up, which reads as rocking. Opening
+      // and closing the spread moves it 132 up for 37 across, which
+      // reads as a hand keeping time.
+      x: lerp(sway * 0.22, OFFER_ARM, open) + gp * (accent - 0.45) * 0.07,
+      y: open * OFFER_TURN + gp * (accent - 0.5) * 0.04,
+      z: open * -OFFER_OUT - gp * (accent - 0.45) * 0.46,
+      // The forearm carries the accent, which is what a forearm does:
+      // the upper arm holds a position and the forearm hits the beat.
+      elbow: lerp(IDLE_ELBOW, OFFER_ELBOW, open) - gp * (accent * 0.62 + punch(Math.sin(beat + 1.6)) * 0.2),
+      // And the wrist lags it, because a hand is always a fraction
+      // behind the arm that threw it.
       wrist: open * OFFER_WRIST - gp * pop(beat / (Math.PI * 2) - 0.12) * 0.35,
     },
     armR: {
-      // Not a mirror. Real people favour a side, and two arms doing the
-      // same thing half a beat apart is still a machine with two cranks.
-      x: lerp(-sway * 0.22, OFFER_ARM, open) + gp * punch(Math.sin(beat + Math.PI)) * 0.26,
-      y: open * -OFFER_TURN - gp * (offAccent - 0.5) * 0.34,
-      z: open * OFFER_OUT + gp * side * 0.09 + gp * offAccent * 0.1,
-      elbow: lerp(IDLE_ELBOW, OFFER_ELBOW, open) - gp * (offAccent * 0.36 + punch(Math.sin(beat + Math.PI + 1.6)) * 0.22),
+      // Not a mirror. Real people favour a side, and two arms doing one
+      // thing half a beat apart is still a machine with two cranks.
+      x: lerp(-sway * 0.22, OFFER_ARM, open) + gp * (offAccent - 0.45) * 0.09,
+      y: open * -OFFER_TURN - gp * (offAccent - 0.5) * 0.04,
+      z: open * OFFER_OUT + gp * (offAccent - 0.45) * 0.38,
+      elbow:
+        lerp(IDLE_ELBOW, OFFER_ELBOW, open) -
+        gp * (offAccent * 0.54 + punch(Math.sin(beat + Math.PI + 1.6)) * 0.24),
       wrist: open * OFFER_WRIST - gp * pop(beat / (Math.PI * 2) + 0.38) * 0.3,
     },
 

@@ -15,14 +15,19 @@
   --mood-ink: var(--accent);
   --mood-glow: transparent;
   --mood-beat: 0;
+  /* How fast the waves cross, and how tall they stand. A playlist is a
+     tempo before it is anything else, so these are the two numbers a
+     mood really has. */
+  --wave-time: 18s;
+  --wave-rise: 0;
 }
 
-:root[data-mood='disco']  { --mood-ink: #ff4d9d; --mood-glow: #6d1038; --mood-beat: 1; }
-:root[data-mood='calm']   { --mood-ink: #6fd3c7; --mood-glow: #10332f; --mood-beat: 0; }
-:root[data-mood='warm']   { --mood-ink: #ffa07a; --mood-glow: #4a2220; --mood-beat: 0.25; }
-:root[data-mood='memory'] { --mood-ink: #d9b26a; --mood-glow: #332a1b; --mood-beat: 0.15; }
-:root[data-mood='hard']   { --mood-ink: #c8f03c; --mood-glow: #23290a; --mood-beat: 0.7; }
-:root[data-mood='intense'] { --mood-ink: #ff5a3c; --mood-glow: #5c1405; --mood-beat: 1; }
+:root[data-mood='disco'] { --mood-ink: #ff4d9d; --mood-glow: #6d1038; --mood-beat: 1; --wave-time: 5s; --wave-rise: 1; }
+:root[data-mood='calm'] { --mood-ink: #6fd3c7; --mood-glow: #10332f; --mood-beat: 0; --wave-time: 22s; --wave-rise: 0.35; }
+:root[data-mood='warm'] { --mood-ink: #ffa07a; --mood-glow: #4a2220; --mood-beat: 0.25; --wave-time: 15s; --wave-rise: 0.5; }
+:root[data-mood='memory'] { --mood-ink: #d9b26a; --mood-glow: #332a1b; --mood-beat: 0.15; --wave-time: 18s; --wave-rise: 0.42; }
+:root[data-mood='hard'] { --mood-ink: #c8f03c; --mood-glow: #23290a; --mood-beat: 0.7; --wave-time: 7s; --wave-rise: 0.88; }
+:root[data-mood='intense'] { --mood-ink: #ff5a3c; --mood-glow: #5c1405; --mood-beat: 1; --wave-time: 4s; --wave-rise: 1.15; }
 
 /* The wash itself. Behind everything, above nothing, never takes a
    pointer. The anti-goal was text you cannot read over a disco, so this
@@ -244,3 +249,88 @@
 .playlist-empty { margin-top: var(--s4); font-size: 14px; color: var(--ink-dim); }
 .playlist-empty code { font-family: var(--mono); font-size: 12px; color: var(--mood-ink); }
 
+
+/* ---------- the waves ---------- */
+
+/* A band of music under everything, moving at the playlist's own tempo.
+   Disco crosses in five seconds and stands full height; Anytime takes
+   twenty-two and barely lifts off the floor. One pair of numbers per
+   mood, and the rest is the same three layers.
+
+   Three of them, at different speeds and widths, because one wave is a
+   shape and three are a sea. The slowest is widest, which is what makes
+   the stack read as depth rather than as three lines.
+
+   SVG rather than canvas: it costs no frame loop, it is sharp at any
+   size, and the 3D scene is already asking enough of the machine. */
+.waves {
+  position: fixed;
+  inset: auto 0 0 0;
+  height: min(42vh, 380px);
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1400ms var(--ease);
+}
+:root[data-mood] .waves {
+  opacity: calc(0.22 + var(--wave-rise) * 0.3);
+}
+
+.waves svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Each layer is drawn twice end to end and slid by exactly half its own
+   width, so the loop has no seam in it. */
+.waves g {
+  animation: wave-roll var(--wave-time) linear infinite;
+  transform-origin: 50% 100%;
+}
+.waves g:nth-child(2) {
+  animation-duration: calc(var(--wave-time) * 1.7);
+  animation-direction: reverse;
+  opacity: 0.6;
+}
+.waves g:nth-child(3) {
+  animation-duration: calc(var(--wave-time) * 2.6);
+  opacity: 0.38;
+}
+
+/* Half of the pair, which is one full copy of the shape — so the second
+   copy lands exactly where the first began. */
+@keyframes wave-roll {
+  to {
+    transform: translateX(-1200px);
+  }
+}
+
+/* The height is the mood's, scaled about the waterline so a quiet
+   playlist is a flat sea rather than a short one. */
+.waves path {
+  fill: var(--mood-ink);
+  transition: d 1400ms var(--ease);
+}
+.waves .swell {
+  transform: scaleY(calc(0.25 + var(--wave-rise) * 0.9));
+  transform-origin: 50% 100%;
+  transition: transform 1400ms var(--ease);
+}
+
+/* Where the reading panel is a sheet across the bottom, the waves have to
+   sit on the floor of the scene instead of the floor of the window — all
+   of the viewport below 60vh is panel, and a sea behind a panel is a sea
+   nobody sees. */
+@media (max-width: 900px) {
+  .waves {
+    bottom: 60vh;
+    height: min(26vh, 220px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .waves g {
+    animation: none;
+  }
+}

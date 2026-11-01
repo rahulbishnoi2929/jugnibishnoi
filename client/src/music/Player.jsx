@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { MusicContext, useMusic } from './context.js'
 import { playlistFor } from '../lib/playlists.js'
 import { loadYouTube } from './youtube.js'
+import Waves from './Waves.jsx'
 import '../styles/music.css'
 
 // The music, and the small thing in the corner that proves it is playing.
@@ -110,6 +111,9 @@ export function MusicProvider({ children }) {
 
   return (
     <MusicContext.Provider value={value}>
+      {/* Behind everything, and only there while something is playing —
+          the stylesheet fades it on the presence of a mood. */}
+      <Waves />
       {children}
       <Dock host={host} />
     </MusicContext.Provider>
