@@ -34,6 +34,8 @@ export default function Figure({ bob, spin, turned, scale = 1, offering, vibe })
   const armR = useRef()
   const elbowL = useRef()
   const elbowR = useRef()
+  const wristL = useRef()
+  const wristR = useRef()
   const head = useRef()
   const legL = useRef()
   const legR = useRef()
@@ -89,10 +91,12 @@ export default function Figure({ bob, spin, turned, scale = 1, offering, vibe })
     head.current.rotation.x = p.headNod
     head.current.rotation.z = p.headTilt
 
-    armL.current.rotation.set(p.armL.x, 0, p.armL.z)
-    armR.current.rotation.set(p.armR.x, 0, p.armR.z)
+    armL.current.rotation.set(p.armL.x, p.armL.y, p.armL.z)
+    armR.current.rotation.set(p.armR.x, p.armR.y, p.armR.z)
     elbowL.current.rotation.x = p.armL.elbow
     elbowR.current.rotation.x = p.armR.elbow
+    wristL.current.rotation.x = p.armL.wrist
+    wristR.current.rotation.x = p.armR.wrist
 
     // The legs absorb the dip rather than riding it, and shorten to meet
     // the pelvis that came down. That is a knee bend, and without it the
@@ -168,11 +172,18 @@ export default function Figure({ bob, spin, turned, scale = 1, offering, vibe })
                 <capsuleGeometry args={[0.045, UPPER_ARM - 0.08, 6, 16]} />
                 <meshStandardMaterial color="#1b1d21" roughness={0.85} />
               </mesh>
-              {/* a hand, so the arm ends rather than stopping */}
-              <mesh position={[0, -UPPER_ARM, 0]}>
-                <sphereGeometry args={[0.052, 16, 16]} />
-                <meshStandardMaterial color="#1b1d21" roughness={0.85} />
-              </mesh>
+
+              {/* A wrist, and a palm rather than a ball.
+                  A sphere cannot show rotation, so the old hand was not a
+                  hand — it was the place a hand would have gone. Flat, so
+                  that turning it reads, which is the whole of what makes
+                  an open palm look like an offer. */}
+              <group ref={key === 'armL' ? wristL : wristR} position={[0, -UPPER_ARM, 0]}>
+                <mesh position={[0, -0.045, 0]}>
+                  <boxGeometry args={[0.085, 0.095, 0.032]} />
+                  <meshStandardMaterial color="#1b1d21" roughness={0.85} />
+                </mesh>
+              </group>
             </group>
           </group>
         ))}
