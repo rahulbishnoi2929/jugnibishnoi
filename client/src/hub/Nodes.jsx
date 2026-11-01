@@ -63,7 +63,14 @@ function Node({ node, index, state, onPick, zoom, head }) {
   // and still four full-length curves sweeping right across the top of the
   // screen and out of frame — most of what made the branches read as too
   // long once you were inside a chapter.
-  const targetOpacity = state === 'off' ? 0 : state === 'on' ? 1 : hover ? 0.95 : 0.42
+  // The branch you are standing in does not draw its own line.
+  //
+  // A branch points at somewhere you are not. Once you have arrived the
+  // node is behind the camera and all that is left of its curve is the
+  // last inch, which comes out of the top of his head and stops — a pink
+  // wire growing out of his scalp while you read the chapter.
+  const targetOpacity =
+    state === 'off' || state === 'on' ? 0 : hover ? 0.95 : 0.42
   // 'on' stays small: the camera is right next to it, so 1.6 fills the screen.
   const targetScale = state === 'off' ? 0.4 : state === 'on' ? 0.7 : hover ? 1.6 : 1
 
