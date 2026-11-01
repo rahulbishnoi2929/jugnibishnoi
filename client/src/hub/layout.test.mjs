@@ -21,6 +21,7 @@ import {
   cardFor,
   coast,
   flung,
+  turnRate,
   FLING_STOP,
   HEAD_R,
   offerView,
@@ -451,9 +452,12 @@ test('a swipe carries on, and a nudge stops where it was put', () => {
   // releasing stopped it dead, so the ring only ever turned as far as one
   // reach of a thumb and you had to swipe again, and again.
   //
-  // The gesture speeds below are real ones — pixels over milliseconds at
-  // the 0.011 radians-per-pixel the drag uses.
-  const speedOf = (px, ms) => (px * 0.011 * 1000) / ms
+  // Real gestures — pixels over milliseconds — at the rate a phone
+  // actually uses, which is derived from how big the globe looks there
+  // rather than being a constant. Hard-coding it here once meant the test
+  // went on passing while the thing it measures had changed underneath.
+  const rate = turnRate(375, 812)
+  const speedOf = (px, ms) => (px * rate * 1000) / ms
 
   // How far it travels and for how long, integrated the way the frame
   // loop does it.
@@ -475,22 +479,22 @@ test('a swipe carries on, and a nudge stops where it was put', () => {
   const nudge = speedOf(30, 300)
   const wobble = speedOf(8, 120)
 
-  assert.ok(flung(flick, 0), 'a hard flick should carry')
-  assert.ok(flung(swipe, 0), 'an ordinary swipe should carry')
-  assert.ok(!flung(nudge, 0), `a 30px nudge should stop where it is, not run on at ${nudge.toFixed(1)} rad/s`)
-  assert.ok(!flung(wobble, 0), 'the wobble of a tap should never turn anything')
+  assert.ok(flung(flick, 0, rate), 'a hard flick should carry')
+  assert.ok(flung(swipe, 0, rate), 'an ordinary swipe should carry')
+  assert.ok(!flung(nudge, 0, rate), `a 30px nudge should stop where it is, not run on at ${nudge.toFixed(1)} rad/s`)
+  assert.ok(!flung(wobble, 0, rate), 'the wobble of a tap should never turn anything')
 
   // Far enough to be worth doing, not so far that it runs away.
   const hard = ride(flick)
   assert.ok(
-    hard.degrees > 270 && hard.degrees < 900,
+    hard.degrees > 450 && hard.degrees < 1100,
     `a hard flick carries ${hard.degrees.toFixed(0)} degrees`
   )
-  assert.ok(hard.secs > 1 && hard.secs < 4, `and settles in ${hard.secs.toFixed(1)}s`)
+  assert.ok(hard.secs > 0.6 && hard.secs < 3, `and settles in ${hard.secs.toFixed(1)}s`)
 
   const normal = ride(swipe)
   assert.ok(
-    normal.degrees > 120 && normal.degrees < 450,
+    normal.degrees > 220 && normal.degrees < 600,
     `an ordinary swipe carries ${normal.degrees.toFixed(0)} degrees`
   )
 
@@ -505,12 +509,17 @@ test('a swipe carries on, and a nudge stops where it was put', () => {
     `30fps carries ${at30.toFixed(0)} degrees and 144fps carries ${at144.toFixed(0)}`
   )
 
-  // And a long frame must not fling it across the room.
-  const jump = coast(flick, 1.5)
-  assert.ok(
-    Math.abs(jump.moved) < 2,
-    `a 1.5s stall moved it ${((jump.moved * 180) / Math.PI).toFixed(0)} degrees in one frame`
+  // A dropped frame must not be integrated as the time it really took. A
+  // 1.5-second stall has to count for no more than one long frame, or a
+  // tab coming back from the background spins the ring half a turn.
+  const stalled = coast(flick, 1.5)
+  const capped = coast(flick, 0.05)
+  assert.equal(
+    stalled.moved.toFixed(6),
+    capped.moved.toFixed(6),
+    'a 1.5s stall should be clamped to one frame of travel'
   )
+  assert.equal(stalled.left.toFixed(6), capped.left.toFixed(6))
 })
 
 test('he holds the six playlists out, on every screen there is', () => {

@@ -22,6 +22,9 @@ import {
   branchView,
   coast,
   flung,
+  turnRate,
+  TILT_RATE,
+  GLOBE_R,
   FLING_STOP,
   offerView,
   offerCard,
@@ -155,6 +158,10 @@ export default function Hub() {
   const fling = useRef({ x: 0, y: 0 })
   const coasting = useRef(false)
   const moved = useRef(0)
+  // Radians per pixel, worked out from how big the globe actually looks.
+  // Settled when a gesture starts rather than on every move, since it
+  // costs a projection and only changes when the window does.
+  const rate = useRef(0.011)
   const [dragging, setDragging] = useState(false)
 
   // Every pointer currently down, so two fingers can be told from one.
@@ -221,6 +228,7 @@ export default function Hub() {
     fling.current.x = 0
     fling.current.y = 0
     moved.current = e.timeStamp
+    rate.current = turnRate(window.innerWidth, window.innerHeight)
 
     if (pointers.current.size === 2) {
       const [a, b] = [...pointers.current.values()]
@@ -263,8 +271,8 @@ export default function Hub() {
     travel.current += Math.abs(e.clientX - from.current.x) + Math.abs(e.clientY - from.current.y)
     if (travel.current > 6) grab(e)
 
-    const turn = (e.clientX - from.current.x) * 0.011
-    const tip = (e.clientY - from.current.y) * 0.007
+    const turn = (e.clientX - from.current.x) * rate.current
+    const tip = (e.clientY - from.current.y) * rate.current * TILT_RATE
     drag.current.x += turn
     // Tilt is clamped — past about 25° you are looking at the top of his
     // head and the branches collapse into a line.
@@ -298,7 +306,7 @@ export default function Hub() {
       held.current = null
       // Let go and it keeps going. Only if it was actually moving: a tap
       // and a slow reposition should both end where they stopped.
-      coasting.current = flung(fling.current.x, fling.current.y)
+      coasting.current = flung(fling.current.x, fling.current.y, rate.current)
       travel.current = 0
       setDragging(false)
     }
@@ -436,7 +444,7 @@ export default function Hub() {
                   hang around over the sky. */}
               {!away && (
                 <Nest zoom={zoom}>
-                  {!active && <Globe radius={narrow ? 0.95 : 1.35} />}
+                  {!active && <Globe radius={GLOBE_R(narrow)} />}
 
                   {/* He and his branches shrink as you zoom into the
                       planet. The globe is outside this on purpose — it is

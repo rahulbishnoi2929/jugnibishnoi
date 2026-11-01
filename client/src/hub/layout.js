@@ -620,6 +620,36 @@ export function depthFade(world, cameraPos) {
 }
 
 
+
+// ---------- how fast a drag turns it ----------
+//
+// Not a constant. The globe is 80 pixels across the radius on a phone and
+// 152 on a desktop, so one rate in radians per pixel is two different
+// gestures — and on the phone, where it is smallest, it was the stiffest.
+//
+// This is the number of radians a drag across one globe-radius turns it.
+// Above 1 it is deliberately faster than the surface under your finger:
+// a ball 160 pixels wide needs help, and he asked for it twice.
+export const TURN_PER_RADIUS = 2.4
+export const GLOBE_R = (narrow) => (narrow ? 0.95 : 1.35)
+
+export function turnRate(w, h) {
+  const r = GLOBE_R(w < 520)
+  const pos = new THREE.Vector3()
+  const look = new THREE.Vector3()
+  applyZoom(HOME_VIEW, fitFor(w), pos, look)
+  // How tall the world is at the globe's depth, and so how many pixels
+  // its radius covers.
+  const depth = pos.distanceTo(new THREE.Vector3(0, -r, 0))
+  const halfWorld = Math.tan((40 * Math.PI) / 360) * depth
+  const px = (r / halfWorld) * (h / 2)
+  return TURN_PER_RADIUS / Math.max(px, 1)
+}
+
+// Tilt stays gentler than turn — there is only half a radian of it before
+// you are looking at the top of his head.
+export const TILT_RATE = 0.55
+
 // ---------- letting go ----------
 //
 // A swipe that stops dead on release means the ring only ever turns as
@@ -629,20 +659,38 @@ export function depthFade(world, cameraPos) {
 // Decay is exponential in time rather than a subtraction per frame, so
 // the same gesture carries the same distance at 30fps and at 144 — a
 // per-frame decrement is a different gesture on every device.
-export const FLING_KEEP = 0.06 // of its speed left after one second
-export const FLING_MIN = 1.5 // below this a gesture was a nudge, not a swipe
-export const FLING_STOP = 0.06 // and below this it has stopped
+//
+// The rate is chosen so an ordinary swipe is about one full turn and a
+// hard flick about two, which is satisfying without being uncontrollable.
+// It had to come down sharply when the turn rate went up: at the old
+// decay a hard flick would have spun it four and a half times.
+export const FLING_KEEP = 0.0024 // of its speed left after one second
+export const FLING_STOP = 0.06 // below this it has stopped
 
-// Is that fast enough to be worth carrying? A small deliberate
-// adjustment should end where it was put: measured, a 30-pixel nudge was
-// drifting 23 degrees after the thumb had already left.
-export const flung = (vx, vy) =>
-  Math.abs(vx) > FLING_MIN || Math.abs(vy) > FLING_MIN
+// Where a swipe stops being a nudge, in pixels a second rather than
+// radians. A nudge is a distance a thumb moved, not an angle — so when
+// the turn rate nearly tripled, a 30-pixel adjustment went from stopping
+// dead to running on, without this line being touched. Measured: a nudge
+// is about 100 px/s, an ordinary swipe 1250.
+export const FLING_MIN_PX = 300
+
+export const flung = (vx, vy, rate) => {
+  const min = FLING_MIN_PX * rate
+  return Math.abs(vx) > min || Math.abs(vy) > min
+}
 
 // One frame of coasting: how far it turns, and what speed is left.
+//
+// The distance is the exact integral of the decay across the frame, not
+// speed times time. Multiplying is Euler integration, and it overshoots
+// in proportion to how long the frame was — measured, a swipe carried 396
+// degrees at 30fps against 367 at 144, which is the slow phone getting a
+// different gesture from the fast one. Since the decay is k^t, the area
+// under it has a closed form and there is no reason to approximate.
 export function coast(v, dt) {
   const step = Math.min(dt, 0.05)
-  return { moved: v * step, left: v * Math.pow(FLING_KEEP, step) }
+  const left = v * Math.pow(FLING_KEEP, step)
+  return { moved: (left - v) / Math.log(FLING_KEEP), left }
 }
 
 // Travelling holds one camera position and turns the world instead: the
