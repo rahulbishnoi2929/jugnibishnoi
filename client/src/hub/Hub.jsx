@@ -98,11 +98,6 @@ export default function Hub() {
   // the playlists out, so the camera comes in to where his hands are
   // rather than looking at a fan of branches off the ring.
   const offering = active === 'music'
-  const view = useMemo(
-    () =>
-      offering ? offerView(narrow, sheet, activeNode?.branches?.length ?? 6) : active ? branchView(narrow) : HOME_VIEW,
-    [active, offering, narrow, sheet, activeNode?.branches?.length]
-  )
 
   // A chapter's own branches, and which of them is open.
   const activeNode = nodes.find((n) => n.id === active)
@@ -114,6 +109,21 @@ export default function Hub() {
     [activeNode, narrow, offering, sheet]
   )
   const openSub = branches.find((b) => b.id === sub) ?? null
+
+  // Below `branches` on purpose. The offer's framing depends on how many
+  // cards there are, and reading that above here threw "cannot access
+  // activeNode before initialization" — a blank page, because a temporal
+  // dead zone is a runtime error and neither the build nor the geometry
+  // tests ever execute this component.
+  const view = useMemo(
+    () =>
+      offering
+        ? offerView(narrow, sheet, branches.length)
+        : active
+          ? branchView(narrow)
+          : HOME_VIEW,
+    [active, offering, narrow, sheet, branches.length]
+  )
 
   // Both are useCallback so the Escape handler can list them as the
   // dependencies they are, rather than closing over whichever render it
