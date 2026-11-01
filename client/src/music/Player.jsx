@@ -23,6 +23,10 @@ export function MusicProvider({ children }) {
   // bar a few hundred pixels wide and costs nothing.
   const [clock, setClock] = useState({ at: 0, of: 0 })
   const [shuffle, setShuffle] = useState(false)
+  // off, then the whole list again, then this one song over and over —
+  // the order every player uses, because each press is "more repetition
+  // than last time".
+  const [repeat, setRepeat] = useState('off')
   const player = useRef(null)
   const host = useRef(null)
   // The event handlers are given to YouTube once and never rebuilt, so
@@ -32,13 +36,18 @@ export function MusicProvider({ children }) {
   const live = useRef(now)
   live.current = now
   const after = useRef(null)
-  after.current = (l, at) => {
+  // What follows this track, or null for "nothing, stop". `ended` is the
+  // difference between the song finishing and you pressing next: repeat
+  // one means one song forever, but pressing next should still move.
+  after.current = (l, at, ended = false) => {
+    if (ended && repeat === 'one') return at
     if (shuffle && l.songs.length > 1) {
       let pick = at
       while (pick === at) pick = Math.floor(Math.random() * l.songs.length)
       return pick
     }
-    return at + 1 < l.songs.length ? at + 1 : null
+    if (at + 1 < l.songs.length) return at + 1
+    return repeat === 'off' ? null : 0
   }
 
   const list = now.id ? playlistFor(now.id) : null
@@ -88,7 +97,7 @@ export function MusicProvider({ children }) {
               const { id: pid, index: at } = live.current
               const l = playlistFor(pid)
               if (!l) return
-              const to = after.current(l, at)
+              const to = after.current(l, at, true)
               if (to === null) setNow((s) => ({ ...s, playing: false }))
               else cue(pid, to)
               return
@@ -125,15 +134,17 @@ export function MusicProvider({ children }) {
       const l = playlistFor(id)
       if (!l) return
       // Forward on shuffle means somewhere else, not the next row.
-      if (by > 0 && shuffle) {
+      if (by > 0) {
         const to = after.current(l, index)
         if (to !== null) cue(id, to)
         return
       }
-      const at = index + by
-      if (at >= 0 && at < l.songs.length) cue(id, at)
+      // Back past the first track wraps only if the list is set to.
+      const at = index - 1
+      if (at >= 0) cue(id, at)
+      else if (repeat !== 'off') cue(id, l.songs.length - 1)
     },
-    [cue, shuffle]
+    [cue, repeat]
   )
 
   // Scrubbing. The bar reports where along it you let go, 0 to 1.
@@ -152,9 +163,34 @@ export function MusicProvider({ children }) {
     setClock({ at: 0, of: 0 })
   }, [])
 
+  // Space, arrows, M. Only once something is playing, and never while
+  // the caret is in a field or on a button that does its own thing with
+  // the key — space on a focused button is a click, and stealing that
+  // would break every control on the page.
+  useEffect(() => {
+    if (!track) return
+    const onKey = (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      const el = document.activeElement
+      const tag = el?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || el?.isContentEditable) return
+      if (e.key === ' ' && (tag === 'BUTTON' || tag === 'A')) return
+      // The photo viewer walks a set with the same two arrows. Whichever
+      // is in front owns them, or one press moves a song and a
+      // photograph at once.
+      if (document.querySelector('[role="dialog"]')) return
+
+      if (e.key === ' ') { e.preventDefault(); toggle() }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); step(1) }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); step(-1) }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [track, toggle, step])
+
   const value = {
     now, list, track, open, cue, toggle, step, stop,
-    clock, seek, shuffle, setShuffle,
+    clock, seek, shuffle, setShuffle, repeat, setRepeat,
   }
 
   return (
@@ -178,12 +214,16 @@ const clockText = (s) => {
 }
 
 function Dock({ host }) {
-  const { now, list, track, toggle, step, stop, clock, seek, shuffle, setShuffle } = useMusic()
+  const { now, list, track, toggle, step, stop, clock, seek, shuffle, setShuffle, repeat, setRepeat } =
+    useMusic()
   const on = !!track
   const through = clock.of ? clock.at / clock.of : 0
 
   return (
     <div className={'dock' + (on ? ' is-on' : '')} aria-hidden={!on}>
+      {/* A thread of the song's progress across the very top of the dock,
+          so you can read how far in you are without looking for a bar. */}
+      <div className="dock-thread" style={{ '--through': through }} aria-hidden="true" />
       {/* YouTube will not play in a hidden player, and their terms ask
           that it not be obscured, so it is small and real rather than
           absent. At this size it reads as artwork. */}
@@ -221,7 +261,7 @@ function Dock({ host }) {
 
       <div className="dock-keys">
         <button
-          className={'is-shuffle' + (shuffle ? ' is-lit' : '')}
+          className={'is-mode' + (shuffle ? ' is-lit' : '')}
           onClick={() => setShuffle((s) => !s)}
           aria-label="Shuffle"
           aria-pressed={shuffle}
@@ -229,9 +269,22 @@ function Dock({ host }) {
           ⤨
         </button>
         <button
+          className={'is-mode' + (repeat !== 'off' ? ' is-lit' : '')}
+          onClick={() => setRepeat((r) => (r === 'off' ? 'all' : r === 'all' ? 'one' : 'off'))}
+          aria-label={
+            repeat === 'off'
+              ? 'Repeat off'
+              : repeat === 'all'
+                ? 'Repeating the playlist'
+                : 'Repeating this song'
+          }
+        >
+          {repeat === 'one' ? '🔂' : '🔁'}
+        </button>
+        <button
           onClick={() => step(-1)}
           aria-label="Previous song"
-          disabled={now.index === 0 && !shuffle}
+          disabled={now.index === 0 && !shuffle && repeat === 'off'}
         >
           ⏮
         </button>
@@ -241,7 +294,9 @@ function Dock({ host }) {
         <button
           onClick={() => step(1)}
           aria-label="Next song"
-          disabled={!list || (!shuffle && now.index >= list.songs.length - 1)}
+          disabled={
+            !list || (!shuffle && repeat === 'off' && now.index >= list.songs.length - 1)
+          }
         >
           ⏭
         </button>

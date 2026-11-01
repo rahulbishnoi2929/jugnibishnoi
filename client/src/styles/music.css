@@ -73,8 +73,9 @@
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: var(--s3);
-  width: min(380px, calc(100vw - var(--s3) * 2));
+  width: min(440px, calc(100vw - var(--s3) * 2));
   padding: var(--s2);
+  padding-top: calc(var(--s2) + 2px);
   border: 1px solid var(--line);
   border-radius: 12px;
   background: color-mix(in srgb, var(--bg-raised) 92%, transparent);
@@ -89,6 +90,23 @@
   transform: none;
   opacity: 1;
   pointer-events: auto;
+}
+
+/* The same progress, read without looking for it. */
+.dock-thread {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  border-radius: 12px 12px 0 0;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+}
+.dock-thread::after {
+  content: '';
+  display: block;
+  height: 100%;
+  width: calc(var(--through) * 100%);
+  background: var(--mood-ink);
 }
 
 /* Small, and genuinely visible. YouTube will not play in a hidden player
@@ -194,16 +212,16 @@
 .dock-seek input:focus-visible::-moz-range-thumb { opacity: 1; }
 
 .dock-keys { display: flex; align-items: center; gap: 2px; }
-.dock-keys .is-shuffle { font-size: 15px; }
+.dock-keys .is-mode { font-size: 13px; }
 /* Lit when it is on, because a toggle you cannot read the state of is
    worse than no toggle. */
-.dock-keys .is-shuffle.is-lit {
+.dock-keys .is-mode.is-lit {
   color: var(--mood-ink);
   background: color-mix(in srgb, var(--mood-ink) 16%, transparent);
 }
 .dock-keys button {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border: 0;
   border-radius: 8px;
   background: none;
@@ -262,7 +280,7 @@
 
 .track {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 22px auto 1fr;
   align-items: center;
   gap: var(--s3);
   width: 100%;
@@ -279,6 +297,19 @@
 .track:hover,
 .track:focus-visible { background: color-mix(in srgb, var(--mood-ink) 12%, transparent); }
 .track.is-here { background: color-mix(in srgb, var(--mood-ink) 18%, transparent); }
+
+/* Numbers in their own fixed column so a title never shifts sideways
+   when the track playing changes. Tabular figures for the same reason. */
+.track-no {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  display: grid;
+  place-items: center end;
+}
+.track.is-here .track-no { color: var(--mood-ink); }
 
 .track-art {
   position: relative;
@@ -312,9 +343,9 @@
 
 /* Three bars, because a still list gives you no way to tell which row is
    the one making the noise. */
-.track-bars { display: flex; align-items: flex-end; gap: 2px; height: 14px; }
+.track-bars { display: flex; align-items: flex-end; gap: 2px; height: 12px; }
 .track-bars i {
-  width: 3px;
+  width: 2px;
   height: 100%;
   border-radius: 1px;
   background: var(--mood-ink);
