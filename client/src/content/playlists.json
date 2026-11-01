@@ -1120,15 +1120,185 @@
       ]
     },
     {
-      "id": "random",
-      "title": "Random",
-      "mood": "scatter",
+      "id": "favourites",
+      "title": "Personal Favourites",
+      "mood": "favourite",
       "lede": "",
       "songs": [
         {
           "yt": "Dzcxq4tVpIE",
           "artist": "Universal Music India",
           "title": "Falguni Pathak- Aiyo Rama"
+        },
+        {
+          "yt": "UNjhqT_hlbg",
+          "artist": "Karaoke Hindi Songs",
+          "title": "Chala Jata Hoon"
+        },
+        {
+          "yt": "UEG_F6tWj8c",
+          "artist": "Aryan and Shanaya",
+          "title": "Saiyaara 1980 Ft Kishore Kumar"
+        },
+        {
+          "yt": "bBvlfHU4nDI",
+          "artist": "YRF",
+          "title": "Andekhi Anjaani"
+        },
+        {
+          "yt": "ocfLz44HoTA",
+          "artist": "T-Series",
+          "title": "Dil Tu Hi Bataa"
+        },
+        {
+          "yt": "ZQBgxRuJQqg",
+          "artist": "Talwiinder",
+          "title": "GALLAN 4"
+        },
+        {
+          "yt": "Xna3I11v9Vs",
+          "artist": "FalguniPathak",
+          "title": "Chudi"
+        },
+        {
+          "yt": "TYRQAXNfDog",
+          "artist": "UMusicIndia",
+          "title": "Saawan Mein"
+        },
+        {
+          "yt": "Rbz1qFlRL_Y",
+          "artist": "Universal Music India",
+          "title": "Maine Payal Hai Chhankai"
+        },
+        {
+          "yt": "kzTWRX9Dhrg",
+          "artist": "YRF",
+          "title": "Chalte Chalte"
+        },
+        {
+          "yt": "OEpFiDKqH7E",
+          "artist": "YRF",
+          "title": "Are Re Are Song"
+        },
+        {
+          "yt": "mH9YnXns0oE",
+          "artist": "Geetmala",
+          "title": "Abhi Zinda Hoon Toh Jee Lene Do"
+        },
+        {
+          "yt": "_4Ft9UIKzwk",
+          "artist": "Golden Hits",
+          "title": "Yeh Dil Deewana"
+        },
+        {
+          "yt": "BYYBXNaTnWM",
+          "artist": "UMusicIndia",
+          "title": "Shael Oswal - Hiriye Shael Oswal"
+        },
+        {
+          "yt": "m4lPhauTvtw",
+          "artist": "Being Punjabi",
+          "title": "Haye Mera DIL"
+        },
+        {
+          "yt": "DrwU9OgJjW8",
+          "artist": "Pop Chartbusters",
+          "title": "Samjho Na Kuch To Samjho Na"
+        },
+        {
+          "yt": "VdyBtGaspss",
+          "artist": "T-Series",
+          "title": "Chahun Main Ya Naa"
+        },
+        {
+          "yt": "eHRrZ5DQCV4",
+          "artist": "T-Series",
+          "title": "Sunn Raha Hai Na Tu Aashiqui 2"
+        },
+        {
+          "yt": "cUO7gnB-KAs",
+          "artist": "Fresh Media Records",
+          "title": "Rim Jhim - Khan Saab ft. Pav Dharia"
+        },
+        {
+          "yt": "aGbPyM6lzBs",
+          "artist": "Zee Music Company",
+          "title": "Ek Pal Ka Jeena - Kaho Naa Pyaar Hai"
+        },
+        {
+          "yt": "69pPYkGiEAQ",
+          "artist": "Shemaroo Filmi Gaane",
+          "title": "Kisi Ki Muskurahaton Pe Ho Nisar"
+        },
+        {
+          "yt": "xjOrxHbRK5c",
+          "artist": "Geet sune Ansune",
+          "title": "में तेरा दीवाना तु मेरी दीवानी✔️ Me Tera Deewana Tu Meri Deewani Film: MAHARAJA मूवी"
+        },
+        {
+          "yt": "mlLxDaBSU8k",
+          "artist": "T-Series",
+          "title": "Dil Tu Hi Bataa"
+        },
+        {
+          "yt": "cUmUOb7j3dc",
+          "artist": "YRF",
+          "title": "Dhun Song"
+        },
+        {
+          "yt": "e1edxTqJnKk",
+          "artist": "Sony Music India",
+          "title": "Maahi"
+        },
+        {
+          "yt": "c7mWC6CN7kY",
+          "artist": "T-Series",
+          "title": "Khushi Jab Bhi Teri Song"
+        },
+        {
+          "yt": "-8C_2BBVWk8",
+          "artist": "Sony Music India",
+          "title": "KK"
+        },
+        {
+          "yt": "m6Y8xEfyXTs",
+          "artist": "YRF",
+          "title": "Main Yahaan Hoon"
+        },
+        {
+          "yt": "cBGDDBHN22U",
+          "artist": "T-Series Bollywood Classics",
+          "title": "Pehli Pehli Baar Mohabbat Ki Hai"
+        },
+        {
+          "yt": "vDCnew2uhT4",
+          "artist": "Abhijeet Bhattacharya",
+          "title": "Main Koi Aisa Geet Gaoon"
+        },
+        {
+          "yt": "mlOTDGzSuIA",
+          "artist": "Shudh Desi Gaane",
+          "title": "Mujhko Pina Hai Peene Do"
+        },
+        {
+          "yt": "VAt6TO2gdko",
+          "artist": "YRF",
+          "title": "Saans Song"
+        },
+        {
+          "yt": "Es4NrOnoNb4",
+          "artist": "UNPLGd Records",
+          "title": "Paro - @adityarikhari UNPLG'd"
+        },
+        {
+          "yt": "PYmKIMwXsSg",
+          "artist": "Badshah",
+          "title": "DELHI SE MANALI"
+        },
+        {
+          "yt": "4cnO-2bnq-k",
+          "artist": "LAXMI SANGEET BY NISHA",
+          "title": "Sajan Re Jhoot Mat Bolo"
         }
       ]
     }
