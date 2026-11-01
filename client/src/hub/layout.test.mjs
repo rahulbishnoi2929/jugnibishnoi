@@ -19,6 +19,9 @@ import {
   applyZoom,
   branchView,
   cardFor,
+  coast,
+  flung,
+  FLING_STOP,
   HEAD_R,
   offerView,
   offerCard,
@@ -441,6 +444,73 @@ test('every chapter has a fan laid out for its number of branches', () => {
       )
     }
   }
+})
+
+test('a swipe carries on, and a nudge stops where it was put', () => {
+  // Reported as the globe being hard to slide on a phone, and it was:
+  // releasing stopped it dead, so the ring only ever turned as far as one
+  // reach of a thumb and you had to swipe again, and again.
+  //
+  // The gesture speeds below are real ones — pixels over milliseconds at
+  // the 0.011 radians-per-pixel the drag uses.
+  const speedOf = (px, ms) => (px * 0.011 * 1000) / ms
+
+  // How far it travels and for how long, integrated the way the frame
+  // loop does it.
+  const ride = (v0, fps = 60) => {
+    let v = v0
+    let turned = 0
+    let secs = 0
+    while (Math.abs(v) > FLING_STOP && secs < 20) {
+      const step = coast(v, 1 / fps)
+      turned += step.moved
+      v = step.left
+      secs += 1 / fps
+    }
+    return { degrees: (turned * 180) / Math.PI, secs }
+  }
+
+  const flick = speedOf(300, 120)
+  const swipe = speedOf(250, 200)
+  const nudge = speedOf(30, 300)
+  const wobble = speedOf(8, 120)
+
+  assert.ok(flung(flick, 0), 'a hard flick should carry')
+  assert.ok(flung(swipe, 0), 'an ordinary swipe should carry')
+  assert.ok(!flung(nudge, 0), `a 30px nudge should stop where it is, not run on at ${nudge.toFixed(1)} rad/s`)
+  assert.ok(!flung(wobble, 0), 'the wobble of a tap should never turn anything')
+
+  // Far enough to be worth doing, not so far that it runs away.
+  const hard = ride(flick)
+  assert.ok(
+    hard.degrees > 270 && hard.degrees < 900,
+    `a hard flick carries ${hard.degrees.toFixed(0)} degrees`
+  )
+  assert.ok(hard.secs > 1 && hard.secs < 4, `and settles in ${hard.secs.toFixed(1)}s`)
+
+  const normal = ride(swipe)
+  assert.ok(
+    normal.degrees > 120 && normal.degrees < 450,
+    `an ordinary swipe carries ${normal.degrees.toFixed(0)} degrees`
+  )
+
+  // The same gesture has to go the same distance whatever the frame rate.
+  // Decaying by a fixed amount per frame rather than per second is the
+  // classic way to get this wrong, and it makes a slow phone feel
+  // different from a fast one.
+  const at30 = ride(swipe, 30).degrees
+  const at144 = ride(swipe, 144).degrees
+  assert.ok(
+    Math.abs(at30 - at144) / at144 < 0.06,
+    `30fps carries ${at30.toFixed(0)} degrees and 144fps carries ${at144.toFixed(0)}`
+  )
+
+  // And a long frame must not fling it across the room.
+  const jump = coast(flick, 1.5)
+  assert.ok(
+    Math.abs(jump.moved) < 2,
+    `a 1.5s stall moved it ${((jump.moved * 180) / Math.PI).toFixed(0)} degrees in one frame`
+  )
 })
 
 test('he holds the six playlists out, on every screen there is', () => {

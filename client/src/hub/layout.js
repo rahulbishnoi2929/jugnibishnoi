@@ -619,6 +619,32 @@ export function depthFade(world, cameraPos) {
   return 1 - depth * 0.82
 }
 
+
+// ---------- letting go ----------
+//
+// A swipe that stops dead on release means the ring only ever turns as
+// far as one reach of a thumb, and you have to swipe again, and again.
+// On a phone that is most of what makes it feel stuck.
+//
+// Decay is exponential in time rather than a subtraction per frame, so
+// the same gesture carries the same distance at 30fps and at 144 — a
+// per-frame decrement is a different gesture on every device.
+export const FLING_KEEP = 0.06 // of its speed left after one second
+export const FLING_MIN = 1.5 // below this a gesture was a nudge, not a swipe
+export const FLING_STOP = 0.06 // and below this it has stopped
+
+// Is that fast enough to be worth carrying? A small deliberate
+// adjustment should end where it was put: measured, a 30-pixel nudge was
+// drifting 23 degrees after the thumb had already left.
+export const flung = (vx, vy) =>
+  Math.abs(vx) > FLING_MIN || Math.abs(vy) > FLING_MIN
+
+// One frame of coasting: how far it turns, and what speed is left.
+export function coast(v, dt) {
+  const step = Math.min(dt, 0.05)
+  return { moved: v * step, left: v * Math.pow(FLING_KEEP, step) }
+}
+
 // Travelling holds one camera position and turns the world instead: the
 // branch you picked spins round to the front, the way a carousel brings
 // the thing you asked for to face you.

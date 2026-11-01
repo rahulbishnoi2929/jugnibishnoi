@@ -20,6 +20,9 @@ import {
   placeBranches,
   HOME_VIEW,
   branchView,
+  coast,
+  flung,
+  FLING_STOP,
   offerView,
   offerCard,
   spinToFront,
@@ -143,6 +146,15 @@ export default function Hub() {
   // loop reads it.
   const drag = useRef({ x: 0, y: 0 })
   const from = useRef(null)
+  // How fast it was turning when the finger left, in radians a second,
+  // and whether it is still carrying that.
+  //
+  // Without this a swipe stops dead on release, so the ring only ever
+  // turns as far as one reach of a thumb and you have to swipe again, and
+  // again. On a phone that is most of what makes it feel stuck.
+  const fling = useRef({ x: 0, y: 0 })
+  const coasting = useRef(false)
+  const moved = useRef(0)
   const [dragging, setDragging] = useState(false)
 
   // Every pointer currently down, so two fingers can be told from one.
@@ -203,6 +215,12 @@ export default function Hub() {
     if (e.pointerType === 'mouse' && e.button !== 0) return
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
     travel.current = 0
+    // Catching it stops it, the way putting a hand on a spinning globe
+    // does.
+    coasting.current = false
+    fling.current.x = 0
+    fling.current.y = 0
+    moved.current = e.timeStamp
 
     if (pointers.current.size === 2) {
       const [a, b] = [...pointers.current.values()]
@@ -244,14 +262,23 @@ export default function Hub() {
     // the pointer worth holding on to.
     travel.current += Math.abs(e.clientX - from.current.x) + Math.abs(e.clientY - from.current.y)
     if (travel.current > 6) grab(e)
-    drag.current.x += (e.clientX - from.current.x) * 0.011
+
+    const turn = (e.clientX - from.current.x) * 0.011
+    const tip = (e.clientY - from.current.y) * 0.007
+    drag.current.x += turn
     // Tilt is clamped — past about 25° you are looking at the top of his
     // head and the branches collapse into a line.
-    drag.current.y = THREE.MathUtils.clamp(
-      drag.current.y + (e.clientY - from.current.y) * 0.007,
-      -0.45,
-      0.45
-    )
+    drag.current.y = THREE.MathUtils.clamp(drag.current.y + tip, -0.45, 0.45)
+
+    // Speed, smoothed. A single pointer event is a noisy sample — a phone
+    // delivers them unevenly and one slow frame reads as a stop — so this
+    // follows the last few rather than the last one.
+    const gap = Math.max(1, e.timeStamp - moved.current)
+    moved.current = e.timeStamp
+    const k = Math.min(1, gap / 90)
+    fling.current.x = THREE.MathUtils.lerp(fling.current.x, (turn / gap) * 1000, k)
+    fling.current.y = THREE.MathUtils.lerp(fling.current.y, (tip / gap) * 1000, k)
+
     from.current = { x: e.clientX, y: e.clientY }
   }
 
@@ -269,6 +296,9 @@ export default function Hub() {
     } else if (pointers.current.size === 0) {
       from.current = null
       held.current = null
+      // Let go and it keeps going. Only if it was actually moving: a tap
+      // and a slow reposition should both end where they stopped.
+      coasting.current = flung(fling.current.x, fling.current.y)
       travel.current = 0
       setDragging(false)
     }
@@ -391,7 +421,7 @@ export default function Hub() {
           />
 
           <Suspense fallback={null}>
-            <Rig frozen={!!active} drag={drag} aim={aim} spin={spin}>
+            <Rig frozen={!!active} drag={drag} aim={aim} spin={spin} fling={fling} coasting={coasting}>
               {/* Keep pulling back and his planet is not the subject any
                   more. Inside the rig, so dragging turns the sky too. */}
               {!active && <Cosmos zoom={zoom} />}
@@ -691,9 +721,27 @@ function Breathe({ bob, children }) {
 // Travelling spins it to put the branch you picked at the front, rather
 // than returning it to neutral — otherwise picking something behind him
 // left it behind him.
-function Rig({ children, frozen, drag, aim, spin }) {
+function Rig({ children, frozen, drag, aim, spin, fling, coasting }) {
   const g = useRef()
   useFrame((_, dt) => {
+    // Coasting, if it was flung. Exponential decay rather than a fixed
+    // subtraction, so a hard flick runs on for a while and a gentle one
+    // settles quickly — and the same gesture feels the same whatever the
+    // frame rate, which a per-frame decrement does not.
+    if (coasting.current && !frozen) {
+      const turn = coast(fling.current.x, dt)
+      const tip = coast(fling.current.y, dt)
+      drag.current.x += turn.moved
+      drag.current.y = THREE.MathUtils.clamp(drag.current.y + tip.moved, -0.45, 0.45)
+      fling.current.x = turn.left
+      fling.current.y = tip.left
+      // Stop rather than creep. Below this it is not turning, it is just
+      // keeping the frame loop awake.
+      if (Math.abs(turn.left) < FLING_STOP && Math.abs(tip.left) < FLING_STOP) {
+        coasting.current = false
+      }
+    }
+
     // The base is the fraction of the gap still left after one second, so
     // squaring it exactly doubles the rate. 0.002 -> 0.000004.
     const k = 1 - Math.pow(0.000004, Math.min(dt, 0.1))
