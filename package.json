@@ -15,6 +15,8 @@
     "node": ">=20"
   },
   "devDependencies": {
+    "@gltf-transform/cli": "^4.5.1",
+    "fbx2gltf": "^0.9.7-p1",
     "heic-convert": "^2.1.0",
     "sharp": "^0.35.4"
   }
