@@ -183,7 +183,16 @@ function Node({ node, index, state, onPick, zoom, head }) {
         // was the row of photographs.
         style={{
           opacity: state === 'on' ? 0 : 1,
-          transition: 'opacity 300ms ease',
+          // And gone, not merely transparent. The frame loop below decides
+          // focus from how visible it thinks the label is, which is not
+          // this: once you are inside a chapter, its own label is hidden
+          // here while the loop still counts it as live, so it kept its
+          // place in the tab order — a button carrying the chapter's name,
+          // somewhere above the top of the screen. visibility holds its
+          // old value for the length of a transition, so the fade out is
+          // unaffected.
+          visibility: state === 'on' ? 'hidden' : 'visible',
+          transition: 'opacity 300ms ease, visibility 300ms ease',
           pointerEvents: 'none',
         }}
       >

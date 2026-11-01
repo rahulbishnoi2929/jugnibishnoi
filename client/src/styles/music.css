@@ -84,12 +84,21 @@
   transform: translateY(140%);
   opacity: 0;
   pointer-events: none;
-  transition: transform 420ms var(--ease), opacity 420ms var(--ease);
+  /* Not just invisible — gone. An opacity of nought still leaves six
+     buttons and a slider in the tab order, so without this, tabbing
+     through the page with nothing playing walks into controls that
+     cannot be seen and do nothing. visibility transitions in steps and
+     holds the old value for the duration, so the dock still slides out
+     in full before it stops being a thing you can reach. */
+  visibility: hidden;
+  transition: transform 420ms var(--ease), opacity 420ms var(--ease),
+    visibility 420ms var(--ease);
 }
 .dock.is-on {
   transform: none;
   opacity: 1;
   pointer-events: auto;
+  visibility: visible;
 }
 
 /* The same progress, read without looking for it. */

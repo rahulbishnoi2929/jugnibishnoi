@@ -144,13 +144,17 @@
 
 .hub-copy,
 .hub-alt {
-  transition: opacity 400ms var(--ease);
+  transition: opacity 400ms var(--ease), visibility 400ms var(--ease);
 }
 
 .is-travelled .hub-copy,
 .is-travelled .hub-alt {
   opacity: 0;
   pointer-events: none;
+  /* A link at nought opacity is still a link you can tab to, and this one
+     is aria-hidden as well — a focus stop screen readers are told to
+     ignore. */
+  visibility: hidden;
 }
 
 /* Hidden, not faded: at 0.18 they still ghosted through the panel text.
@@ -445,6 +449,10 @@
   left: var(--s5);
   z-index: 3;
   opacity: 0;
+  /* Paired with the opacity, and written again by the frame loop that
+     fades this in — a button at nought opacity still takes focus, and
+     on a chapter route that loop never runs to say otherwise. */
+  visibility: hidden;
   font: inherit;
   font-family: var(--mono);
   font-size: var(--step--1);

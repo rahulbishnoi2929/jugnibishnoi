@@ -682,6 +682,10 @@ function Hud({ zoom, caption, title, legend, back, copy, travelled, away, setAwa
       // somewhere: the worst moment to be stranded is between two scales.
       const out = THREE.MathUtils.clamp((t - 0.08) / 0.25, 0, 1)
       back.current.style.opacity = out.toFixed(3)
+      // Visible for the whole fade, but only reachable once it is at
+      // least half there — the stylesheet hides it to begin with, so
+      // this is what brings it back.
+      back.current.style.visibility = out > 0 ? 'visible' : 'hidden'
       back.current.style.pointerEvents = out > 0.5 ? 'auto' : 'none'
       back.current.tabIndex = out > 0.5 ? 0 : -1
     }

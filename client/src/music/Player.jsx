@@ -33,6 +33,14 @@ export function MusicProvider({ children }) {
   const [queue, setQueue] = useState([])
   const player = useRef(null)
   const host = useRef(null)
+  // Where to go when a track finishes or refuses to play. Assigned below,
+  // once cue exists, and read through the ref for the same reason as the
+  // rest of this: the handlers are built once.
+  const move = useRef(null)
+  // Consecutive songs that would not play. A playlist blocked in one
+  // country is blocked for all of it, so without this the player races
+  // silently through thirty-five of them and looks broken either way.
+  const dead = useRef(0)
   // The event handlers are given to YouTube once and never rebuilt, so
   // they read the current track from here rather than from a closure that
   // was correct three songs ago. Same for what counts as "next", which
@@ -91,24 +99,48 @@ export function MusicProvider({ children }) {
         playerVars: { playsinline: 1, rel: 0, modestbranding: 1, controls: 0 },
         events: {
           onReady: (e) => e.target.playVideo(),
-          onStateChange: (e) => {
-            if (e.data === YT.PlayerState.ENDED) {
-              const { id: pid, index: at } = live.current
-              const to = after.current(pid, at, true)
-              if (!to) setNow((s) => ({ ...s, playing: false }))
-              else {
-                if (to.queued) setQueue((q) => q.slice(1))
-                cue(to.id, to.index)
-              }
+          // A song that will not play here: taken down since it was
+          // added, or embedding blocked in this country — the import
+          // checked from one place and this is being watched from
+          // another. Treated as a song that ended early, so the list
+          // carries on instead of sitting on a title doing nothing.
+          onError: () => {
+            if (++dead.current > 2) {
+              setNow((s) => ({ ...s, playing: false }))
               return
             }
-            if (e.data === YT.PlayerState.PLAYING) setNow((s) => ({ ...s, playing: true }))
+            // Not "ended": repeat-one would otherwise retry the broken
+            // one forever.
+            move.current(false)
+          },
+          onStateChange: (e) => {
+            if (e.data === YT.PlayerState.ENDED) {
+              move.current(true)
+              return
+            }
+            if (e.data === YT.PlayerState.PLAYING) {
+              // Something came out of the speakers, so whatever came
+              // before it was not a run of broken songs.
+              dead.current = 0
+              setNow((s) => ({ ...s, playing: true }))
+            }
             if (e.data === YT.PlayerState.PAUSED) setNow((s) => ({ ...s, playing: false }))
           },
         },
       })
     })
   }, [])
+
+  move.current = (ended) => {
+    const { id: pid, index: at } = live.current
+    const to = after.current(pid, at, ended)
+    if (!to) {
+      setNow((s) => ({ ...s, playing: false }))
+      return
+    }
+    if (to.queued) setQueue((q) => q.slice(1))
+    cue(to.id, to.index)
+  }
 
   // Opening a playlist starts it. The tap that opened it is the gesture a
   // phone requires before it will let anything make a noise, so this is
@@ -133,11 +165,10 @@ export function MusicProvider({ children }) {
       const { id, index } = live.current
       const l = playlistFor(id)
       if (!l) return
+      // Forward is the same step a finished song takes, minus the
+      // repeat-one hold: pressing next has to move or the button is a lie.
       if (by > 0) {
-        const to = after.current(id, index)
-        if (!to) return
-        if (to.queued) setQueue((q) => q.slice(1))
-        cue(to.id, to.index)
+        move.current(false)
         return
       }
       // Back past the first track wraps only if the list is set to.
@@ -237,7 +268,7 @@ const clockText = (s) => {
 }
 
 function Dock({ host }) {
-  const { now, list, track, toggle, step, stop, clock, seek, shuffle, setShuffle, repeat, setRepeat } =
+  const { now, list, track, toggle, step, stop, clock, seek, shuffle, setShuffle, repeat, setRepeat, queue } =
     useMusic()
   const on = !!track
   const through = clock.of ? clock.at / clock.of : 0
@@ -318,7 +349,11 @@ function Dock({ host }) {
           onClick={() => step(1)}
           aria-label="Next song"
           disabled={
-            !list || (!shuffle && repeat === 'off' && now.index >= list.songs.length - 1)
+            !list ||
+            (!queue.length &&
+              !shuffle &&
+              repeat === 'off' &&
+              now.index >= list.songs.length - 1)
           }
         >
           ⏭
