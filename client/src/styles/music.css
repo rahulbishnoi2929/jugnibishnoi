@@ -35,6 +35,46 @@
 /* The wash itself. Behind everything, above nothing, never takes a
    pointer. The anti-goal was text you cannot read over a disco, so this
    stays a tint and does not try to be a light show. */
+/* The video behind the page.
+
+   Below the wash and the waves, which are what give it the mood's
+   colour, and below everything else on the site. Nothing here takes a
+   pointer: the controls are the dock's, not YouTube's. */
+.stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1400ms var(--ease);
+}
+:root[data-mood] .stage { opacity: 1; }
+
+/* Cover, rather than fit: a 16:9 frame over a window of any shape, sized
+   from whichever side runs out first and centred on the middle. */
+.stage > div,
+.stage iframe {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: max(100vw, calc(100vh * 16 / 9));
+  height: max(100vh, calc(100vw * 9 / 16));
+  border: 0;
+  display: block;
+}
+
+/* Held back far enough to read a page over. Without this the whole site
+   is text on top of a music video, which is unreadable about a third of
+   the time and exhausting the rest. */
+.stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+}
+
 .mood-wash {
   position: fixed;
   inset: 0;
@@ -132,15 +172,15 @@
   border-radius: 8px;
   background: #000;
 }
-/* The frame is 16:9 and the slot is square, so the video is widened and
-   cropped to its middle, which is where the picture in a music video is. */
-.dock-screen > div,
-.dock-screen iframe {
+/* A 16:9 still in a square slot, cropped to its middle, which is where
+   the picture in a music video is. */
+.dock-screen img {
   width: 128px;
   height: 72px;
-  margin-left: -28px;
+  margin: 18px 0 0 -28px;
   border: 0;
   display: block;
+  object-fit: cover;
 }
 
 .dock-text { min-width: 0; }
@@ -166,11 +206,15 @@
    track is painted with a gradient stopped at --through, which is the
    only way to colour the filled half of one in every browser. */
 .dock-seek {
+  /* Its own row, the whole width of the dock. Sharing the middle column
+     with the title left it 48 pixels across between two timestamps and
+     six buttons, which is not something you can take hold of. */
+  grid-column: 1 / -1;
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: var(--s2);
-  margin-top: 5px;
+  margin-top: 2px;
 }
 .dock-time {
   font-family: var(--mono);
@@ -182,7 +226,8 @@
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 14px;
+  /* Tall enough to hit with a thumb; the track inside it stays 3px. */
+  height: 22px;
   background: none;
   cursor: pointer;
 }

@@ -196,6 +196,21 @@
   );
 }
 
+/* While something is playing there is a music video behind all of
+   this, and a reading panel painted flat over it hides the thing he
+   asked for. So the panel thins and the video comes through it blurred
+   — a moving wash rather than a picture competing with the words. Only
+   with a mood on; every other chapter keeps its solid page. */
+:root[data-mood] .panel::after {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--bg) 93%, transparent) 0%,
+    color-mix(in srgb, var(--bg) 84%, transparent) 55%,
+    color-mix(in srgb, var(--bg) 56%, transparent) 100%
+  );
+  backdrop-filter: blur(22px) saturate(1.15);
+}
+
 .panel-scroll {
   position: relative;
   z-index: 1;
@@ -332,6 +347,15 @@
     padding: var(--s4) var(--s3) var(--s6);
   }
 
+  :root[data-mood] .panel::after {
+    background: linear-gradient(
+      0deg,
+      color-mix(in srgb, var(--bg) 93%, transparent) 0%,
+      color-mix(in srgb, var(--bg) 84%, transparent) 70%,
+      color-mix(in srgb, var(--bg) 56%, transparent) 100%
+    );
+  }
+
   .panel::after {
     background: linear-gradient(
       0deg,
@@ -378,11 +402,15 @@
    allowed two and held to the width of the picture under it — a name
    wider than its own card is a name lying across its neighbour. */
 .sub-label.is-tight {
-  max-width: 62px;
   white-space: normal;
+  /* A long name breaks rather than sticking out past the width the
+     component sets from LABEL_MAX_CSS. */
+  /* Break a word only when it genuinely cannot fit, not between every
+     letter. */
+  overflow-wrap: break-word;
   text-align: center;
   line-height: 1.12;
-  font-size: 0.6em;
+  font-size: 0.46em;
   /* Hugging the words, because at nine the name is most of the card it
      sits on and every pixel of padding is a pixel of artwork. */
   padding: 2px 4px;

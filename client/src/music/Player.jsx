@@ -266,11 +266,22 @@ export function MusicProvider({ children }) {
 
   return (
     <MusicContext.Provider value={value}>
+      {/* The video itself, behind the whole site.
+
+          This is where the iframe lives now, and it is the only place it
+          can live: re-parenting an iframe reloads it, so wherever the
+          player is first put is where it stays for the life of the page.
+          It used to be the little square in the dock. Now the dock shows
+          a still and the moving picture is the backdrop, dimmed, with
+          the mood's colour laid over it. */}
+      <div className="stage" aria-hidden="true">
+        <div ref={host} />
+      </div>
       {/* Behind everything, and only there while something is playing —
           the stylesheet fades it on the presence of a mood. */}
       <Waves />
       {children}
-      <Dock host={host} />
+      <Dock />
     </MusicContext.Provider>
   )
 }
@@ -284,22 +295,52 @@ const clockText = (s) => {
   return m + ':' + String(Math.floor(s % 60)).padStart(2, '0')
 }
 
-function Dock({ host }) {
+function Dock() {
   const { now, list, track, toggle, step, stop, clock, seek, shuffle, setShuffle, repeat, setRepeat, queue } =
     useMusic()
   const on = !!track
   const through = clock.of ? clock.at / clock.of : 0
+
+  // Where the thumb is while you are dragging it, and nothing otherwise.
+  //
+  // The bar is told where it is four times a second by the clock, which
+  // is fine until you take hold of it: then every poll put the thumb
+  // back where the song was and you were dragging against the player.
+  // While you hold it, the bar shows your finger instead and the song is
+  // not told anything; it is told once, when you let go.
+  const [at, setAt] = useState(null)
+  const held = useRef(false)
+  const latest = useRef(null)
+  latest.current = at
+  const scrubbing = at !== null
+
+  useEffect(() => {
+    if (!scrubbing) return
+    // On the window, because you can let go anywhere — a drag that ends
+    // off the end of the bar still ends.
+    const drop = () => {
+      held.current = false
+      if (latest.current !== null) seek(latest.current)
+      setAt(null)
+    }
+    window.addEventListener('pointerup', drop)
+    window.addEventListener('pointercancel', drop)
+    return () => {
+      window.removeEventListener('pointerup', drop)
+      window.removeEventListener('pointercancel', drop)
+    }
+  }, [scrubbing, seek])
+
+  const shown = at ?? through
 
   return (
     <div className={'dock' + (on ? ' is-on' : '')} aria-hidden={!on}>
       {/* A thread of the song's progress across the very top of the dock,
           so you can read how far in you are without looking for a bar. */}
       <div className="dock-thread" style={{ '--through': through }} aria-hidden="true" />
-      {/* YouTube will not play in a hidden player, and their terms ask
-          that it not be obscured, so it is small and real rather than
-          absent. At this size it reads as artwork. */}
+      {/* A still of what is playing. The moving one is the backdrop. */}
       <div className="dock-screen">
-        <div ref={host} />
+        {track?.thumb && <img src={track.thumb} alt="" decoding="async" />}
       </div>
 
       <div className="dock-text">
@@ -313,21 +354,6 @@ function Dock({ host }) {
             without this is a toy: you cannot tell a song that has just
             started from one about to end, and you cannot skip the
             ninety-second intro on a live recording. */}
-        <label className="dock-seek">
-          <span className="dock-time">{clockText(clock.at)}</span>
-          <input
-            type="range"
-            min="0"
-            max="1000"
-            value={Math.round(through * 1000)}
-            onChange={(e) => seek(Number(e.target.value) / 1000)}
-            style={{ '--through': through }}
-            aria-label="Seek"
-          />
-          <span className="dock-time">
-            {clock.of ? '-' + clockText(clock.of - clock.at) : '0:00'}
-          </span>
-        </label>
       </div>
 
       <div className="dock-keys">
@@ -379,6 +405,36 @@ function Dock({ host }) {
           ✕
         </button>
       </div>
+
+      {/* Across the whole dock rather than sharing the middle column with
+          the title, where six buttons and two timestamps had left it 48
+          pixels wide — a bar you cannot hit is a bar that does not work.
+          See dock-seek in music.css. */}
+      <label className="dock-seek">
+        <span className="dock-time">{clockText(shown * clock.of)}</span>
+        <input
+          type="range"
+          min="0"
+          max="1000"
+          value={Math.round(shown * 1000)}
+          onPointerDown={() => {
+            held.current = true
+            setAt(through)
+          }}
+          onChange={(e) => {
+            const f = Number(e.target.value) / 1000
+            // A drag moves the thumb and nothing else. An arrow key, with
+            // no pointer down, is a single move and seeks at once.
+            if (held.current) setAt(f)
+            else seek(f)
+          }}
+          style={{ '--through': shown }}
+          aria-label="Seek"
+        />
+        <span className="dock-time">
+          {clock.of ? '-' + clockText(clock.of - shown * clock.of) : '0:00'}
+        </span>
+      </label>
     </div>
   )
 }

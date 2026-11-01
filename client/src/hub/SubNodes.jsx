@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { branchCurve, cardFor, headFor, labelScaleFor } from './layout.js'
 import { setsFor } from '../lib/media.js'
 import { playlistFor } from '../lib/playlists.js'
+import { LABEL_MAX_CSS } from './layout.js'
 import { coverCrop, previewMaterial } from './shaders.js'
 
 // A chapter's own branches, growing out of its node the way the chapters
@@ -316,7 +317,17 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
             (onArt ? ' is-on-photo' : '') +
             (count > 8 ? ' is-tight' : '')
           }
-          style={{ '--node': accent, opacity: 0 }}
+          // Held to a width the sweep also knows about, so the spacing
+          // between cards can be chosen with the names in mind rather
+          // than in spite of them.
+          style={{
+            '--node': accent,
+            opacity: 0,
+            // A width, not a cap: drei's wrapper shrinks to fit its
+            // contents, so a cap plus break-anywhere collapsed every name
+            // to one letter per line.
+            width: count > 6 ? LABEL_MAX_CSS + 'px' : undefined,
+          }}
           // Starting values only; the frame loop owns these. See Nodes.
           tabIndex={-1}
           aria-hidden="true"

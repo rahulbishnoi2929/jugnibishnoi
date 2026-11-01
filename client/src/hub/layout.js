@@ -324,6 +324,28 @@ const PALM = {
 // inside of for the gesture to be visible at all.
 export const PALM_X = { wide: 0.54, narrow: 0.432 }
 
+// How wide a branch's name is allowed to be, and how to work out what
+// that means on a screen.
+//
+// The names were never measured. The layout test checks that the cards
+// clear each other and says nothing about the words under them, so at
+// seven playlists "Personal Favourites" lay 82 pixels across "High
+// Intensity" and everything still passed. A label is drawn by drei's
+// Html at a fixed distanceFactor, which means — like the cards, and for
+// the same reason — its size on screen is its CSS size divided by how
+// far away it is. So one constant converts between them, measured off
+// the running page: a world unit is this many CSS pixels inside one of
+// those labels.
+export const LABEL_PX_PER_WORLD = 271.3
+
+// The widest a name may be, in its own CSS pixels. Applied to the label
+// itself so the stylesheet and the sweep cannot drift apart.
+export const LABEL_MAX_CSS = 46
+
+// What that comes to on a screen, given how big a world unit is there.
+export const labelWidth = (pxPerWorld) =>
+  (LABEL_MAX_CSS * pxPerWorld) / LABEL_PX_PER_WORLD
+
 // Six cards above the palms, in two rows of three on every screen.
 //
 // One arrangement, not three. Six across was tried and only fits a wide
@@ -400,19 +422,19 @@ const SEVEN = {
 // will say so rather than leave you to find out on a phone.
 const NINE = {
   phone: {
-    span: 0.191, lift: 0.425, drop: 0.058, row: 0.125, out: 0.186,
-    card: { w: 0.156, h: 0.091 },
-    view: { pos: [0, 1.55, 2.03], look: [0, 0.22, 0] },
+    span: 0.247, lift: 0.401, drop: 0.003, row: 0.13, out: 0.137,
+    card: { w: 0.164, h: 0.092 },
+    view: { pos: [0, 1.55, 2.05], look: [0, 0.22, 0] },
   },
   tablet: {
-    span: 0.378, lift: 0.292, drop: 0.036, row: 0.149, out: 0.257,
-    card: { w: 0.153, h: 0.11 },
-    view: { pos: [0, 1.36, 2.81], look: [0, 0.58, 0] },
+    span: 0.368, lift: 0.397, drop: 0.004, row: 0.146, out: 0.22,
+    card: { w: 0.159, h: 0.118 },
+    view: { pos: [0, 1.78, 2.56], look: [0, 0.6, 0] },
   },
   desktop: {
-    span: 0.379, lift: 0.286, drop: 0.037, row: 0.155, out: 0.166,
-    card: { w: 0.151, h: 0.109 },
-    view: { pos: [0, 1.5, 2.6], look: [-0.55, 0.8, 0] },
+    span: 0.373, lift: 0.301, drop: 0.001, row: 0.185, out: 0.15,
+    card: { w: 0.154, h: 0.109 },
+    view: { pos: [0, 1.67, 2.53], look: [-0.55, 0.7, 0] },
   },
 }
 

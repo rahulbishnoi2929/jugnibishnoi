@@ -16,7 +16,7 @@ import * as THREE from 'three'
 import { readFileSync } from 'node:fs'
 import {
   PROFILES, offerCard, offerView, applyZoom, fitFor,
-  placeNodes, placeBranches, figureFor, BODY_TOP, HEAD_Y, HEAD_R, PALM_X,
+  placeNodes, placeBranches, figureFor, BODY_TOP, HEAD_Y, HEAD_R, PALM_X, labelWidth,
 } from '../client/src/hub/layout.js'
 import { posture } from '../client/src/hub/pose.js'
 
@@ -27,11 +27,10 @@ const music = five.find((c) => c.id === 'music')
 const count = music.branches.length
 
 const CLASSES = {
-  phone: [[360, 780], [375, 812], [414, 896]],
-  tablet: [[560, 900], [768, 1024]],
-  desktop: [[1024, 768], [1440, 820], [1920, 1080]],
+  phone: [[360, 780], [375, 812], [390, 844], [414, 896], [430, 932]],
+  tablet: [[560, 900], [600, 800], [768, 1024], [790, 630], [820, 1180], [900, 600]],
+  desktop: [[1024, 768], [1180, 700], [1280, 720], [1440, 820], [1512, 860], [1920, 1080]],
 }
-
 // His breathing and his knee bend. The cards are in his hands and ride
 // with him, so every vertical margin is taken at both ends of it.
 let high = 0
@@ -111,6 +110,25 @@ function margins(w, h) {
     }
   }
   m.push(['card width', boxes[0].r - boxes[0].l - 66])
+
+  // And the names, which were never measured. A label is capped at a
+  // width the component applies, so what it comes to here is that cap
+  // scaled by how big a world unit is on this screen. Two names must
+  // not touch, the same eight pixels apart the cards keep.
+  const pxPerWorld = Math.abs(
+    at(new THREE.Vector3(1, 0, 0)).x - at(new THREE.Vector3(0, 0, 0)).x
+  )
+  const name = labelWidth(pxPerWorld)
+  for (let i = 0; i < boxes.length; i++) {
+    for (let j = i + 1; j < boxes.length; j++) {
+      const a2 = boxes[i], b2 = boxes[j]
+      const ca = (a2.l + a2.r) / 2, cb = (b2.l + b2.r) / 2
+      // Names sit under their own card, so they only collide with a
+      // neighbour on roughly the same line.
+      if (Math.abs(a2.t - b2.t) > 12) continue
+      m.push(['name ' + a2.id + '/' + b2.id, Math.abs(ca - cb) - name - 8])
+    }
+  }
   const hand = at(
     new THREE.Vector3(
       narrow ? PALM_X.narrow : PALM_X.wide,
@@ -145,8 +163,8 @@ function score(cls) {
 // fit. Framing is not a thing to be optimised into.
 const RANGE = {
   phone: { ar: [0.56, 0.62], span: [0.15, 0.33], lift: [0.12, 0.52], row: [0.07, 0.21], cw: [0.10, 0.22], py: [0.95, 1.55], pz: [2.0, 3.0], ly: [0.2, 0.6], drop: [0, 0.06], out: [0.10, 0.28] },
-  tablet: { ar: [0.70, 0.78], span: [0.14, 0.38], lift: [0.10, 0.50], row: [0.07, 0.21], cw: [0.10, 0.25], py: [1.05, 1.7], pz: [2.8, 3.9], ly: [0.35, 0.75], drop: [0, 0.06], out: [0.10, 0.28] },
-  desktop: { ar: [0.70, 0.78], span: [0.15, 0.42], lift: [0.12, 0.54], row: [0.07, 0.23], cw: [0.10, 0.27], py: [1.3, 2.0], pz: [2.2, 3.3], ly: [0.5, 0.95], drop: [0, 0.06], out: [0.10, 0.28] },
+  tablet: { ar: [0.70, 0.78], span: [0.14, 0.38], lift: [0.10, 0.50], row: [0.07, 0.21], cw: [0.10, 0.25], py: [0.95, 1.9], pz: [2.15, 3.9], ly: [0.3, 0.9], drop: [0, 0.06], out: [0.10, 0.28] },
+  desktop: { ar: [0.70, 0.78], span: [0.15, 0.42], lift: [0.12, 0.54], row: [0.07, 0.23], cw: [0.10, 0.27], py: [1.2, 2.1], pz: [1.9, 3.3], ly: [0.45, 1.0], drop: [0, 0.06], out: [0.10, 0.28] },
 }
 
 // --check reports what the numbers now in layout.js are worth, rather
