@@ -542,7 +542,10 @@
   z-index: 0;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 1400ms var(--ease);
+  /* The sea moves when a sheet comes up over it, so it moves at the
+     speed the sheet does rather than jumping. */
+  transition: opacity 1400ms var(--ease), bottom 500ms var(--ease),
+    height 500ms var(--ease);
 }
 :root[data-mood] .waves {
   opacity: calc(0.22 + var(--wave-rise) * 0.3);
@@ -593,9 +596,14 @@
 /* Where the reading panel is a sheet across the bottom, the waves have to
    sit on the floor of the scene instead of the floor of the window — all
    of the viewport below 60vh is panel, and a sea behind a panel is a sea
-   nobody sees. */
+   nobody sees.
+
+   Only where there is actually a sheet, though. This was keyed to the
+   width alone, so on the hub — which has no panel at all — the sea was
+   lifted off the bottom of the window and left lying across the middle
+   of the screen, under his feet. */
 @media (max-width: 900px) {
-  .waves {
+  :root:has(.panel) .waves {
     bottom: 60vh;
     height: min(26vh, 220px);
   }
