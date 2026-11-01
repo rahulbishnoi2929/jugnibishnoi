@@ -27,6 +27,10 @@ export function MusicProvider({ children }) {
   // the order every player uses, because each press is "more repetition
   // than last time".
   const [repeat, setRepeat] = useState('off')
+  // Songs that jump the order. Each is a playlist and a row in it, not
+  // just a row, so queuing something from Lovable while you are standing
+  // in Rap plays the right song.
+  const [queue, setQueue] = useState([])
   const player = useRef(null)
   const host = useRef(null)
   // The event handlers are given to YouTube once and never rebuilt, so
@@ -35,20 +39,6 @@ export function MusicProvider({ children }) {
   // changes when shuffle does.
   const live = useRef(now)
   live.current = now
-  const after = useRef(null)
-  // What follows this track, or null for "nothing, stop". `ended` is the
-  // difference between the song finishing and you pressing next: repeat
-  // one means one song forever, but pressing next should still move.
-  after.current = (l, at, ended = false) => {
-    if (ended && repeat === 'one') return at
-    if (shuffle && l.songs.length > 1) {
-      let pick = at
-      while (pick === at) pick = Math.floor(Math.random() * l.songs.length)
-      return pick
-    }
-    if (at + 1 < l.songs.length) return at + 1
-    return repeat === 'off' ? null : 0
-  }
 
   const list = now.id ? playlistFor(now.id) : null
   const track = list?.songs[now.index] ?? null
@@ -64,16 +54,25 @@ export function MusicProvider({ children }) {
     return () => clearInterval(tick)
   }, [now.playing, now.index, now.id])
 
-  // The site takes its mood from whatever is playing. Written to the root
-  // element so every stylesheet can see it, and cleared when the music
-  // stops — he asked for it to stop only when someone stops it, so this
-  // follows the music rather than the page you happen to be on.
-  useEffect(() => {
-    const root = document.documentElement
-    if (list) root.dataset.mood = list.mood
-    else delete root.dataset.mood
-    return () => delete root.dataset.mood
-  }, [list])
+  const after = useRef(null)
+  // What follows this track — a playlist and a row, or null for "nothing,
+  // stop". `ended` is the difference between the song finishing and you
+  // pressing next: repeat-one means one song forever, but next still has
+  // to move or the button looks broken.
+  after.current = (pid, at, ended = false) => {
+    // The queue comes first, always. That is what a queue is.
+    if (queue.length) return { ...queue[0], queued: true }
+    const l = playlistFor(pid)
+    if (!l) return null
+    if (ended && repeat === 'one') return { id: pid, index: at }
+    if (shuffle && l.songs.length > 1) {
+      let pick = at
+      while (pick === at) pick = Math.floor(Math.random() * l.songs.length)
+      return { id: pid, index: pick }
+    }
+    if (at + 1 < l.songs.length) return { id: pid, index: at + 1 }
+    return repeat === 'off' ? null : { id: pid, index: 0 }
+  }
 
   const cue = useCallback((id, index) => {
     const pl = playlistFor(id)
@@ -95,11 +94,12 @@ export function MusicProvider({ children }) {
           onStateChange: (e) => {
             if (e.data === YT.PlayerState.ENDED) {
               const { id: pid, index: at } = live.current
-              const l = playlistFor(pid)
-              if (!l) return
-              const to = after.current(l, at, true)
-              if (to === null) setNow((s) => ({ ...s, playing: false }))
-              else cue(pid, to)
+              const to = after.current(pid, at, true)
+              if (!to) setNow((s) => ({ ...s, playing: false }))
+              else {
+                if (to.queued) setQueue((q) => q.slice(1))
+                cue(to.id, to.index)
+              }
               return
             }
             if (e.data === YT.PlayerState.PLAYING) setNow((s) => ({ ...s, playing: true }))
@@ -133,10 +133,11 @@ export function MusicProvider({ children }) {
       const { id, index } = live.current
       const l = playlistFor(id)
       if (!l) return
-      // Forward on shuffle means somewhere else, not the next row.
       if (by > 0) {
-        const to = after.current(l, index)
-        if (to !== null) cue(id, to)
+        const to = after.current(id, index)
+        if (!to) return
+        if (to.queued) setQueue((q) => q.slice(1))
+        cue(to.id, to.index)
         return
       }
       // Back past the first track wraps only if the list is set to.
@@ -146,6 +147,26 @@ export function MusicProvider({ children }) {
     },
     [cue, repeat]
   )
+
+  // Added to the back of the queue, not the front.
+  //
+  // Most players put "play next" at the top, so pressing it on three
+  // songs plays them backwards. That is defensible for one song and
+  // wrong for the thing he asked for, which is building a queue: pick
+  // four in the order you want them and they come out in that order.
+  //
+  // Queuing something already queued moves it to the back rather than
+  // adding it twice, since the second press is a correction.
+  const playNext = useCallback((id, index) => {
+    setQueue((q) => [
+      ...q.filter((e) => !(e.id === id && e.index === index)),
+      { id, index },
+    ])
+  }, [])
+
+  const unqueue = useCallback((at) => {
+    setQueue((q) => q.filter((_, i) => i !== at))
+  }, [])
 
   // Scrubbing. The bar reports where along it you let go, 0 to 1.
   const seek = useCallback((fraction) => {
@@ -161,6 +182,7 @@ export function MusicProvider({ children }) {
     player.current?.stopVideo()
     setNow({ id: null, index: 0, playing: false })
     setClock({ at: 0, of: 0 })
+    setQueue([])
   }, [])
 
   // Space, arrows, M. Only once something is playing, and never while
@@ -191,6 +213,7 @@ export function MusicProvider({ children }) {
   const value = {
     now, list, track, open, cue, toggle, step, stop,
     clock, seek, shuffle, setShuffle, repeat, setRepeat,
+    queue, playNext, unqueue,
   }
 
   return (

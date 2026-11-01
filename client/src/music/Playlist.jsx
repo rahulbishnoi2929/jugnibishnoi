@@ -10,7 +10,7 @@ import { useMusic } from './context.js'
 // fifty costs fifty <img> tags and no API call.
 export default function Playlist({ id }) {
   const list = playlistFor(id)
-  const { now, cue, toggle } = useMusic()
+  const { now, cue, toggle, queue, playNext, unqueue } = useMusic()
   const here = useRef(null)
 
   // Bring the playing row back into view when the song changes by itself.
@@ -40,6 +40,39 @@ export default function Playlist({ id }) {
 
   return (
     <>
+      {/* What is jumping the order, if anything. Shown here rather than
+          hidden behind a button in the dock: a queue you cannot see is a
+          queue you stop trusting. */}
+      {queue.length > 0 && (
+        <section className="queue" aria-label="Up next">
+          <p className="queue-head">
+            Up next
+            <span className="queue-count">{queue.length}</span>
+          </p>
+          <ol className="queue-list">
+            {queue.map((q, at) => {
+              const from = playlistFor(q.id)
+              const song = from?.songs[q.index]
+              if (!song) return null
+              return (
+                <li key={q.id + q.index}>
+                  <img src={song.thumb} alt="" loading="lazy" decoding="async" />
+                  <span className="queue-text">
+                    <span className="queue-title">{song.title}</span>
+                    {/* Which list it came from, which only matters when
+                        it is not this one. */}
+                    {q.id !== id && <span className="queue-from">{from.title}</span>}
+                  </span>
+                  <button onClick={() => unqueue(at)} aria-label={'Remove ' + song.title}>
+                    ✕
+                  </button>
+                </li>
+              )
+            })}
+          </ol>
+        </section>
+      )}
+
       <p className="playlist-count">
         {list.songs.length} songs
         {now.id === id ? ' · playing' : ''}
@@ -81,7 +114,17 @@ export default function Playlist({ id }) {
                 <span className="track-title">{song.title}</span>
                 {song.artist && <span className="track-artist">{song.artist}</span>}
               </span>
+            </button>
 
+            {/* Outside the row's button, because a button inside a button
+                is not something the browser will give you. */}
+            <button
+              className="track-next"
+              onClick={() => playNext(id, i)}
+              aria-label={'Play ' + song.title + ' next'}
+              title="Play next"
+            >
+              ⏭
             </button>
           </li>
         )
