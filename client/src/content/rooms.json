@@ -1,11 +1,9 @@
 {
   "_note": "The lower ring on the hub. Life chapters are the five above; these are places rather than years. Add one by adding an entry — kind 'game' opens the game, kind 'link' routes away, kind 'text' just shows copy. Connect four is built and tested (src/game, `npm test`) but parked: switch Games back on by setting its kind to 'game'.",
-
   "rooms": [
     {
       "id": "games",
       "title": "Games",
-      "years": "soon",
       "accent": "#8C8577",
       "kind": "text",
       "lede": "khelega kya ....."
@@ -21,7 +19,6 @@
     {
       "id": "blog",
       "title": "Blog",
-      "years": "soon",
       "accent": "#8C8577",
       "kind": "text",
       "lede": "Nothing written yet."

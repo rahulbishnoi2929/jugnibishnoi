@@ -35,6 +35,7 @@ import {
   HEAD_Y,
   BODY_TOP,
   branchCurve,
+  branchDrift,
   fitFor,
   fitRadius,
   hubOpacity,
@@ -1905,6 +1906,60 @@ test('the universe clusters rather than being static', () => {
   const mean = sum / n
   const even = UNIVERSE.radius / Math.cbrt(n)
   assert.ok(mean < even * 0.6, `mean spacing ${mean.toFixed(3)} vs even ${even.toFixed(3)}`)
+})
+
+test('no two branches keep time with each other', () => {
+  // The ring is meant to read as separate things drifting, not as one
+  // wave with a point on it per branch. Two branches share their motion
+  // if they share a rate — the phase between them never changes, so they
+  // rise and fall a fixed distance apart for as long as you watch. The
+  // first version of this repeated its rates every fifth branch and four
+  // pairs were locked together exactly as before.
+  const count = five.length + three.length
+  const drifts = Array.from({ length: count }, (_, i) => branchDrift(i))
+
+  for (let i = 0; i < count; i++) {
+    for (let j = i + 1; j < count; j++) {
+      const apart = Math.abs(drifts[i].rate - drifts[j].rate)
+      assert.ok(
+        apart > 0.01,
+        `branches ${i} and ${j} drift at ${drifts[i].rate.toFixed(3)} and ${drifts[j].rate.toFixed(3)} — the same, so they never come apart`
+      )
+      assert.ok(
+        Math.abs(drifts[i].wobbleRate - drifts[j].wobbleRate) > 0.01,
+        `branches ${i} and ${j} wobble at the same rate`
+      )
+    }
+  }
+
+  // And they start spread around the cycle rather than together, so the
+  // ring does not have to be watched for a minute before it looks like
+  // nine things.
+  const places = drifts
+    .map((d) => ((d.phase % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2))
+    .sort((a, b) => a - b)
+  let tightest = Math.PI * 2
+  for (let i = 0; i < places.length; i++) {
+    const gap =
+      i === places.length - 1
+        ? places[0] + Math.PI * 2 - places[i]
+        : places[i + 1] - places[i]
+    tightest = Math.min(tightest, gap)
+  }
+  // Evenly spread would be a full turn over the count; a third of that is
+  // loose enough for the golden angle and tight enough to catch a bug.
+  const even = (Math.PI * 2) / count
+  assert.ok(
+    tightest > even / 3,
+    `two branches start ${tightest.toFixed(2)} apart in the cycle, against ${even.toFixed(2)} if they were spread evenly`
+  )
+
+  // The reach varies too, or they are nine of the same thing at nine
+  // different moments.
+  assert.ok(
+    new Set(drifts.map((d) => d.reach.toFixed(4))).size >= 4,
+    'every branch swings by the same amount'
+  )
 })
 
 console.log('\n' + passed + ' passed')

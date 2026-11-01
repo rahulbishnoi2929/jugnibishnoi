@@ -51,7 +51,7 @@ export default function Panel({
           {backLabel}
         </button>
 
-        <p className="panel-years">{years}</p>
+        {years && <p className="panel-years">{years}</p>}
         <h2 className="panel-title">{title}</h2>
         {place && <p className="panel-place">{place}</p>}
         {lede && <p className="panel-lede">{lede}</p>}

@@ -2,7 +2,13 @@ import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Line, Html } from '@react-three/drei'
 import * as THREE from 'three'
-import { branchCurve, depthFade, hubOpacity, labelScaleFor } from './layout.js'
+import {
+  branchCurve,
+  branchDrift,
+  depthFade,
+  hubOpacity,
+  labelScaleFor,
+} from './layout.js'
 
 const world = new THREE.Vector3()
 
@@ -35,6 +41,8 @@ function Node({ node, index, state, onPick, zoom, head }) {
   // measure the same one that gets drawn.
   const curve = useMemo(() => branchCurve(head, node.pos), [node.pos, head])
 
+  const drift = useMemo(() => branchDrift(index), [index])
+
   // And it brightens along its length. One flat colour from end to end
   // reads as wire; dark where it leaves his head and full at the node puts
   // the light at the destination, which is also the thing you are meant to
@@ -61,10 +69,16 @@ function Node({ node, index, state, onPick, zoom, head }) {
 
   useFrame((s, dt) => {
     const k = 1 - Math.pow(0.002, dt)
-    const t = s.clock.elapsedTime + index * 1.7
+    const t = s.clock.elapsedTime
 
-    group.current.position.y = state === 'idle' ? Math.sin(t * 0.5) * 0.06 : 0
-    const wobble = state === 'idle' && !hover ? Math.sin(t * 1.6) * 0.08 : 0
+    group.current.position.y =
+      state === 'idle'
+        ? Math.sin(t * drift.rate + drift.phase) * drift.reach
+        : 0
+    const wobble =
+      state === 'idle' && !hover
+        ? Math.sin(t * drift.wobbleRate + drift.phase * 1.7) * 0.08
+        : 0
 
     // Two things fade a branch, and they are kept apart because they need
     // different floors.
@@ -216,7 +230,7 @@ function Node({ node, index, state, onPick, zoom, head }) {
           onClick={() => onPick(node.id)}
         >
           <span className="node-title">{node.title}</span>
-          <span className="node-years">{node.years}</span>
+          {node.years && <span className="node-years">{node.years}</span>}
         </button>
       </Html>
     </group>

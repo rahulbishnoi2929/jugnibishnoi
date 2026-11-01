@@ -159,6 +159,28 @@ export const cardFor = (narrow, count = 4) =>
 //
 // It lives here, and both Nodes and the tests call it, so that what is
 // measured is the curve that is actually drawn.
+// How one branch drifts: its own rate, its own reach, its own place in
+// the cycle.
+//
+// Every branch used to share a single rate and sit a fixed step apart in
+// it. That is not nine things moving — it is one wave with nine points
+// on it, and the whole ring reads as breathing in time. What separates
+// them is the rate: no two the same, so any pair drifts apart and never
+// lines up again, instead of holding the same distance forever. A first
+// attempt at this repeated its rates every fifth branch, which left four
+// pairs locked to each other exactly as before.
+//
+// The phase step is the golden angle, so wherever they start they start
+// about as far apart as a given number of them can.
+export const branchDrift = (index) => ({
+  rate: 0.24 + index * 0.058,
+  reach: 0.04 + ((index * 5) % 7) * 0.0065,
+  phase: index * 2.39996,
+  // The size wobble gets a rate of its own rather than a multiple of the
+  // first, so a branch is never at its highest and its biggest together.
+  wobbleRate: 1.07 + index * 0.097,
+})
+
 export function branchCurve(head, node, segments = 40) {
   const mid = head.clone().lerp(node, 0.5)
   const reach = head.distanceTo(node)
