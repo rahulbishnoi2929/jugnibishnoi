@@ -114,10 +114,15 @@ export default function SubNodes({
         const fade = Math.exp(-step / FLICK_TIME)
         c.turn += c.spin * FLICK_TIME * (1 - fade)
         c.spin *= fade
-      } else if (c.spin !== 0) {
+      } else {
         c.spin = 0
-        // Where it came to rest is rarely a slot, so this is the one
-        // place the target is rounded. The easing below does the moving.
+        // Where a drag leaves it is rarely a slot, so this is the one
+        // place the target is rounded; the easing below does the moving.
+        //
+        // Unconditionally, not just when a flick has run out. A slow drag
+        // ends with no speed at all, so keying this to a flick dying left
+        // the ring stopped between two slots with nothing square to the
+        // front — which is most of the drags anyone actually makes.
         c.turn = ringRest(ringSlots(branches.length), c.turn)
       }
     }
