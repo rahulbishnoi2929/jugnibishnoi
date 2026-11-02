@@ -244,3 +244,95 @@ Explicitly banned, because they are the default:
 - "Scroll down" bouncing chevron
 - Confetti on form submit
 - Any hero copy containing "passionate" or "turning coffee into code"
+
+---
+
+## 11. The music chapter
+
+Built after the rest, and the one place the design system bends on purpose.
+
+### The page takes the colour of the song
+
+Every other chapter wears its accent. Music wears whatever is playing. Nine
+playlists, nine moods, each one five custom properties on
+`:root[data-mood='…']`:
+
+| | ink | what it is |
+|---|---|---|
+| `disco` | `#ff4d9d` | Chatpate — the loud ones |
+| `calm` | `#6fd3c7` | Anytime |
+| `warm` | `#ffa07a` | Lovable |
+| `memory` | `#d9b26a` | Yaadaan |
+| `hard` | `#c8f03c` | Rap |
+| `intense` | `#ff5a3c` | High Intensity |
+| `favourite` | `#9d8cff` | Personal Favourites |
+| `iconic` | `#ffb000` | HR Iconic — Haryana, loud |
+| `party` | `#3ad6ff` | Party |
+
+Beyond the ink each mood carries a glow, a beat strength, and two numbers
+for the water: how fast it crosses and how high it rises. Adding a mood is
+therefore five numbers and a hex, not a component.
+
+The attribute is written to the document from whatever is playing, and
+cleared on stop. Everything else — the wash, the waves, the card tints, the
+track titles, the seek bar — reads it. It is a single switch the whole
+section hangs off, which is also its failure mode: it existed in CSS for
+weeks before anything set it, and the entire feature was invisible.
+
+### Three layers behind the page
+
+1. **The video.** The music video itself, full-bleed, cover-fitted to any
+   window shape, dimmed to about a fifth so a page can be read over it.
+   It is the YouTube player — the same iframe that is making the sound,
+   not a copy — which is why it can never be moved in the DOM.
+2. **The wash.** Two radial gradients in the mood's glow, pulsing on the
+   moods that said they were loud.
+3. **The waves.** Three SVG layers at different speeds and heights. They
+   belong to the bottom of the window, unless a reading sheet is over
+   them, in which case they sit on the floor of the scene instead.
+
+While a song plays the reading panel thins and blurs so the video comes
+through it. Every other chapter keeps its solid page.
+
+### The playlists are a ring
+
+Nine cards on a circle in front of him, two to a slot, one above the other.
+Drag sideways and it turns — the card at the front comes square to you at
+full size, its neighbours stay turned away at an angle, and the rest are
+behind him and not drawn at all.
+
+This replaced two rows of nine laid flat, which was the right answer for six
+and the wrong one for nine: the sweep that placed them ended with four
+pixels of clearance on a tablet and names shrunk until they wrapped. A ring
+does not try to show nine things at once.
+
+Rules that make it read as a ring rather than a stack:
+
+- Only the card at the front opens. Clicking one at the side **turns the
+  ring to it** — that is what clicking it meant.
+- Nothing snaps. Where the ring is meant to be and where it is drawn are two
+  numbers, and the second only ever eases toward the first, so a flick, a
+  drag and a settle all arrive through the same curve.
+- Neighbours must not lie across each other. Checked in the test suite,
+  because the first numbers that passed everything else looked like a pile.
+
+### The dock
+
+Bottom right, and it outlives the page you started the song on. Artwork,
+title, six controls, and a seek bar across its own full width — it was
+48 pixels wide squeezed between the title and the buttons, which is not
+something you can take hold of.
+
+The bar does not fight you: while you hold it, it follows your finger and
+the clock does not touch it, and the song is told once, when you let go.
+
+### What it refuses to do
+
+- **No autoplay.** The first sound always follows a tap. This is also what
+  makes it work on a phone.
+- **No files.** The songs are commercial recordings; they stream from
+  YouTube, so the rights holders are paid and nothing copyrighted is in
+  this repository.
+- **No pretending.** When a song will not play — region-blocked, or taken
+  down since it was added — the list moves on rather than sitting on a
+  title doing nothing.

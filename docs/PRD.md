@@ -3,9 +3,21 @@
 A personal site that is not a resume page. It is a **place**: a scrollable life
 journey with rooms hanging off it, where I can keep adding things forever.
 
-Owner: Rahul · Age 23 · Status: pre-build
-Extends [PLAN.md](../PLAN.md) (the 3D journey concept) with content, backend,
-and everything that needs a database.
+Owner: Rahul · Age 23 · Status: **live** —
+<https://rahulbishnoi2929.github.io/jugnibishnoi/>
+
+> **This file was written before the build and is kept as the statement of
+> intent.** Two things in it turned out differently and are not going to be
+> corrected in place, because the reasoning is still worth reading:
+>
+> - **There is no backend.** No database, no admin, no accounts. Content is
+>   JSON in the repo. Everything below that depends on a server — the blog
+>   editor, realtime play, contact form — is unbuilt, and the site has not
+>   suffered for it. See [ARCHITECTURE.md](ARCHITECTURE.md).
+> - **There is a sixth chapter: Music**, which is now the largest thing on
+>   the site and is described in §3 and in [DESIGN.md](DESIGN.md#11-the-music-chapter).
+>
+> For what exists today and what to do next, read [NEXT.md](NEXT.md).
 
 ---
 
@@ -83,6 +95,20 @@ Hosting three hackathons is the strongest single line on this site — that is
 organizing, not attending. Give it numbers: participants, teams, sponsors, what
 got built.
 Artifacts: 3 hackathon cards with real numbers, the blog, what I am building now.
+
+### Ch.6 — Music · what he listens to
+
+Added after the other five, and the only chapter that is not a period of his
+life. Nine playlists — Chatpate, Anytime, Lovable, Yaadaan, Rap, High
+Intensity, Personal Favourites, HR Iconic, Party — 315 songs, playable in
+the browser, with the page taking the colour and the mood of whatever is on.
+
+The lede is the whole argument for it: *you can tell a lot about a person
+from his playlist.* It is the one chapter that is evidence rather than
+claims, and the one people actually stay on.
+
+It sits oddly on a spine that is otherwise chronological — it has no years —
+and whether it stays a chapter or becomes a room is still open.
 
 > **Open — needed before copy can be written:** exact years per chapter, which
 > IIT + program name, the three hackathon names + participant counts, sport(s),
@@ -220,6 +246,16 @@ a flag.
 | 5 | Workshop + one game vs computer | Playable |
 | 6 | Game vs friend, realtime | Two phones, one room code |
 | 7 | Shelf, hackathon pages, polish | — |
+
+**What actually happened, as of November 2026.** Phases 0, 1 and 2 shipped.
+Phase 4 — the 3D — shipped early and became the site rather than a layer
+over it: a globe, a figure, branches, and a zoom out to the observable
+universe. Phase 5's game is playable against the computer. Phase 3 was
+skipped and is not missed. An unplanned Music chapter was built and is the
+best thing here.
+
+The phase that is genuinely overdue is none of these: the hub bundle is
+990KB against a 200KB budget. See [NEXT.md](NEXT.md).
 
 **Phase 1 before phase 2 is deliberate.** The boring page is the one that gets
 you the job, and it takes a day. Build it first so the 3D can take three months

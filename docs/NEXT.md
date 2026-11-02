@@ -1,0 +1,98 @@
+# WHERE IT IS, AND WHAT IS NEXT
+
+November 2026. Live at
+<https://rahulbishnoi2929.github.io/jugnibishnoi/>.
+
+---
+
+## What is built
+
+**The hub.** A globe with him standing on it, nine labelled branches
+growing out of his head — six chapters and three rooms. Drag to turn, pinch
+or scroll to zoom. Keep zooming out and it climbs a ladder of scales to the
+observable universe and back. Each branch drifts at its own rate.
+
+**Five chapters with something in them.** Soil, Grit, Campus, Build, Signal.
+Campus has photographs, grouped into branches, with a viewer.
+
+**Music.** The sixth chapter, and the largest thing here.
+
+- Nine playlists, 315 songs, played through YouTube's iframe so nothing
+  copyrighted lives in the repo and the rights holders are paid.
+- The playlists are a ring you turn, two cards to a slot.
+- A dock that survives navigation: play/pause, seek, next, previous,
+  shuffle, repeat, stop, and a queue you build by picking songs.
+- The page takes the mood of what is playing — colour, waves, and the
+  music video itself playing full-bleed behind the site, dimmed.
+
+**The escape hatch.** `/work` — no 3D, no motion, just the facts. Linked
+from every screen, because not everyone wants a globe.
+
+**A journey page.** `/journey` — the same five chapters told as a flat,
+scrollable page.
+
+**A game.** Tic-tac-toe with a minimax opponent.
+
+**47 tests** over the geometry, run in two seconds by `node`, asserting in
+screen pixels at thirteen viewport sizes.
+
+---
+
+## Next, in the order I would do it
+
+### 1. The bundle is too big — ~990KB, 278KB gzipped
+
+The PRD's budget was 200KB. The whole 3D world, the cosmos and the music
+section are in one chunk. Splitting the cosmos (only needed once you zoom
+past the planet) and the music section (only needed in one chapter) is the
+obvious first cut and needs no design decisions.
+
+### 2. Content gaps
+
+- **Music has no scene SVG.** Every other chapter has one; Music declares
+  none, so nothing is broken, but it is the odd one out.
+- **Volleyball and shooting photo sets are empty.**
+- **`captions.json` is thin** — the when, where, what and why of most
+  photographs are unwritten, and the viewer shows them.
+- **Soil, Grit, Build and Signal have no photographs**, so their branches
+  are frames with nothing in them.
+
+### 3. The figure
+
+He is boxes. A Mixamo-rigged GLB was started and the textures were already
+compressed from 6.7MB to 0.55MB. Binding `pose.js` to real bones needs an
+axis remap calibrated against whatever the rig exports — a day's careful
+work, and the single biggest visual upgrade available.
+
+### 4. Two duplicate songs and a bad title
+
+- "Dil Tu Hi Bataa" is in Personal Favourites twice, at 5 and 23.
+- "3:59 AM" is in Rap twice, at 2 and 7.
+- Personal Favourites #27 reads just "KK" — the artist-strip ate the title.
+
+Left alone deliberately: they are his lists, and deleting from someone's
+favourites is not a thing to do unasked.
+
+### 5. Smaller things
+
+- Desktop chapter labels still overlap by about 65px at some widths; the
+  front-only rule that fixes it is applied on phones only.
+- "Plainly" still sits under The work as its years, which is real copy
+  rather than a placeholder — remove it if it reads as one.
+- The music section's blur over the whole window is the most expensive
+  thing on the page; if a phone runs hot during a song, turn it down first.
+
+---
+
+## Decisions worth making before building more
+
+- **Does Music stay a chapter, or become its own room?** It has `years:
+  "soon"` removed and no place on a timeline that is otherwise
+  chronological. It sits oddly between the two.
+- **Blog and Games are nodes with nothing behind them.** Either build one
+  or take the node down; a branch that goes nowhere twice teaches people
+  not to click branches.
+- **Who else will ever edit this?** If the answer stays "nobody", the
+  JSON-in-the-repo model is right and should be left alone. If it becomes
+  "someone non-technical", that is the moment a backend earns its keep —
+  and not before.

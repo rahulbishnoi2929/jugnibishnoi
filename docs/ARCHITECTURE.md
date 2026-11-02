@@ -1,382 +1,240 @@
-# ARCHITECTURE — "My Little World"
+# ARCHITECTURE
 
-MERN, as requested. With one honest note up front.
+How the site is actually built, as of November 2026.
+
+An earlier version of this file described a MERN stack — Express, MongoDB,
+Socket.IO, an admin panel, a login. None of it was built, and none of it is
+needed. What exists is a static site: one React app, no server, no database,
+no accounts. That turned out to be the right size for it, and this file now
+describes the thing rather than the plan.
 
 ---
 
 ## 1. Read this first
 
-**Most of this site does not need a backend.** The journey, chapters, projects,
-resume, links, and the vs-computer game are all static or client-side.
+Three facts explain most of the code.
 
-MongoDB + Express earn their place for exactly four things:
+**There is no backend.** Everything ships as static files to GitHub Pages.
+Content lives in JSON in the repo and is imported at build time. The only
+things that happen at runtime over the network are YouTube's iframe player
+and its thumbnail CDN.
 
-1. Writing blog posts from anywhere without a git push
-2. Contact form submissions
-3. Game leaderboard
-4. Realtime rooms for playing with a friend (Socket.IO, not Mongo)
+**`client/src/hub/layout.js` is the source of truth for where things are.**
+Every position, size, camera and radius in the 3D scene is a number in that
+file or a function over it. It imports React from nowhere, so the tests run
+it under plain `node`. If you want to move something, you move it there, not
+in a component.
 
-That is the whole backend. It is ~500 lines. If it ever grows past that,
-something has gone wrong.
-
-The consequence, and it is the important one: **the frontend must work when
-the backend is asleep.** Free-tier hosts cold-start in 30s. Chapters, projects
-and resume ship in the bundle. Only blog/contact/game hit the API, and each
-degrades to a readable empty state instead of a spinner.
-
-> If you would rather never run a server: MDX files in the repo + Vercel gives
-> you the blog with zero infra, and the contact form becomes a Formspree
-> endpoint. Faster, cheaper, less to maintain. MERN is the right call only if
-> "write a post from my phone at 2am" is a thing you will actually do.
-> Assuming yes — the rest of this doc is MERN.
+**The preview pane lies about motion.** The in-editor browser renders this
+page at one to five frames a second, so anything timed — a flick, a drift, a
+transition — cannot be judged there. More than once a confident measurement
+taken in it turned out to be an artifact. Geometry is checked by tests;
+feel is checked on a real machine.
 
 ---
 
 ## 2. Stack
 
-| Layer | Choice | Why |
-|---|---|---|
-| Build | Vite + React 18 | already decided in PLAN.md |
-| Routing | React Router v6 | — |
-| Styling | Tailwind + CSS vars for tokens | tokens must be runtime-mutable for the accent lerp |
-| 3D | React Three Fiber + drei | PLAN.md |
-| Scroll | GSAP ScrollTrigger | PLAN.md |
-| Data fetching | TanStack Query | caching + retry + loading states, free |
-| Server | Node 20 + Express 4 | the E and N |
-| DB | MongoDB Atlas (free M0) + Mongoose | the M |
-| Realtime | Socket.IO | rooms are the whole feature; raw ws is not worth it |
-| Auth | JWT in httpOnly cookie, one admin | no user table needed |
-| Media | Cloudinary free tier | never put images in Mongo |
-| Email | Resend | contact form notifications |
-| Editor | react-markdown + a textarea | not a WYSIWYG. Markdown in, markdown out. |
+| | |
+|---|---|
+| Build | Vite 6, npm workspaces (one workspace: `client`) |
+| UI | React 18, React Router |
+| 3D | three.js r169, React Three Fiber v8, drei v9 |
+| Styles | plain CSS, custom properties, no framework |
+| Audio | YouTube IFrame Player API |
+| Tests | `node:assert` + plain `.mjs` files, no runner |
+| Lint | ESLint 9 flat config |
+| Host | GitHub Pages, deployed by Actions on push to `main` |
 
-**Not using:** Redux (Query + useState covers it) · GraphQL · Docker ·
-Prisma · Next.js (would be a good call, but PLAN.md picked Vite and the 3D
-scene is client-only anyway) · a UI kit.
+No Tailwind, no state library, no test framework, no backend. Each of those
+is an absence on purpose: the site is one page of 3D and some JSON.
 
 ---
 
-## 3. Content: DB vs repo
-
-| Content | Lives in | Why |
-|---|---|---|
-| Chapter copy + scene config | `client/src/content/chapters.json` | changes twice a year, coupled to 3D config |
-| Projects | MongoDB | I add these often enough to want an admin form |
-| Blog posts | MongoDB | the entire reason there is a backend |
-| Books | MongoDB | quick add from phone after finishing one |
-| Hackathons | MongoDB | few, but has photo arrays |
-| Resume PDF | `client/public/resume.pdf` | it is a file |
-
----
-
-## 4. Repo layout
-
-Single repo, npm workspaces. Two deploy targets from one `git push`.
+## 3. Repo layout
 
 ```
 portfolio/
-├── docs/                     PRD.md · DESIGN.md · ARCHITECTURE.md
-├── PLAN.md                   the 3D concept
-├── package.json              workspaces: client, server
+├── docs/                   PRD · DESIGN · ARCHITECTURE · CHANGING · NEXT · CONTENT
+├── scripts/                content importers and layout tools (see scripts/README.md)
+├── photos-raw/             originals; never shipped, see scripts/photos.js
+├── eslint.config.mjs
 │
-├── client/
-│   ├── public/               resume.pdf, favicon, og image
-│   ├── src/
-│   │   ├── main.jsx
-│   │   ├── routes.jsx
-│   │   ├── content/chapters.json
-│   │   ├── styles/tokens.css        DESIGN §2 & §3 as CSS vars
-│   │   ├── lib/
-│   │   │   ├── api.js               fetch wrapper, base URL, credentials
-│   │   │   └── accent.js            OKLCH lerp, sets --accent
-│   │   ├── ui/                      Rail, Card, Tag, Button, Prose, Loader…
-│   │   ├── journey/
-│   │   │   ├── Journey.jsx          the spine
-│   │   │   ├── Chapter.jsx
-│   │   │   ├── scene/               R3F canvas, models, camera rig
-│   │   │   └── StaticJourney.jsx    reduced-motion / no-JS version
-│   │   ├── pages/
-│   │   │   ├── Work.jsx             the escape hatch
-│   │   │   ├── Projects.jsx  ProjectDetail.jsx
-│   │   │   ├── Blog.jsx      Post.jsx
-│   │   │   ├── Shelf.jsx     Hackathons.jsx
-│   │   │   ├── Workshop.jsx
-│   │   │   └── admin/               Login, Dashboard, PostEditor
-│   │   └── game/
-│   │       ├── engine.js            pure: board, moves, winner. No React.
-│   │       ├── ai.js                minimax + alpha-beta over engine.js
-│   │       ├── Board.jsx
-│   │       ├── Solo.jsx             uses ai.js
-│   │       └── Versus.jsx           uses socket
-│   └── vite.config.js
-│
-└── server/
-    ├── src/
-    │   ├── index.js          express app + socket.io attach
-    │   ├── db.js             mongoose connect
-    │   ├── models/           Post.js Project.js Book.js Hackathon.js
-    │   │                     Message.js Score.js
-    │   ├── routes/           posts.js projects.js books.js hackathons.js
-    │   │                     contact.js scores.js auth.js upload.js
-    │   ├── middleware/       auth.js  ratelimit.js  errors.js
-    │   └── game/rooms.js     in-memory Map. Socket.IO handlers.
-    └── package.json
-```
-
-`game/engine.js` being pure and React-free is the one structural rule that
-matters: the same file runs the AI in the browser and validates moves on the
-server. Write it once.
-
----
-
-## 5. Data models
-
-Six collections. Mongoose schemas, `timestamps: true` on all.
-
-```js
-Post      { title, slug*, body, excerpt, coverUrl, tags[],
-            status: 'draft'|'published', publishedAt, readingMins }
-
-Project   { title, slug*, blurb, body, stack[], repoUrl, liveUrl,
-            images[], featured: Bool, order: Number }
-
-Book      { title, author, rating: 1..5, takeaway, coverUrl, finishedAt }
-
-Hackathon { name, slug*, date, role, participants: Number, teams: Number,
-            sponsors[], recap, photos[], liveUrl }
-
-Message   { name, email, body, ip, read: Bool }          // contact form
-
-Score     { game, name, score, createdAt }               // leaderboard
-```
-
-Indexes — the only three that matter:
-```
-Post:    { slug: 1 } unique,  { status: 1, publishedAt: -1 }
-Score:   { game: 1, score: -1 }
-Message: { createdAt: -1 }
-```
-
-No `User` collection. One admin, credentials in env. A users table for a
-site with one user is the definition of speculative.
-
----
-
-## 6. API
-
-REST. Public reads are unauthenticated and cacheable; every write is admin-only.
-
-```
-GET    /api/posts                 ?tag= &limit= &page=    published only
-GET    /api/posts/:slug
-GET    /api/projects              ?featured=
-GET    /api/projects/:slug
-GET    /api/books
-GET    /api/hackathons
-GET    /api/hackathons/:slug
-GET    /api/scores/:game          top 10
-POST   /api/scores                rate limited, name+score validated
-POST   /api/contact               rate limited 3/hour/IP → Resend + Message
-GET    /rss.xml                   generated from published posts
-
-POST   /api/auth/login            → httpOnly cookie
-POST   /api/auth/logout
-GET    /api/auth/me
-
--- everything below requires the cookie --
-GET    /api/admin/posts           includes drafts
-POST   /api/admin/posts
-PATCH  /api/admin/posts/:id
-DELETE /api/admin/posts/:id
-POST   /api/admin/upload          → Cloudinary, returns url
-   …same CRUD shape for projects, books, hackathons
-GET    /api/admin/messages
-```
-
-Conventions, so nothing needs discussing later:
-- Errors: `{ error: { message, code } }`, correct HTTP status. One error
-  middleware, no per-route try/catch sprawl.
-- Validation: `zod` at the route boundary. Never trust the client, including
-  my own admin panel.
-- Public GETs: `Cache-Control: public, max-age=60, stale-while-revalidate=600`.
-- No versioning prefix. It is my site; I control both ends.
-
----
-
-## 7. Auth
-
-One admin. Do not build a user system.
-
-```
-ADMIN_EMAIL          in env
-ADMIN_PASSWORD_HASH  bcrypt hash in env, never the plaintext
-JWT_SECRET           in env
-```
-
-Login → verify bcrypt → sign JWT (7d) → set cookie
-`httpOnly; Secure; SameSite=Lax; Path=/`.
-Middleware reads the cookie on `/api/admin/*`. That is the entire auth system,
-about 40 lines.
-
-No refresh tokens, no roles, no password reset (I can redeploy an env var),
-no localStorage tokens (XSS-readable).
-
-Rate limit `/api/auth/login` to 5 attempts / 15 min / IP or the internet will
-brute-force it within a week of going live.
-
----
-
-## 8. Realtime game
-
-`server/src/game/rooms.js` — a `Map`, nothing more:
-
-```js
-rooms = Map<code, { players: [socketId, socketId], state, turn, createdAt }>
-```
-
-Events:
-
-| Direction | Event | Payload |
-|---|---|---|
-| c→s | `room:create` | `{ game }` → `{ code }` |
-| c→s | `room:join` | `{ code }` → `{ state }` or error |
-| c→s | `move` | `{ code, move }` |
-| s→c | `state` | full board state (not a diff) |
-| s→c | `opponent:left` | — |
-
-Rules:
-- Server owns the state. It validates every move with the shared
-  `engine.js`. A client that sends an illegal move gets the authoritative
-  state back and is ignored. Trusting the client is how you get a friend who
-  wins every time.
-- Send the **whole board**, not deltas. A Connect Four board is 42 cells.
-  Delta sync is a bug factory for zero benefit.
-- Sweep rooms older than 2h every 10 min. No persistence, no reconnect logic.
-  Someone drops → the other player sees a message and can start over.
-
-```js
-// ponytail: rooms are in-memory, single instance only.
-// Move to Redis adapter if the server ever scales past one process.
+└── client/
+    ├── public/             favicon, scene SVGs, models
+    └── src/
+        ├── main.jsx        router, and MusicProvider wrapped around it
+        │
+        ├── content/        ALL the words and lists live here
+        │   ├── chapters.json    the six chapters and their branches
+        │   ├── rooms.json       Games, The work, Blog — the non-chapter nodes
+        │   ├── playlists.json   nine playlists, 315 songs
+        │   ├── captions.json    per-photograph captions
+        │   └── work.js          the plain-text escape hatch page
+        │
+        ├── hub/            the 3D world — the globe, him, the branches
+        │   ├── layout.js        every number. Pure. No React.
+        │   ├── layout.test.mjs  47 tests over layout.js and pose.js
+        │   ├── pose.js          the dance, as maths. Pure. No React.
+        │   ├── Hub.jsx          orchestration: drag, zoom, routing, camera
+        │   ├── Figure.jsx       the body, driven by pose.js
+        │   ├── Globe.jsx  Cosmos.jsx   earth, and the zoom out to the universe
+        │   ├── Nodes.jsx        the chapter dots and the branches to them
+        │   ├── SubNodes.jsx     the cards inside a chapter, incl. the playlist ring
+        │   ├── Panel.jsx  Plate.jsx  Gallery.jsx   the reading panel and photos
+        │   ├── cosmos.js  shaders.js  dispose.js   support
+        │   └── india.json  india-states.json       borders drawn on the globe
+        │
+        ├── music/          the player, which outlives the page you started it on
+        │   ├── Player.jsx       MusicProvider + the dock. Owns the YouTube iframe.
+        │   ├── Playlist.jsx     one playlist, open
+        │   ├── Waves.jsx        the moving water behind the page
+        │   ├── context.js       kept apart so editing the player survives hot reload
+        │   └── youtube.js       the IFrame API, loaded once
+        │
+        ├── journey/        the flat, scrollable telling of the same five chapters
+        ├── game/           tic-tac-toe. engine.js is pure and tested.
+        ├── pages/Work.jsx  the escape hatch: no 3D, no motion
+        ├── lib/            playlists.js, media.js, asset.js — content accessors
+        └── styles/         tokens.css, app.css, hub.css, music.css, journey.css
 ```
 
 ---
 
-## 9. Deployment
+## 4. The three rules worth keeping
 
-```
-  git push
-     │
-     ├──▶ Vercel      ← client/   static build, global CDN, prerendered
-     │
-     └──▶ Render      ← server/   Node web service (free or $7 starter)
-                         │
-                         ├──▶ MongoDB Atlas M0
-                         ├──▶ Cloudinary
-                         └──▶ Resend
-```
+**Pure modules for anything measurable.** `layout.js`, `pose.js`,
+`game/engine.js` contain no React and no three.js objects in their public
+shapes beyond vectors. That is what lets `npm test` run them in node and
+assert in screen pixels. When something visual needed checking and the maths
+lived inside a component, it could not be tested — so it was moved out. Do
+the same with anything new.
 
-- Client and server on separate origins → CORS allowlist of exactly the two
-  known origins, `credentials: true`. No wildcard, ever, with cookies.
-- Free Render tier sleeps. Two options: accept it (the site works without the
-  API — see §1), or pay $7/mo. Do **not** build a cron job that pings your own
-  server to keep it awake; that is a hack that will outlive its reason.
-- Prerender `/`, `/work`, `/blog`, and each post at build time
-  (`vite-plugin-prerender` or a small puppeteer script) so SEO and no-JS work.
-  Rebuild hook fires on publish.
+**The music player lives above the router.** `MusicProvider` wraps
+`<Routes>` in `main.jsx`. A song has to survive leaving the page it was
+started from, and anything inside a route unmounts on navigation. The
+YouTube iframe is created once into a fixed layer and never re-parented,
+because re-parenting an iframe reloads it. That single constraint explains
+the shape of `Player.jsx`.
 
-### Env
-
-```
-# server
-MONGODB_URI  JWT_SECRET  ADMIN_EMAIL  ADMIN_PASSWORD_HASH
-CLOUDINARY_URL  RESEND_API_KEY  CLIENT_ORIGIN  PORT
-
-# client
-VITE_API_URL  VITE_SOCKET_URL
-```
-
-Never a secret in `VITE_*` — those are compiled into the bundle and public.
+**Content is data, not code.** Adding a playlist, a chapter, a photograph or
+a caption is a JSON edit. If you find yourself editing a component to add
+content, something is in the wrong place.
 
 ---
 
-## 10. Performance
+## 5. How the 3D is organised
 
-The 3D is the risk. Everything else is a solved problem.
+`Hub.jsx` is the orchestrator and the only place that knows about the
+router. It owns:
 
-- Route-split everything. The 3D scene, the admin panel, and the game are
-  three separate lazy chunks. A recruiter on `/work` should download none of
-  them.
-- Models: `.glb`, Draco, one texture atlas per chapter, `useGLTF.preload` on
-  the *next* chapter only.
-- Three scene tiers by device: desktop / tablet / mobile — fewer objects, lower
-  `dpr`, shadows off. Decide from `matchMedia` + `hardwareConcurrency`, once,
-  at load.
-- Images through Cloudinary transforms (`f_auto,q_auto,w_1600`). Never serve
-  an original.
-- Budget check in CI: fail the build if the initial JS chunk exceeds 200KB
-  gzipped.
+- **the camera** — a target `view` chosen from the route, flown to with
+  frame-rate-independent damping
+- **the drag** — one pointer handler that means different things depending
+  on where you are: on the hub it turns the ring of chapters; inside the
+  playlists it turns the ring of cards; vertical always tilts
+- **the zoom** — wheel and pinch, clamped, and past a threshold it hands off
+  to `Cosmos.jsx` and the ladder out to the observable universe
+- **refs shared downward** — `bob` (how far his head is off its rest),
+  `spin` (where the turntable is), `carousel` (where the playlist ring is).
+  These are refs, not state, because they change every frame and nothing
+  above them should re-render.
 
----
-
-## 11. Security checklist
-
-Small site, but it is on the public internet with a write API.
-
-- [ ] `helmet()` on Express
-- [ ] CORS allowlist, not `*`
-- [ ] `express-rate-limit`: contact 3/hr, login 5/15min, scores 10/hr
-- [ ] zod validation on every body
-- [ ] Blog HTML: render markdown with `react-markdown`, no
-      `dangerouslySetInnerHTML`. If raw HTML in posts is ever needed,
-      sanitize with `rehype-sanitize`.
-- [ ] Upload: server-side type + size check (5MB), Cloudinary only
-- [ ] Mongoose strict schemas (blocks operator injection in bodies)
-- [ ] No stack traces in production error responses
-- [ ] Cookies: httpOnly + Secure + SameSite
-- [ ] `.env` gitignored; rotate anything ever pasted anywhere
+Components below it are mostly leaves that read those refs in `useFrame` and
+write to three.js objects directly. There is very little React state in the
+3D tree on purpose; sixty re-renders a second is not a thing to want.
 
 ---
 
-## 12. Testing
+## 6. How the music works
 
-Proportional. This is a portfolio, not a bank.
+```
+MusicProvider (above the router, in main.jsx)
+├── .stage        the YouTube iframe, full-bleed behind the page, dimmed
+├── <Waves/>      SVG water, coloured by the mood
+├── {children}    the whole site
+└── <Dock/>       the controls, bottom right
+```
 
-| What | How |
+- **State** lives in `MusicProvider`: what is playing, the clock, shuffle,
+  repeat, and the queue. The queue holds `{id, index}` pairs so queuing from
+  one playlist while standing in another plays the right song.
+- **The handlers are built once.** YouTube gets its callbacks at player
+  creation and never again, so they read the current track through refs
+  (`live`, `move`, `after`) rather than closing over state that was correct
+  three songs ago.
+- **Moods** are a `data-mood` attribute written to `document.documentElement`
+  from whatever is playing. Every colour in the music section hangs off it.
+  The attribute existed in CSS for weeks before anything set it, and the
+  whole feature was dead until it did — check it first if colours look wrong.
+- **A song that will not play** (region-blocked, or taken down since import)
+  fires `onError`, which is treated as a song that ended early so the list
+  carries on. After three in a row it gives up rather than racing through a
+  blocked playlist.
+
+---
+
+## 7. Testing
+
+```bash
+npm test     # 47 assertions, ~2 seconds, no runner
+npm run lint
+npm run build
+```
+
+`client/src/hub/layout.test.mjs` is the interesting one. It reads the real
+`chapters.json` and `rooms.json`, projects the real layout functions through
+a real `THREE.PerspectiveCamera` at thirteen viewport sizes, and asserts in
+**screen pixels**: cards clear of the reading panel, names not overlapping,
+the front of the playlist ring worth tapping, his head on screen, nothing
+under the bottom sheet.
+
+Two lessons are baked into it and worth not re-learning:
+
+1. **Assert against real content, not fixtures.** An earlier version used
+   hand-typed lists, so adding a sixth chapter could not fail anything.
+2. **A checker with its own copy of the geometry checks the wrong thing.**
+   The sweep that placed the old card fan had a hand-copied formula and
+   reported 21px of clearance for a layout that shipped with 10px of
+   overlap. Tools in `scripts/` import the real functions.
+
+What the tests do **not** cover: anything React, anything that runs in a
+browser, and anything about how motion feels. A blank page caused by a
+temporal dead zone passed both the build and the whole suite. Load the site.
+
+---
+
+## 8. Deployment
+
+Push to `main`. `.github/workflows/pages.yml` builds and publishes to GitHub
+Pages at `https://rahulbishnoi2929.github.io/jugnibishnoi/`.
+
+Two details that will bite otherwise:
+
+- **The base path is `/jugnibishnoi/`.** It is set in `vite.config.js` and
+  the router is given `import.meta.env.BASE_URL`. A route that resolves one
+  level too high is almost always this.
+- **`npm run build` copies `index.html` to `404.html`.** Pages has no SPA
+  rewrite, so a deep link like `/c/music/party` is served the 404 page,
+  which is the app, which then routes correctly. `scripts/post-build.js`
+  does it.
+
+The dev server's SPA fallback means **any** URL returns 200 with the app
+HTML. Probing for a missing asset with `fetch` therefore proves nothing —
+check the filesystem.
+
+---
+
+## 9. Deliberate shortcuts
+
+Things that are the way they are because the simple version was enough, with
+what would have to change if it stops being enough.
+
+| Shortcut | When to revisit |
 |---|---|
-| `game/engine.js` | Vitest. Win detection, draw, illegal moves, AI never plays illegally. **This is the one place bugs are embarrassing in public.** |
-| `lib/accent.js` | one test: lerp endpoints return the right colors |
-| API routes | supertest on auth + contact + scores. Assert admin routes 401 without a cookie. |
-| Everything else | click it |
-
-No E2E suite. No coverage target. No component snapshot tests.
-
----
-
-## 13. Build order
-
-Mapped to PRD §9. Each row is deployable.
-
-| Phase | Build |
-|---|---|
-| 0 | Repo + workspaces, Vite app, Vercel deploy, domain |
-| 1 | `tokens.css`, `ui/` primitives, `/work` page, resume, links. **Ship it.** |
-| 2 | `chapters.json`, `Chapter.jsx`, `Rail`, `StaticJourney`, real copy, mobile |
-| 3 | Server: db, models, auth, posts CRUD, upload, contact. Admin editor. Blog pages. RSS. |
-| 4 | R3F canvas, camera path, ScrollTrigger wiring, models, art pass |
-| 5 | `engine.js` + tests, `ai.js`, `Board`, `Solo`, scores API |
-| 6 | Socket.IO rooms, `Versus`, room codes |
-| 7 | Shelf, hackathon pages, prerender, Lighthouse pass |
-
----
-
-## 14. Deliberate shortcuts
-
-Tracked, not forgotten:
-
-```
-ponytail: game rooms in-memory, single-process only → Redis adapter if scaled
-ponytail: chapters in a JSON file, no admin UI → DB if editing gets annoying
-ponytail: no comments, no user accounts → both are moderation/support work
-ponytail: full-board sync over deltas → 42 cells, deltas buy nothing
-ponytail: no refresh tokens, 7d JWT → single admin, re-login is fine
-```
+| No backend; content is JSON in the repo | When someone other than Rahul needs to edit it |
+| No test runner; tests are `.mjs` files run by node | When there are enough to need filtering or watch mode |
+| The hub bundle is ~990KB (278KB gzipped) | It is over the PRD's 200KB budget. Code-splitting the cosmos and the music section is the obvious first cut. |
+| The 3D figure is boxes, not a rigged model | A Mixamo-rigged GLB was started; `pose.js` would bind to real bones with an axis remap |
+| Photographs are committed as WebP in `client/src/photos` | If the set grows past a few hundred, they want a CDN |
+| `prefers-reduced-motion` stops animation but the 3D still renders | A genuinely static fallback is `pages/Work.jsx`, which is linked from everywhere |

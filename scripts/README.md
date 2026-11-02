@@ -159,3 +159,63 @@ Measured on a 4032x3024 phone-sized JPEG: 5.7MB in, 0.4MB out.
 
 HEIC is the usual failure — iPhones shoot it and not every build of sharp
 can read it. Export those as JPEG and run it again.
+
+## playlist.mjs
+
+Pulls a YouTube playlist into `client/src/content/playlists.json`.
+
+```bash
+node scripts/playlist.mjs rap "https://www.youtube.com/playlist?list=PL..."
+node scripts/playlist.mjs rap "https://www.youtube.com/watch?v=..."   # one song
+```
+
+The first argument is a playlist id that must already exist in the JSON.
+
+It reads the playlist page for video ids in document order, then asks
+YouTube's oEmbed endpoint for each one's real title and channel — no API
+key, no quota, and it refuses any video that is blocked from embedding,
+which is exactly the set that would sit in the list looking fine and then
+not play. Those are reported and left out.
+
+Re-running it only adds what is missing, so edits to the JSON survive, and
+anything listed under a playlist's `removed` stays removed — otherwise a
+duplicate deleted last week comes straight back from YouTube.
+
+**The titles need a human afterwards.** A YouTube title is not a song name.
+The cleaner strips channel names, "Official Video", "Lyric Video", "M/V",
+hashtag tails, danda and pipe separators, and quotes around the whole
+thing — and it still guesses wrong often enough that you should read the
+list. Fixing one is editing a string.
+
+It will also leave a title that is only an artist's name when the upload put
+the artist first and the song after a separator it does not know. There is
+no general fix for that; there is a list of them in
+[docs/NEXT.md](../docs/NEXT.md).
+
+## ring-check.mjs
+
+Measures the ring of playlist cards, or searches for better numbers for it.
+
+```bash
+node scripts/ring-check.mjs          # what layout.js gives, per screen
+node scripts/ring-check.mjs --find   # search for numbers that fit
+```
+
+It calls the real functions out of `layout.js` and projects them through a
+real camera at thirteen viewport sizes, reporting the three tightest
+margins on each: the front card wide enough to tap, clear of the reading
+panel and the screen edges, the upper card clear of his face, the lower one
+clear of the panel, the pair not touching each other, the next slot still
+visible, and no card lying across its neighbour.
+
+`--find` samples the parameter space and then walks downhill from the best
+start, printing a `CAROUSEL` block to paste into `layout.js`.
+
+**Why it imports the real layout rather than its own copy:** the sweep this
+replaced had a hand-copied version of the fan formula, and reported 21
+pixels of clearance for a layout that shipped with 10 pixels of overlap.
+
+Two constraints in it were added after the search produced something that
+passed everything and looked wrong — rows a third of a pixel apart, and
+cards piled on top of each other. If a result looks bad but scores well,
+the missing constraint is the bug.
