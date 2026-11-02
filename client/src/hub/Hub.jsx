@@ -26,8 +26,8 @@ import {
   TILT_RATE,
   GLOBE_R,
   FLING_STOP,
-  offerView,
-  offerCard,
+  ringView,
+  RING_PER_DRAG,
   spinToFront,
   applyZoom,
   ZOOM_MIN,
@@ -99,6 +99,11 @@ export default function Hub() {
   // rather than looking at a fan of branches off the ring.
   const offering = active === 'music'
 
+  // How far the ring of playlists has been turned, what is left of a
+  // flick, and whether a finger is on it. One object rather than three
+  // refs because SubNodes reads all of it every frame.
+  const carousel = useRef({ turn: 0, spin: 0, held: false })
+
   // A chapter's own branches, and which of them is open.
   const activeNode = nodes.find((n) => n.id === active)
   const branches = useMemo(
@@ -118,11 +123,11 @@ export default function Hub() {
   const view = useMemo(
     () =>
       offering
-        ? offerView(narrow, sheet, branches.length)
+        ? ringView(narrow, sheet)
         : active
           ? branchView(narrow)
           : HOME_VIEW,
-    [active, offering, narrow, sheet, branches.length]
+    [active, offering, narrow, sheet]
   )
 
   // Both are useCallback so the Escape handler can list them as the
@@ -283,6 +288,27 @@ export default function Hub() {
 
     const turn = (e.clientX - from.current.x) * rate.current
     const tip = (e.clientY - from.current.y) * rate.current * TILT_RATE
+
+    // Inside the playlists, sideways is the ring of cards rather than
+    // the room: you are standing in front of nine of them and the thing
+    // you want to move is the nine, not the view. Up and down still
+    // tilts, so the room has not stopped being a room.
+    if (offering && !sub) {
+      carousel.current.held = true
+      carousel.current.turn -= turn * RING_PER_DRAG
+      carousel.current.spin = 0
+      drag.current.y = THREE.MathUtils.clamp(drag.current.y + tip, -0.45, 0.45)
+      const gap0 = Math.max(1, e.timeStamp - moved.current)
+      moved.current = e.timeStamp
+      fling.current.x = THREE.MathUtils.lerp(
+        fling.current.x,
+        (-turn * RING_PER_DRAG / gap0) * 1000,
+        Math.min(1, gap0 / 90)
+      )
+      from.current = { x: e.clientX, y: e.clientY }
+      return
+    }
+
     drag.current.x += turn
     // Tilt is clamped — past about 25° you are looking at the top of his
     // head and the branches collapse into a line.
@@ -314,6 +340,15 @@ export default function Hub() {
     } else if (pointers.current.size === 0) {
       from.current = null
       held.current = null
+      if (carousel.current.held) {
+        carousel.current.held = false
+        carousel.current.spin = fling.current.x
+        fling.current.x = 0
+        fling.current.y = 0
+        travel.current = 0
+        setDragging(false)
+        return
+      }
       // Let go and it keeps going. Only if it was actually moving: a tap
       // and a slow reposition should both end where they stopped.
       coasting.current = flung(fling.current.x, fling.current.y, rate.current)
@@ -493,12 +528,15 @@ export default function Hub() {
                         <SubNodes
                           branches={branches}
                           chapterId={active}
-                          card={offering ? offerCard(narrow, sheet, branches.length) : null}
+                          // The ring brings its own card size; a fan is sized here.
+                          card={null}
                           narrow={narrow}
                           accent={activeNode.accent}
                           active={sub}
                           zoom={zoom}
                           onPick={goSub}
+                          sheet={sheet}
+                          carousel={offering ? carousel : null}
                         />
                       )}
                     </Breathe>

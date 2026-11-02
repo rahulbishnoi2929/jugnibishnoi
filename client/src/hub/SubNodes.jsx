@@ -2,7 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Line, Html } from '@react-three/drei'
 import * as THREE from 'three'
-import { branchCurve, cardFor, headFor, labelScaleFor } from './layout.js'
+import {
+  branchCurve,
+  cardFor,
+  headFor,
+  labelScaleFor,
+  ringAt,
+  ringOf,
+  ringRest,
+} from './layout.js'
 import { setsFor } from '../lib/media.js'
 import { playlistFor } from '../lib/playlists.js'
 import { LABEL_MAX_CSS } from './layout.js'
@@ -30,10 +38,73 @@ const MOST = 6 // how many of a branch's photographs to cycle through
 
 // Scratch for the billboarding, so the frame loop allocates nothing.
 const _parent = new THREE.Quaternion()
+const _spin = new THREE.Quaternion()
+const _where = new THREE.Vector3()
+const _up = new THREE.Vector3(0, 1, 0)
 const _face = new THREE.Quaternion()
 
-export default function SubNodes({ branches, chapterId, narrow, accent, active, onPick, zoom, card: given }) {
-  const card = given ?? cardFor(narrow, branches.length)
+export default function SubNodes({
+  branches,
+  chapterId,
+  narrow,
+  accent,
+  active,
+  onPick,
+  zoom,
+  card: given,
+  sheet,
+  carousel,
+}) {
+  // The playlists are a ring you turn; everything else is a fan of
+  // photographs that stays where it is put.
+  const ring = !!carousel && branches.length > 0 && !!branches[0]?.offered
+  const wheel = useMemo(() => ringOf(narrow, sheet), [narrow, sheet])
+  const card = ring ? wheel.card : given ?? cardFor(narrow, branches.length)
+
+  // Open a playlist by its own address and the ring is still showing
+  // whatever was at the front — so it turns to the one you asked for,
+  // the short way round.
+  useEffect(() => {
+    if (!ring || !carousel || !active) return
+    const i = branches.findIndex((b) => b.id === active)
+    if (i < 0) return
+    const step = (Math.PI * 2) / branches.length
+    const want = i * step
+    const now = carousel.current.turn
+    carousel.current.turn = now + Math.atan2(Math.sin(want - now), Math.cos(want - now))
+    carousel.current.spin = 0
+  }, [active, branches, ring, carousel])
+
+  // One loop for the whole ring rather than one per card: the turn, what
+  // is left of a flick, and the settling onto a slot are properties of
+  // the ring, not of any card on it.
+  useFrame((s, dt) => {
+    if (!ring || !carousel) return
+    const step = Math.min(dt, 0.05)
+    const c = carousel.current
+    if (c.held) return
+
+    if (Math.abs(c.spin) > 0.02) {
+      // What a flick keeps, integrated over the step so the distance is
+      // the same at 30 frames a second as at 144.
+      const keep = Math.pow(0.0015, step)
+      const left = c.spin * keep
+      c.turn += (left - c.spin) / Math.log(0.0015)
+      c.spin = left
+      return
+    }
+    c.spin = 0
+    // And then it settles on whichever slot is nearest, so a card is
+    // always square to you rather than stopped at an angle.
+    const rest = ringRest(branches.length, c.turn)
+    const gap = rest - c.turn
+    if (Math.abs(gap) < 0.0008) {
+      c.turn = rest
+      return
+    }
+    c.turn += gap * (1 - Math.pow(0.0001, step))
+  })
+
   return (
     <group>
       {branches.map((b, i) => (
@@ -49,6 +120,8 @@ export default function SubNodes({ branches, chapterId, narrow, accent, active, 
           zoom={zoom}
           count={branches.length}
           onPick={onPick}
+          ring={ring ? wheel : null}
+          carousel={carousel}
         />
       ))}
     </group>
@@ -72,7 +145,7 @@ const MOOD_INK = {
 }
 const tintFor = (id, fallback) => MOOD_INK[playlistFor(id)?.mood] ?? fallback
 
-function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, onPick, zoom, count }) {
+function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, onPick, zoom, count, ring, carousel }) {
   const W = size.w
   const H = size.h
   // A name under its picture needs a gap under the picture. Nine cards
@@ -85,6 +158,13 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
   const frame = useRef()
   const line = useRef()
   const label = useRef()
+  // Everything that belongs to one card moves together, so the ring
+  // turns a group rather than three things that have to agree.
+  const slot = useRef()
+  // How much of this card is facing you, and how far round it is.
+  // Written by the frame loop, read by the fades and by the click.
+  const ringShow = useRef(1)
+  const ringAngle = useRef(0)
   const grew = useRef(0)
 
   // What this branch has to show, up to six of them. A branch with nothing
@@ -154,12 +234,38 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
     // measured as a fraction of however many there are cannot do that.
     const on = grew.current >= (count > 1 ? index / (count - 1) : 0) * 0.85
 
-    const lit = !on ? 0 : state === 'off' ? 0.25 : hover || state === 'on' ? 1 : 0.85
+    // Where this card sits on the ring, and how much of it is facing
+    // you. The two are the same question — both are how far it has been
+    // turned from the front — so they are answered together, before
+    // anything below reads them.
+    //
+    // The ring is a thing in the room rather than a thing on the
+    // turntable, so the turntable's rotation is taken back out of both
+    // the position and the facing. Without that it swings round with the
+    // ring of chapters and the front of it ends up behind him.
+    if (ring && carousel && slot.current?.parent) {
+      const seat = ringAt(index, count, carousel.current.turn, ring)
+      slot.current.parent.getWorldQuaternion(_parent)
+      _face.copy(_parent).invert()
+      _where.set(seat.pos[0], seat.pos[1], seat.pos[2]).applyQuaternion(_face)
+      slot.current.position.copy(_where)
+      _spin.setFromAxisAngle(_up, seat.turnY).premultiply(_face)
+      slot.current.quaternion.copy(_spin)
+      slot.current.visible = seat.show > 0.01
+      ringShow.current = seat.show
+      ringAngle.current = seat.angle
+    }
+
+    const facing = ring ? ringShow.current : 1
+    const lit =
+      (!on ? 0 : state === 'off' ? 0.25 : hover || state === 'on' ? 1 : 0.85) * facing
     const size = !on ? 0 : hover || state === 'on' ? 1.06 : 1
 
     // Square on to the camera whatever the turntable is doing. A picture
-    // seen edge-on is not a picture.
-    if (card.current?.parent) {
+    // seen edge-on is not a picture — but on the ring that is the whole
+    // point of the ones at the side, so there the card keeps the angle
+    // its slot gives it.
+    if (!ring && card.current?.parent) {
       card.current.parent.getWorldQuaternion(_parent)
       _face.copy(_parent).invert().multiply(state3.camera.quaternion)
       card.current.quaternion.copy(_face)
@@ -191,7 +297,7 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
       // Clickability follows visibility, the same way the chapter labels
       // do it: these are at 0 for the first half-second while the row
       // staggers in, and an invisible button is still a button.
-      const shown = on ? (state === 'off' ? 0.35 : 1) : 0
+      const shown = (on ? (state === 'off' ? 0.35 : 1) : 0) * (ring ? ringShow.current : 1)
       label.current.style.opacity = shown.toFixed(2)
       const live = shown > 0.05
       label.current.style.pointerEvents = live ? 'auto' : 'none'
@@ -235,6 +341,17 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
 
   const pick = (e) => {
     e.stopPropagation()
+    // On the ring, only the card at the front opens. Clicking one at the
+    // side brings it round — which is what you meant by clicking it, and
+    // saves opening a playlist you only half saw.
+    if (ring && carousel) {
+      const step = (Math.PI * 2) / count
+      if (Math.abs(ringAngle.current) > step * 0.5) {
+        carousel.current.spin = 0
+        carousel.current.turn += ringAngle.current
+        return
+      }
+    }
     onPick(branch.id)
   }
 
@@ -254,9 +371,9 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
         />
       )}
 
+      <group ref={slot} position={branch.pos}>
       <mesh
         ref={card}
-        position={branch.pos}
         onPointerOver={(e) => {
           e.stopPropagation()
           setHover(true)
@@ -284,7 +401,6 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
       <Line
         ref={frame}
         points={outline}
-        position={branch.pos}
         color={accent}
         transparent
         opacity={0}
@@ -298,9 +414,9 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
           face. */}
       <Html
         position={[
-          branch.pos.x,
-          branch.pos.y - H / 2 + (onArt ? (count > 8 ? H * 0.42 : 0.07) : -0.09),
-          branch.pos.z,
+          0,
+          -H / 2 + (onArt || ring ? H * 0.42 : -0.09),
+          ring ? 0.002 : 0,
         ]}
         center
         distanceFactor={2.6}
@@ -333,11 +449,14 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
           aria-hidden="true"
           onMouseEnter={() => setHover(true)}
           onMouseLeave={() => setHover(false)}
-          onClick={() => onPick(branch.id)}
+          // Through the same rule as the card: a name at the side of the
+          // ring turns it rather than opening what you cannot see yet.
+          onClick={pick}
         >
           {branch.title}
         </button>
       </Html>
+      </group>
     </group>
   )
 }

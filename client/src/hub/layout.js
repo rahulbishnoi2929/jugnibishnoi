@@ -291,15 +291,18 @@ export function placeBranches(node, branches = [], narrow, offered = false, shee
   // without this the fan swung round and opened behind the panel.
   const spin = node.angle ?? 0
 
-  // Music's branches are the offer, not a fan off the node. They are
-  // already in world coordinates relative to him, so the node's position
-  // is not added — only the turntable's rotation is cancelled, the same
-  // way it is for everything else here.
+  // The playlists are a ring, and where a card on it sits is a question
+  // for every frame rather than for this one — SubNodes answers it from
+  // how far the ring has been turned. What is settled here is where they
+  // start, which is the ring at rest. They are already in world
+  // coordinates relative to him, so the node's position is not added;
+  // only the turntable's rotation is cancelled, the same way it is for
+  // everything else here.
   if (offered) {
-    const places = offerFan(narrow, sheet, branches.length)
+    const wheel = ringOf(narrow, sheet)
     return branches.map((b, i) => {
-      const [dx, dy, dz] = places[i]
-      const pos = new THREE.Vector3(dx, dy, dz).applyAxisAngle(
+      const seat = ringAt(i, branches.length, 0, wheel)
+      const pos = new THREE.Vector3(...seat.pos).applyAxisAngle(
         new THREE.Vector3(0, 1, 0),
         spin
       )
@@ -338,10 +341,6 @@ export function placeBranches(node, branches = [], narrow, offered = false, shee
 // the hand is a fixed distance down it, so with the arm at OFFER_ARM and
 // spread by OFFER_OUT the hand arrives at these, in world units after his
 // own scale. Figure.jsx owns those two angles; if they move, so does this.
-const PALM = {
-  wide: { y: 0.995, z: 0.413 },
-  narrow: { y: 0.796, z: 0.33 },
-}
 // How far out each hand reaches, which is what the cards have to stay
 // inside of for the gesture to be visible at all.
 export const PALM_X = { wide: 0.54, narrow: 0.432 }
@@ -368,156 +367,79 @@ export const LABEL_MAX_CSS = 46
 export const labelWidth = (pxPerWorld) =>
   (LABEL_MAX_CSS * pxPerWorld) / LABEL_PX_PER_WORLD
 
-// Six cards above the palms, in two rows of three on every screen.
+// ---------- the ring of playlists ----------
 //
-// One arrangement, not three. Six across was tried and only fits a wide
-// desktop: at 800 pixels the reading panel takes 52 per cent of the width
-// and the row ran off the right-hand edge. Two rows of three survives 360
-// pixels and 1920 alike, which is what the branch fan had to do too.
+// Nine cards laid flat in front of him is nine cards fighting for the
+// same few hundred pixels: the sweep that placed them got four pixels of
+// clearance on a tablet and the names had to shrink until they wrapped.
+// A ring does not have that problem, because it does not try to show
+// nine at once. Three or four are forward, the rest are turned away, and
+// the one in front is the biggest thing on the screen.
 //
-// Three profiles, because two breakpoints cross here and they are not the
-// same one. He is drawn smaller below 520; the reading panel stops being
-// a column down the left and becomes a sheet across the bottom below 900.
-// The band between those is a full-size figure with a sheet, which is its
-// own composition — and the one that broke when this had only two cases.
-//
-// Every number swept over ten viewports, against five things that are
-// easy to lose: the cards clear of the panel and the screen edges, clear
-// of his face, clear of each other, his hands visible — below the cards,
-// outside them, still on the screen — and all of it held through the
-// whole of his breathing and his knee bend, because the cards are in his
-// hands and ride with him. That last one was added after a card was found
-// reaching 28 pixels under the reading panel on a 560-wide tablet at the
-// bottom of a breath, while the test said everything was fine.
-const OFFER = {
+// They sit on a circle in the ground plane, centred in front of his
+// chest. Perspective does most of the work — the front of the circle is
+// nearer the camera than the back — so there is no separate rule making
+// the chosen one large.
+const CAROUSEL = {
   phone: {
-    span: 0.22, lift: 0.32, drop: 0.03, row: 0.17, out: 0.18,
-    card: { w: 0.19, h: 0.141 },
-    view: { pos: [0, 1.3, 2.2], look: [0, 0.3, 0] },
+    radius: 0.393, front: 0.4, lift: 0.977,
+    card: { w: 0.26, h: 0.146 },
+    view: { pos: [0, 0.82, 1.93], look: [0, 0.5, 0] },
   },
   tablet: {
-    span: 0.22, lift: 0.28, drop: 0.03, row: 0.15, out: 0.18,
-    card: { w: 0.19, h: 0.141 },
-    view: { pos: [0, 1.4, 3.2], look: [0, 0.54, 0] },
+    radius: 0.573, front: 0.424, lift: 1.008,
+    card: { w: 0.39, h: 0.219 },
+    view: { pos: [0, 0.8, 3.24], look: [0, 0.5, 0] },
   },
   desktop: {
-    span: 0.26, lift: 0.32, drop: 0.03, row: 0.17, out: 0.18,
-    card: { w: 0.22, h: 0.163 },
-    // Aimed left only here, because only here is there a column of panel
-    // to make room for. On a sheet it looks straight at him.
-    view: { pos: [0, 1.7, 2.6], look: [-0.55, 0.7, 0] },
+    radius: 0.691, front: 0.72, lift: 1.366,
+    card: { w: 0.344, h: 0.193 },
+    view: { pos: [0, 2.03, 2.75], look: [-0.5, 0.97, 0] },
   },
 }
 
+export const ringOf = (narrow, sheet) =>
+  narrow ? CAROUSEL.phone : sheet ? CAROUSEL.tablet : CAROUSEL.desktop
 
-// Seven of them is a different arrangement and a different camera, not
-// the six-card one with an extra card dropped in. Four across then three,
-// swept over the same ten viewports.
-const SEVEN = {
-  phone: {
-    span: 0.3, lift: 0.3, drop: 0.03, row: 0.16, out: 0.18,
-    card: { w: 0.16, h: 0.119 },
-    view: { pos: [0, 1.1, 2.2], look: [0, 0.4, 0] },
-  },
-  tablet: {
-    span: 0.34, lift: 0.26, drop: 0.03, row: 0.16, out: 0.18,
-    card: { w: 0.18, h: 0.134 },
-    view: { pos: [0, 1.2, 3.2], look: [0, 0.54, 0] },
-  },
-  desktop: {
-    span: 0.34, lift: 0.3, drop: 0.03, row: 0.19, out: 0.18,
-    card: { w: 0.2, h: 0.148 },
-    view: { pos: [0, 1.5, 2.6], look: [-0.55, 0.7, 0] },
-  },
-}
-
-// Nine, which is two arrangements and two card shapes — see offerFan
-// for why. The wide screens get five then four, 4:3, with the name
-// under each the way six and seven have it. A phone gets three rows of
-// three, 16:9, with the names on the art: five across will not go at a
-// size worth tapping, and a third row only fits if the card is short.
+// Where one card sits, and how much of it you are meant to see.
 //
-// Found by scripts/offer-sweep.mjs, which tries numbers against the
-// checks the layout test makes and a stricter rule about cards keeping
-// away from each other. Five pixels spare on a 360 phone, nine on a
-// tablet. A tenth playlist will not go in this — run the sweep and it
-// will say so rather than leave you to find out on a phone.
-const NINE = {
-  phone: {
-    span: 0.247, lift: 0.401, drop: 0.003, row: 0.13, out: 0.137,
-    card: { w: 0.164, h: 0.092 },
-    view: { pos: [0, 1.55, 2.05], look: [0, 0.22, 0] },
-  },
-  tablet: {
-    span: 0.368, lift: 0.397, drop: 0.004, row: 0.146, out: 0.22,
-    card: { w: 0.159, h: 0.118 },
-    view: { pos: [0, 1.78, 2.56], look: [0, 0.6, 0] },
-  },
-  desktop: {
-    span: 0.373, lift: 0.301, drop: 0.001, row: 0.185, out: 0.15,
-    card: { w: 0.154, h: 0.109 },
-    view: { pos: [0, 1.67, 2.53], look: [-0.55, 0.7, 0] },
-  },
-}
-
-
-// Keyed by how many he is holding, so a sweep can try numbers against
-// the real layout rather than against a copy of it that has drifted.
-export const PROFILES = { 6: OFFER, 7: SEVEN, 9: NINE }
-
-const profile = (narrow, sheet, count = 6) => {
-  const row = count > 8 ? PROFILES[9] : count > 6 ? PROFILES[7] : PROFILES[6]
-  return narrow ? row.phone : sheet ? row.tablet : row.desktop
-}
-
-export function offerFan(narrow, sheet, count = 6) {
-  const palm = narrow ? PALM.narrow : PALM.wide
-  const o = profile(narrow, sheet, count)
-  const z = palm.z + o.out
-  const at = (x, extra = 0) => [
-    x,
-    palm.y + o.lift - Math.abs(x) * o.drop - extra,
-    z,
-  ]
-  // Six is three and three; seven is four and three, with the lower row
-  // tucked inside the upper one so the stack reads as a hand of cards
-  // rather than a grid. Both swept over ten viewports.
-  // Nine is two arrangements, because a phone and a desktop disagree
-  // about what is scarce. Across the wide screens it is five then four,
-  // which keeps the cards the shape the other counts use and leaves a
-  // gap under each for its name. On a phone five across cannot be done
-  // — the narrowest here is 360 wide, a card has to stay 66 across to
-  // be worth tapping, and five of those with gaps comes to 366 before
-  // the edges — so it is three rows of three, with the names on the art
-  // the way a phone already does them.
-  if (count > 8) {
-    if (narrow) {
-      const xs = [-o.span, 0, o.span]
-      return [
-        ...xs.map((x) => at(x)),
-        ...xs.map((x) => at(x, o.row)),
-        ...xs.map((x) => at(x, o.row * 2)),
-      ]
-    }
-    const top = [-1, -0.5, 0, 0.5, 1].map((u) => u * o.span)
-    const bottom = [-0.75, -0.25, 0.25, 0.75].map((u) => u * o.span)
-    return [...top.map((x) => at(x)), ...bottom.map((x) => at(x, o.row))]
+// `turn` is how far the ring has been dragged, in radians. A card's own
+// angle is its slot minus that, so turning the ring clockwise brings the
+// next slot to the front.
+export function ringAt(index, count, turn, o) {
+  const step = (Math.PI * 2) / count
+  // Wrapped to [-pi, pi] so "how far from the front" is a small number
+  // for the cards you can see and a large one for the cards behind him.
+  let a = index * step - turn
+  a = Math.atan2(Math.sin(a), Math.cos(a))
+  return {
+    angle: a,
+    pos: [Math.sin(a) * o.radius, o.lift, o.front + Math.cos(a) * o.radius],
+    // Face outward along the radius, which at the front of the ring is
+    // facing the camera.
+    turnY: a,
+    // Full at the front, gone by the time it is side on. The card behind
+    // him is not drawn at all rather than drawn backwards.
+    show: Math.max(0, Math.cos(a)) ** 1.5,
   }
-  if (count > 6) {
-    const top = [-1, -1 / 3, 1 / 3, 1].map((u) => u * o.span)
-    const bottom = [-0.66, 0, 0.66].map((u) => u * o.span)
-    return [...top.map((x) => at(x)), ...bottom.map((x) => at(x, o.row))]
-  }
-  const xs = [-o.span, 0, o.span]
-  return [...xs.map((x) => at(x)), ...xs.map((x) => at(x, o.row))]
 }
 
-// Between 80 and 164 pixels across depending on the screen, which is the
-// camera doing the work rather than three card sizes.
-export const offerCard = (narrow, sheet, count = 6) => profile(narrow, sheet, count).card
+// Which slot is nearest the front for a given turn.
+export const ringFront = (count, turn) => {
+  const step = (Math.PI * 2) / count
+  return ((Math.round(turn / step) % count) + count) % count
+}
 
-export function offerView(narrow, sheet, count = 6) {
-  const { view } = profile(narrow, sheet, count)
+// Where the turn should settle: the nearest slot.
+export const ringRest = (count, turn) => {
+  const step = (Math.PI * 2) / count
+  return Math.round(turn / step) * step
+}
+
+export const ringCard = (narrow, sheet) => ringOf(narrow, sheet).card
+
+export function ringView(narrow, sheet) {
+  const { view } = ringOf(narrow, sheet)
   return {
     pos: new THREE.Vector3(...view.pos),
     look: new THREE.Vector3(...view.look),
@@ -780,6 +702,12 @@ export function turnRate(w, h) {
 // Tilt stays gentler than turn — there is only half a radian of it before
 // you are looking at the top of his head.
 export const TILT_RATE = 0.55
+
+// Turning the ring of playlists, against the same drag rate the room
+// uses. One turn of the ring is nine cards, and a drag of about half the
+// screen should get you most of the way round it — any slower and nine
+// playlists is a lot of dragging.
+export const RING_PER_DRAG = 2.6
 
 // ---------- letting go ----------
 //

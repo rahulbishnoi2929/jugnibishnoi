@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { playlistFor } from '../lib/playlists.js'
 import { useMusic } from './context.js'
-import Wheel from './Wheel.jsx'
 
 // One playlist, open. The equivalent of the photo grid under a Campus
 // branch — same job, different evidence.
@@ -13,10 +12,6 @@ export default function Playlist({ id }) {
   const list = playlistFor(id)
   const { now, cue, toggle, queue, playNext, unqueue } = useMusic()
   const here = useRef(null)
-  const listEl = useRef(null)
-  // The box that actually scrolls is the panel the list sits in, not the
-  // list — so it is found from the list rather than named.
-  const scroller = useCallback(() => listEl.current?.closest('.panel-scroll') ?? null, [])
 
   // Bring the playing row back into view when the song changes by itself.
   //
@@ -82,7 +77,7 @@ export default function Playlist({ id }) {
         {list.songs.length} songs
         {now.id === id ? ' · playing' : ''}
       </p>
-      <ol className="playlist" ref={listEl}>
+      <ol className="playlist">
       {list.songs.map((song, i) => {
         const playing = now.id === id && now.index === i
         return (
@@ -135,8 +130,6 @@ export default function Playlist({ id }) {
         )
       })}
       </ol>
-
-      <Wheel scroller={scroller} rows={list.songs.length} label={list.title} />
     </>
   )
 }

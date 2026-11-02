@@ -24,9 +24,11 @@ import {
   turnRate,
   FLING_STOP,
   HEAD_R,
-  offerView,
-  offerCard,
-  PALM_X,
+  ringAt,
+  ringOf,
+  ringView,
+  ringRest,
+  ringFront,
   fanCounts,
   placeBranches,
   cosmicScale,
@@ -63,7 +65,6 @@ import {
   starfield,
   universe,
 } from './cosmos.js'
-import { posture } from './pose.js'
 
 let passed = 0
 const test = (name, fn) => {
@@ -532,38 +533,33 @@ test('a swipe carries on, and a nudge stops where it was put', () => {
   assert.equal(stalled.left.toFixed(6), capped.left.toFixed(6))
 })
 
-test('he holds the playlists out, on every screen there is', () => {
-  // Music does not use the branch fan. He puts his hands out and the cards
-  // sit on his palms, so what is measured is the offer: the camera that
-  // frames it, the cards against his chest, and his face.
+test('the ring of playlists holds together, on every screen there is', () => {
+  // Nine playlists on a circle in front of him, turned by dragging. Only
+  // three or four are forward at a time, which is the point: the two rows
+  // of nine this replaced came out of a sweep with four pixels to spare
+  // on a tablet and names that had to wrap to fit.
   //
-  // Eight viewports, because this broke on the ones in between. Six cards
-  // across only ever fitted a wide desktop — at 800 pixels the panel takes
-  // 52 per cent of the width and the row ran off the edge — and the first
-  // version of the camera had two cases where the layout has three: the
-  // figure shrinks below 520, the panel becomes a bottom sheet below 900,
-  // and the band between them is its own thing.
+  // What is checked is the card at the front — the one you would tap —
+  // and the one beside it, which is what tells you the ring goes round.
   const music = byId('music')
+  const count = music.branches.length
   const SCREENS = [
-    [360, 780], [375, 812], [414, 896],
-    [560, 900], [768, 1024],
-    [1024, 768], [1440, 820], [1920, 1080],
+    [360, 780], [375, 812], [414, 896], [430, 932],
+    [560, 900], [600, 800], [768, 1024], [790, 630], [900, 600],
+    [1024, 768], [1280, 720], [1440, 820], [1920, 1080],
   ]
 
   for (const [w, h] of SCREENS) {
     const narrow = w < 520
     const sheet = w <= 900
-    // hub.css: a sheet at 60vh, else a left column of min(46ch, 52vw),
-    // where 46ch measures about 430 on this stack.
     const wall = sheet ? 0 : Math.min(430, w * 0.52)
     const free = sheet ? Math.round(h * 0.4) : h
     const safeTop = narrow ? 47 : 0
-    const name = `${w}x${h}`
+    const name = w + 'x' + h
 
-    const count = music.branches.length
     const pos = new THREE.Vector3()
     const look = new THREE.Vector3()
-    applyZoom(offerView(narrow, sheet, count), fitFor(w), pos, look)
+    applyZoom(ringView(narrow, sheet), fitFor(w), pos, look)
     const cam = new THREE.PerspectiveCamera(40, w / h, 0.1, 100)
     cam.position.copy(pos)
     cam.lookAt(look)
@@ -573,91 +569,79 @@ test('he holds the playlists out, on every screen there is', () => {
       return { x: ((n.x + 1) / 2) * w, y: ((1 - n.y) / 2) * h }
     }
 
-    const node = placeNodes(five, narrow)[five.indexOf(music)]
-    // angle 0 is where the turntable has settled by the time you are
-    // looking at this; placeBranches pre-rotates to cancel that spin.
-    const subs = placeBranches({ ...node, angle: 0 }, music.branches, narrow, true, sheet)
-    assert.equal(subs.length, count, `${name}: ${subs.length} cards offered, not ${count}`)
-
+    const o = ringOf(narrow, sheet)
     const fig = figureFor(narrow)
-    const crown = at(new THREE.Vector3(0, BODY_TOP * fig, 0))
     const chin = at(new THREE.Vector3(0, (HEAD_Y - HEAD_R) * fig, 0))
-    assert.ok(crown.y > safeTop, `${name}: his head is off the top at ${crown.y.toFixed(0)}`)
+    const crown = at(new THREE.Vector3(0, BODY_TOP * fig, 0))
 
-    // He breathes, and his knees bend on the beat, and the cards ride
-    // with him — they are in his hands. Measured, that is 0.21 up and
-    // 0.16 down, which on a phone is 66 pixels and 50. Checking the
-    // cards only at rest was checking a position they are almost never
-    // in, so this takes the worst of the travel on each side.
-    let lift = 0
-    let sink = 0
-    // Both standing and dancing: the cards are on screen before anyone
-    // taps one, and breathing is at its widest exactly then.
-    for (const groove of [0, 1]) {
-      for (let i = 0; i < 400; i++) {
-        const q = posture(i * 0.02, { open: 1, groove })
-        lift = Math.max(lift, q.bodyY + q.dip)
-        sink = Math.min(sink, q.bodyY + q.dip)
-      }
-    }
-    const ride = [sink * fig, 0, lift * fig]
-
-    const card = offerCard(narrow, sheet, count)
-    const boxes = subs.map((b) => {
-      const c = at(b.pos)
-      const hw = Math.abs(at(new THREE.Vector3(b.pos.x + card.w / 2, b.pos.y, b.pos.z)).x - c.x)
-      const hh = Math.abs(at(new THREE.Vector3(b.pos.x, b.pos.y + card.h / 2, b.pos.z)).y - c.y)
-      return { l: c.x - hw, r: c.x + hw, t: c.y - hh, b: c.y + hh, id: b.id }
-    })
-
-    for (const box of boxes) {
-      assert.ok(box.l > wall, `${name}: ${box.id} is behind the panel at ${box.l.toFixed(0)}`)
-      assert.ok(box.r < w, `${name}: ${box.id} runs off the right at ${box.r.toFixed(0)}`)
-      // Top and bottom are checked through the whole of his breathing.
-      for (const dy of ride) {
-        const top = at(new THREE.Vector3(0, dy, 0)).y - at(new THREE.Vector3(0, 0, 0)).y + box.t
-        const bottom = at(new THREE.Vector3(0, dy, 0)).y - at(new THREE.Vector3(0, 0, 0)).y + box.b
-        assert.ok(top > safeTop, `${name}: ${box.id} runs off the top at ${top.toFixed(0)} as he breathes`)
-        assert.ok(bottom < free, `${name}: ${box.id} reaches ${bottom.toFixed(0)} as he breathes, under a panel at ${free}`)
-      }
-      // In front of his chest is the point. Over his face is not.
-      assert.ok(
-        box.t > chin.y,
-        `${name}: ${box.id} starts at ${box.t.toFixed(0)}, above his chin at ${chin.y.toFixed(0)}`
-      )
+    const box = (i) => {
+      const seat = ringAt(i, count, 0, o)
+      const c = new THREE.Vector3(...seat.pos)
+      // A card turned away is narrower on screen by the cosine of its
+      // angle, which is what makes a ring read as a ring.
+      const half = (o.card.w / 2) * Math.cos(seat.angle)
+      const mid = at(c)
+      const edge = at(new THREE.Vector3(c.x + half, c.y, c.z))
+      const top = at(new THREE.Vector3(c.x, c.y + o.card.h / 2, c.z))
+      const hw = Math.abs(edge.x - mid.x)
+      const hh = Math.abs(top.y - mid.y)
+      return { l: mid.x - hw, r: mid.x + hw, t: mid.y - hh, b: mid.y + hh, x: mid.x }
     }
 
-    for (let i = 0; i < boxes.length; i++) {
-      for (let j = i + 1; j < boxes.length; j++) {
-        const a = boxes[i]
-        const b = boxes[j]
-        if (Math.min(a.b, b.b) - Math.max(a.t, b.t) <= 0) continue
-        const gap = Math.max(a.l, b.l) - Math.min(a.r, b.r)
-        assert.ok(gap > 8, `${name}: ${a.id} and ${b.id} are ${gap.toFixed(0)}px apart`)
-      }
-    }
+    const front = box(0)
+    const side = box(1)
 
-    // 70, not 78. The tightest case is a 600x800 tablet, where the panel
-    // takes 40 per cent of the height and the band left over has to hold
-    // his head, two rows of cards and his hands — and it comes out at 68.
-    // Well past a 44-pixel tap target, and the alternative is a different
-    // arrangement for one viewport nobody has.
-    const cw = boxes[0].r - boxes[0].l
-    assert.ok(cw >= 66, `${name}: an offered card is only ${cw.toFixed(0)}px across`)
+    // It is the thing you tap, so it has to be worth tapping.
+    const wide = front.r - front.l
+    assert.ok(wide > 120, name + ': the card at the front is only ' + wide.toFixed(0) + 'px across')
 
-    // And the gesture has to be visible. His arms pointed straight at the
-    // lens once: end-on, behind a torso of the same colour, and covered by
-    // the cards they were holding. A hand must come out below the cards,
-    // outside them, and still be on the screen.
-    const hand = at(new THREE.Vector3(narrow ? PALM_X.narrow : PALM_X.wide, narrow ? 0.796 : 0.995, narrow ? 0.33 : 0.413))
-    const lowest = Math.max(...boxes.map((b) => b.b))
-    const widest = Math.max(...boxes.map((b) => b.r))
-    assert.ok(hand.y > lowest, `${name}: his hand at ${hand.y.toFixed(0)} is behind the cards, which reach ${lowest.toFixed(0)}`)
-    assert.ok(hand.x > widest, `${name}: his hand at ${hand.x.toFixed(0)} is inside the cards, which reach ${widest.toFixed(0)}`)
-    assert.ok(hand.x < w - 6, `${name}: his hand is off the right edge at ${hand.x.toFixed(0)}`)
+    assert.ok(front.l > wall, name + ': the front card is behind the panel at ' + front.l.toFixed(0))
+    assert.ok(front.r < w, name + ': the front card runs off the right at ' + front.r.toFixed(0))
+    assert.ok(front.b < free, name + ': the front card reaches ' + front.b.toFixed(0) + ', under a panel at ' + free)
+    assert.ok(front.t > chin.y, name + ': the front card covers his face, starting at ' + front.t.toFixed(0) + ' against a chin at ' + chin.y.toFixed(0))
+    assert.ok(crown.y > safeTop, name + ': his head is off the top at ' + crown.y.toFixed(0))
+
+    // The next one along has to be on screen, or there is nothing to say
+    // the ring continues.
+    assert.ok(side.r > wall, name + ': the next card along is behind the panel')
+    assert.ok(side.l < w, name + ': the next card along is off the screen')
+
+    // And they must not pile up. Nine cards on a circle barely wider than
+    // one of them is a stack, not a ring.
+    assert.ok(
+      Math.abs(side.x - front.x) > wide * 0.72,
+      name + ': the card beside the front one lies across it — centres ' +
+        Math.abs(side.x - front.x).toFixed(0) + 'px apart, for a card ' + wide.toFixed(0) + 'px wide'
+    )
   }
 })
 
+test('the ring turns to a whole card and knows which one is in front', () => {
+  const count = 9
+  const step = (Math.PI * 2) / count
+
+  // Wherever it is let go, it settles on a slot.
+  for (const at of [0, 0.2, 0.49, 0.51, 0.99, 3.4, -2.2]) {
+    const rest = ringRest(count, at * step)
+    assert.ok(
+      Math.abs(rest / step - Math.round(rest / step)) < 1e-9,
+      'settled at ' + (rest / step).toFixed(3) + ' slots, which is not a slot'
+    )
+    assert.ok(Math.abs(rest - at * step) <= step / 2 + 1e-9, 'settled further than half a slot away')
+  }
+
+  // And the one at the front is the one the maths says is at the front,
+  // all the way round and past the wrap.
+  for (let i = 0; i < count * 2; i++) {
+    assert.equal(ringFront(count, i * step), i % count, 'slot ' + i + ' is not the one in front')
+  }
+
+  // Only a few face you at once — that is what nine of them fit by.
+  const o = ringOf(false, false)
+  const facing = Array.from({ length: count }, (_, i) => ringAt(i, count, 0, o).show).filter((v) => v > 0.05)
+  assert.ok(facing.length <= 5, facing.length + ' cards are facing you; the ring is meant to show a few')
+  assert.ok(facing.length >= 3, 'only ' + facing.length + ' cards face you, which reads as a card rather than a ring')
+})
 test('a branch is drawn from him, and crosses no photograph', () => {
   // The rectangles hang on branches so the row reads as growing out of him
   // rather than floating over him. Which end the branch starts at is not a
