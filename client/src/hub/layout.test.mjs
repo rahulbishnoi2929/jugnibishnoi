@@ -29,6 +29,10 @@ import {
   ringView,
   ringRest,
   ringFront,
+  ringSlots,
+  ringRise,
+  ringSlotOf,
+  ringLevelOf,
   fanCounts,
   placeBranches,
   cosmicScale,
@@ -574,9 +578,10 @@ test('the ring of playlists holds together, on every screen there is', () => {
     const chin = at(new THREE.Vector3(0, (HEAD_Y - HEAD_R) * fig, 0))
     const crown = at(new THREE.Vector3(0, BODY_TOP * fig, 0))
 
-    const box = (i) => {
-      const seat = ringAt(i, count, 0, o)
-      const c = new THREE.Vector3(...seat.pos)
+    const slots = ringSlots(count)
+    const box = (i, level) => {
+      const seat = ringAt(i, slots, 0, o)
+      const c = new THREE.Vector3(seat.pos[0], seat.pos[1] + ringRise(level, o), seat.pos[2])
       // A card turned away is narrower on screen by the cosine of its
       // angle, which is what makes a ring read as a ring.
       const half = (o.card.w / 2) * Math.cos(seat.angle)
@@ -588,18 +593,28 @@ test('the ring of playlists holds together, on every screen there is', () => {
       return { l: mid.x - hw, r: mid.x + hw, t: mid.y - hh, b: mid.y + hh, x: mid.x }
     }
 
-    const front = box(0)
-    const side = box(1)
+    // A slot holds two, one above the other, so the front of the ring
+    // is a pair rather than a card.
+    const top = box(0, 0)
+    const low = box(0, 1)
+    const front = top
+    const side = box(1, 0)
 
-    // It is the thing you tap, so it has to be worth tapping.
-    const wide = front.r - front.l
-    assert.ok(wide > 120, name + ': the card at the front is only ' + wide.toFixed(0) + 'px across')
+    // They are what you tap, so they have to be worth tapping.
+    const wide = top.r - top.l
+    assert.ok(wide > 110, name + ': the cards at the front are only ' + wide.toFixed(0) + 'px across')
 
-    assert.ok(front.l > wall, name + ': the front card is behind the panel at ' + front.l.toFixed(0))
-    assert.ok(front.r < w, name + ': the front card runs off the right at ' + front.r.toFixed(0))
-    assert.ok(front.b < free, name + ': the front card reaches ' + front.b.toFixed(0) + ', under a panel at ' + free)
-    assert.ok(front.t > chin.y, name + ': the front card covers his face, starting at ' + front.t.toFixed(0) + ' against a chin at ' + chin.y.toFixed(0))
+    assert.ok(Math.min(top.l, low.l) > wall, name + ': the front pair is behind the panel')
+    assert.ok(Math.max(top.r, low.r) < w, name + ': the front pair runs off the right')
+    assert.ok(low.b < free, name + ': the lower card reaches ' + low.b.toFixed(0) + ', under a panel at ' + free)
+    assert.ok(top.t > chin.y, name + ': the upper card covers his face, starting at ' + top.t.toFixed(0) + ' against a chin at ' + chin.y.toFixed(0))
     assert.ok(crown.y > safeTop, name + ': his head is off the top at ' + crown.y.toFixed(0))
+
+    // And the two of a pair are two things, not one block.
+    assert.ok(
+      low.t > top.b,
+      name + ': the pair overlaps — the upper ends at ' + top.b.toFixed(0) + ' and the lower starts at ' + low.t.toFixed(0)
+    )
 
     // The next one along has to be on screen, or there is nothing to say
     // the ring continues.
@@ -616,8 +631,8 @@ test('the ring of playlists holds together, on every screen there is', () => {
   }
 })
 
-test('the ring turns to a whole card and knows which one is in front', () => {
-  const count = 9
+test('the ring turns to a whole slot and knows which one is in front', () => {
+  const count = ringSlots(9)
   const step = (Math.PI * 2) / count
 
   // Wherever it is let go, it settles on a slot.
@@ -639,8 +654,17 @@ test('the ring turns to a whole card and knows which one is in front', () => {
   // Only a few face you at once — that is what nine of them fit by.
   const o = ringOf(false, false)
   const facing = Array.from({ length: count }, (_, i) => ringAt(i, count, 0, o).show).filter((v) => v > 0.05)
-  assert.ok(facing.length <= 5, facing.length + ' cards are facing you; the ring is meant to show a few')
-  assert.ok(facing.length >= 3, 'only ' + facing.length + ' cards face you, which reads as a card rather than a ring')
+  assert.ok(facing.length <= 4, facing.length + ' slots are facing you; the ring is meant to show a few')
+  assert.ok(facing.length >= 2, 'only ' + facing.length + ' slots face you, which reads as a card rather than a ring')
+
+  // Nine playlists over five slots: four pairs and one on its own, and
+  // every one of them in exactly one place.
+  const seen = new Map()
+  for (let i = 0; i < 9; i++) seen.set(ringSlotOf(i) + ':' + ringLevelOf(i), i)
+  assert.equal(seen.size, 9, 'two playlists share a place on the ring')
+  assert.equal(ringSlots(9), 5, 'nine playlists should make five slots')
+  assert.equal(ringSlotOf(8), 4, 'the ninth playlist should be on the last slot')
+  assert.ok(ringRise(0, o) > ringRise(1, o), 'the first of a pair should sit above the second')
 })
 test('a branch is drawn from him, and crosses no photograph', () => {
   // The rectangles hang on branches so the row reads as growing out of him

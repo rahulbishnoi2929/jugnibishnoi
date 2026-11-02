@@ -1,4 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+
+// How the ring moves.
+//
+// A flick glides for about a second and a half rather than a tenth, and
+// what is drawn trails where the finger has put it — closely while you
+// are holding it, loosely once you let go, so it comes to rest instead
+// of stopping.
+const FLICK_TIME = 0.55 // seconds for a flick to fall to a third of itself
+const FLICK_STOP = 0.015 // radians a second, below which it has stopped
+const FOLLOW_HELD = 0.07 // seconds for the drawn ring to catch the finger
+const FOLLOW_FREE = 0.22 // ... and to settle onto a slot
 import { useFrame } from '@react-three/fiber'
 import { Line, Html } from '@react-three/drei'
 import * as THREE from 'three'
@@ -8,8 +19,12 @@ import {
   headFor,
   labelScaleFor,
   ringAt,
+  ringLevelOf,
   ringOf,
   ringRest,
+  ringRise,
+  ringSlotOf,
+  ringSlots,
 } from './layout.js'
 import { setsFor } from '../lib/media.js'
 import { playlistFor } from '../lib/playlists.js'
@@ -68,41 +83,47 @@ export default function SubNodes({
     if (!ring || !carousel || !active) return
     const i = branches.findIndex((b) => b.id === active)
     if (i < 0) return
-    const step = (Math.PI * 2) / branches.length
-    const want = i * step
+    const step = (Math.PI * 2) / ringSlots(branches.length)
+    const want = ringSlotOf(i) * step
     const now = carousel.current.turn
     carousel.current.turn = now + Math.atan2(Math.sin(want - now), Math.cos(want - now))
     carousel.current.spin = 0
   }, [active, branches, ring, carousel])
 
-  // One loop for the whole ring rather than one per card: the turn, what
-  // is left of a flick, and the settling onto a slot are properties of
-  // the ring, not of any card on it.
+  // One loop for the whole ring rather than one per card: where it is
+  // going, what is left of a flick, and how it gets there are properties
+  // of the ring, not of any card on it.
+  //
+  // Two numbers, not one. `turn` is where the ring is meant to be — the
+  // finger sets it, a flick carries it, a release rounds it to a slot.
+  // `at` is where it is actually drawn, and it only ever eases towards
+  // `turn`. Everything the ring does therefore arrives through the same
+  // easing, which is what stops it feeling like a mechanism: before this
+  // the flick died in a tenth of a second and the snap in less, so a
+  // drag ended by stopping dead and the card jumped square.
   useFrame((s, dt) => {
     if (!ring || !carousel) return
     const step = Math.min(dt, 0.05)
     const c = carousel.current
-    if (c.held) return
 
-    if (Math.abs(c.spin) > 0.02) {
-      // What a flick keeps, integrated over the step so the distance is
-      // the same at 30 frames a second as at 144.
-      const keep = Math.pow(0.0015, step)
-      const left = c.spin * keep
-      c.turn += (left - c.spin) / Math.log(0.0015)
-      c.spin = left
-      return
+    if (!c.held) {
+      if (Math.abs(c.spin) > FLICK_STOP) {
+        // The exact integral of a speed decaying towards nothing, so the
+        // same flick travels the same distance at 30 frames a second as
+        // at 144.
+        const fade = Math.exp(-step / FLICK_TIME)
+        c.turn += c.spin * FLICK_TIME * (1 - fade)
+        c.spin *= fade
+      } else if (c.spin !== 0) {
+        c.spin = 0
+        // Where it came to rest is rarely a slot, so this is the one
+        // place the target is rounded. The easing below does the moving.
+        c.turn = ringRest(ringSlots(branches.length), c.turn)
+      }
     }
-    c.spin = 0
-    // And then it settles on whichever slot is nearest, so a card is
-    // always square to you rather than stopped at an angle.
-    const rest = ringRest(branches.length, c.turn)
-    const gap = rest - c.turn
-    if (Math.abs(gap) < 0.0008) {
-      c.turn = rest
-      return
-    }
-    c.turn += gap * (1 - Math.pow(0.0001, step))
+
+    const tau = c.held ? FOLLOW_HELD : FOLLOW_FREE
+    c.at += (c.turn - c.at) * (1 - Math.exp(-step / tau))
   })
 
   return (
@@ -244,10 +265,16 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
     // the position and the facing. Without that it swings round with the
     // ring of chapters and the front of it ends up behind him.
     if (ring && carousel && slot.current?.parent) {
-      const seat = ringAt(index, count, carousel.current.turn, ring)
+      const seat = ringAt(ringSlotOf(index), ringSlots(count), carousel.current.at, ring)
       slot.current.parent.getWorldQuaternion(_parent)
       _face.copy(_parent).invert()
-      _where.set(seat.pos[0], seat.pos[1], seat.pos[2]).applyQuaternion(_face)
+      _where
+        .set(
+          seat.pos[0],
+          seat.pos[1] + ringRise(ringLevelOf(index), ring),
+          seat.pos[2]
+        )
+        .applyQuaternion(_face)
       slot.current.position.copy(_where)
       _spin.setFromAxisAngle(_up, seat.turnY).premultiply(_face)
       slot.current.quaternion.copy(_spin)
@@ -345,7 +372,7 @@ function SubNode({ branch, index, chapterId, card: size, narrow, accent, state, 
     // side brings it round — which is what you meant by clicking it, and
     // saves opening a playlist you only half saw.
     if (ring && carousel) {
-      const step = (Math.PI * 2) / count
+      const step = (Math.PI * 2) / ringSlots(count)
       if (Math.abs(ringAngle.current) > step * 0.5) {
         carousel.current.spin = 0
         carousel.current.turn += ringAngle.current

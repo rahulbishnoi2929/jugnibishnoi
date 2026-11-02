@@ -301,11 +301,12 @@ export function placeBranches(node, branches = [], narrow, offered = false, shee
   if (offered) {
     const wheel = ringOf(narrow, sheet)
     return branches.map((b, i) => {
-      const seat = ringAt(i, branches.length, 0, wheel)
-      const pos = new THREE.Vector3(...seat.pos).applyAxisAngle(
-        new THREE.Vector3(0, 1, 0),
-        spin
-      )
+      const seat = ringAt(ringSlotOf(i), ringSlots(branches.length), 0, wheel)
+      const pos = new THREE.Vector3(
+        seat.pos[0],
+        seat.pos[1] + ringRise(ringLevelOf(i), wheel),
+        seat.pos[2]
+      ).applyAxisAngle(new THREE.Vector3(0, 1, 0), spin)
       return { ...b, parent: node.pos, pos, offered: true }
     })
   }
@@ -382,24 +383,38 @@ export const labelWidth = (pxPerWorld) =>
 // the chosen one large.
 const CAROUSEL = {
   phone: {
-    radius: 0.393, front: 0.4, lift: 0.977,
-    card: { w: 0.26, h: 0.146 },
-    view: { pos: [0, 0.82, 1.93], look: [0, 0.5, 0] },
+    radius: 0.345, front: 0.455, lift: 0.894, stack: 0.156,
+    card: { w: 0.221, h: 0.124 },
+    view: { pos: [0, 0.7, 2.07], look: [0, 0.4, 0] },
   },
   tablet: {
-    radius: 0.573, front: 0.424, lift: 1.008,
-    card: { w: 0.39, h: 0.219 },
-    view: { pos: [0, 0.8, 3.24], look: [0, 0.5, 0] },
+    radius: 0.455, front: 0.451, lift: 1.262, stack: 0.206,
+    card: { w: 0.309, h: 0.174 },
+    view: { pos: [0, 1.74, 3.16], look: [0, 0.4, 0] },
   },
   desktop: {
-    radius: 0.691, front: 0.72, lift: 1.366,
-    card: { w: 0.344, h: 0.193 },
-    view: { pos: [0, 2.03, 2.75], look: [-0.5, 0.97, 0] },
+    radius: 0.485, front: 1.2, lift: 1.265, stack: 0.4,
+    card: { w: 0.332, h: 0.187 },
+    view: { pos: [0, 2.05, 3.16], look: [-0.5, 0.68, 0] },
   },
 }
 
 export const ringOf = (narrow, sheet) =>
   narrow ? CAROUSEL.phone : sheet ? CAROUSEL.tablet : CAROUSEL.desktop
+
+// Two to a slot, one above the other.
+//
+// A ring that brings one card forward at a time asks you to turn it
+// eight times to see what you have. Stacking them in pairs halves that
+// and fills the height, which was empty anyway — the cards are wide and
+// the room above and below them was doing nothing.
+export const ringSlots = (count) => Math.ceil(count / 2)
+export const ringSlotOf = (index) => Math.floor(index / 2)
+// 0 is the upper card of a pair, 1 the lower.
+export const ringLevelOf = (index) => index % 2
+
+// How far a card sits above or below the middle of its slot.
+export const ringRise = (level, o) => (level === 0 ? 1 : -1) * (o.stack / 2)
 
 // Where one card sits, and how much of it you are meant to see.
 //

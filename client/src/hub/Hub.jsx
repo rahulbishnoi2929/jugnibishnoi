@@ -102,7 +102,7 @@ export default function Hub() {
   // How far the ring of playlists has been turned, what is left of a
   // flick, and whether a finger is on it. One object rather than three
   // refs because SubNodes reads all of it every frame.
-  const carousel = useRef({ turn: 0, spin: 0, held: false })
+  const carousel = useRef({ turn: 0, at: 0, spin: 0, held: false })
 
   // A chapter's own branches, and which of them is open.
   const activeNode = nodes.find((n) => n.id === active)

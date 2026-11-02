@@ -9,7 +9,8 @@
 import * as THREE from 'three'
 import { readFileSync } from 'node:fs'
 import {
-  ringAt, ringOf, ringView, applyZoom, fitFor, figureFor, BODY_TOP, HEAD_Y, HEAD_R,
+  ringAt, ringOf, ringView, ringSlots, ringRise, applyZoom, fitFor, figureFor,
+  BODY_TOP, HEAD_Y, HEAD_R,
 } from '../client/src/hub/layout.js'
 
 const content = new URL('../client/src/content/', import.meta.url)
@@ -48,9 +49,10 @@ function margins(w, h) {
   const crown = at(new THREE.Vector3(0, BODY_TOP * fig, 0))
 
   // The card at the front, and the two beside it.
-  const box = (i) => {
-    const seat = ringAt(i, count, 0, o)
-    const c = new THREE.Vector3(...seat.pos)
+  const slots = ringSlots(count)
+  const box = (i, level) => {
+    const seat = ringAt(i, slots, 0, o)
+    const c = new THREE.Vector3(seat.pos[0], seat.pos[1] + ringRise(level, o), seat.pos[2])
     // A card turned away is narrower on screen by exactly the cosine of
     // its angle, which is what makes the ring read as a ring.
     const half = (o.card.w / 2) * Math.cos(seat.angle)
@@ -62,15 +64,20 @@ function margins(w, h) {
     return { l: mid.x - hw, r: mid.x + hw, t: mid.y - hh, b: mid.y + hh, show: seat.show }
   }
 
-  const front = box(0)
-  const side = box(1)
+  // The pair at the front: one above, one below.
+  const top = box(0, 0)
+  const low = box(0, 1)
+  const front = top
+  const side = box(1, 0)
   const m = []
-  m.push(['front width', front.r - front.l - 120])
-  m.push(['front left of panel', front.l - wall - 8])
-  m.push(['front right edge', w - front.r - 8])
-  m.push(['front under the panel', free - front.b - 8])
-  m.push(['front over his face', front.t - chin.y])
+  m.push(['front width', top.r - top.l - 110])
+  m.push(['front left of panel', Math.min(top.l, low.l) - wall - 8])
+  m.push(['front right edge', w - Math.max(top.r, low.r) - 8])
+  m.push(['lower card under the panel', free - low.b - 8])
+  m.push(['upper card over his face', top.t - chin.y])
   m.push(['his head on screen', crown.y - safeTop])
+  // The two of a pair must not touch each other either.
+  m.push(['pair apart', low.t - top.b - 6])
   // The next one along has to be visible, or it is not a ring, it is a
   // card.
   m.push(['next one showing', side.r - wall - 8])
@@ -104,11 +111,11 @@ if (!process.argv.includes('--find')) {
 }
 
 const RANGE = {
-  phone: { radius: [0.34, 0.62], front: [0.4, 1.1], lift: [0.75, 1.35], cw: [0.26, 0.5], py: [0.8, 1.9], pz: [1.7, 3.4], ly: [0.5, 1.3] },
-  tablet: { radius: [0.34, 0.66], front: [0.4, 1.1], lift: [0.75, 1.35], cw: [0.26, 0.55], py: [0.8, 2.0], pz: [1.9, 3.8], ly: [0.5, 1.3] },
-  desktop: { radius: [0.34, 0.7], front: [0.4, 1.1], lift: [0.75, 1.4], cw: [0.26, 0.6], py: [0.9, 2.1], pz: [1.8, 3.6], ly: [0.5, 1.4] },
+  phone: { radius: [0.34, 0.68], front: [0.4, 1.2], lift: [0.75, 1.5], cw: [0.22, 0.46], stack: [0.1, 0.34], py: [0.7, 2.0], pz: [1.7, 3.6], ly: [0.4, 1.4] },
+  tablet: { radius: [0.34, 0.72], front: [0.4, 1.2], lift: [0.75, 1.5], cw: [0.22, 0.52], stack: [0.1, 0.4], py: [0.7, 2.1], pz: [1.9, 4.0], ly: [0.4, 1.4] },
+  desktop: { radius: [0.34, 0.78], front: [0.4, 1.2], lift: [0.75, 1.6], cw: [0.22, 0.58], stack: [0.1, 0.4], py: [0.8, 2.2], pz: [1.8, 3.8], ly: [0.4, 1.5] },
 }
-const KEYS = ['radius', 'front', 'lift', 'cw', 'py', 'pz', 'ly']
+const KEYS = ['radius', 'front', 'lift', 'cw', 'stack', 'py', 'pz', 'ly']
 const rnd = (a, b) => a + Math.random() * (b - a)
 const sample = (R, from, k) => {
   const p = {}
@@ -133,6 +140,7 @@ for (const cls of Object.keys(CLASSES)) {
     live.front = p.front
     live.lift = p.lift
     live.card = { w: p.cw, h: p.cw * 0.5625 }
+    live.stack = p.stack
     live.view = { pos: [0, p.py, p.pz], look: [lookX, p.ly, 0] }
   }
   let best = null
@@ -156,7 +164,7 @@ for (const cls of Object.keys(CLASSES)) {
   const p = best.p
   console.log('')
   console.log(cls + ': worst ' + final.worst.toFixed(0) + 'px  (' + final.who + ')')
-  console.log('    radius: ' + p.radius.toFixed(3) + ', front: ' + p.front.toFixed(3) + ', lift: ' + p.lift.toFixed(3) + ',')
+  console.log('    radius: ' + p.radius.toFixed(3) + ', front: ' + p.front.toFixed(3) + ', lift: ' + p.lift.toFixed(3) + ', stack: ' + p.stack.toFixed(3) + ',')
   console.log('    card: { w: ' + p.cw.toFixed(3) + ', h: ' + (p.cw * 0.5625).toFixed(3) + ' },')
   console.log('    view: { pos: [0, ' + p.py.toFixed(2) + ', ' + p.pz.toFixed(2) + '], look: [' + lookX + ', ' + p.ly.toFixed(2) + ', 0] },')
 }
