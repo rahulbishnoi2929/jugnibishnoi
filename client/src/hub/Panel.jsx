@@ -5,7 +5,7 @@ import Playlist from '../music/Playlist.jsx'
 import { isPlaylist } from '../lib/playlists.js'
 
 // The game only loads if you go and play it.
-const Board = lazy(() => import('../game/Board.jsx'))
+const Games = lazy(() => import('../game/Games.jsx'))
 
 // The chapter, opened in place. It scrolls inside itself and nothing
 // follows it — that is the point: a branch is a destination, not a
@@ -64,7 +64,7 @@ export default function Panel({
 
         {kind === 'game' && (
           <Suspense fallback={<p className="panel-body">Loading the board…</p>}>
-            <Board />
+            <Games />
           </Suspense>
         )}
 

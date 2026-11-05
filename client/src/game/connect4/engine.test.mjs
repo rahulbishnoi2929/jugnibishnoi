@@ -1,4 +1,4 @@
-// Run: node client/src/game/engine.test.mjs
+// Run: node client/src/game/connect4/engine.test.mjs
 // No framework on purpose — plain asserts, so it needs nothing installed.
 import assert from 'node:assert/strict'
 import { COLS, ROWS, YOU, CPU, newBoard, drop, at, validMoves, result, landingRow } from './engine.js'
