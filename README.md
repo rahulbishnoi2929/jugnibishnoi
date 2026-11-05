@@ -42,6 +42,7 @@ Two shortcuts that cover most of it:
 |---|---|
 | [docs/CHANGING.md](docs/CHANGING.md) | **how to make a change** — start here |
 | [docs/NEXT.md](docs/NEXT.md) | what is built, and what to do next |
+| [docs/MULTIPLAYER.md](docs/MULTIPLAYER.md) | playing against Rahul — the plan, and the setup only he can do |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | how it is built and why it has no backend |
 | [docs/DESIGN.md](docs/DESIGN.md) | colour, type, layout, motion, the music section |
 | [docs/PRD.md](docs/PRD.md) | what it is for, and what it refuses to be |

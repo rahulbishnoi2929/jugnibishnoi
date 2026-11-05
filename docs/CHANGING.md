@@ -140,6 +140,23 @@ arms when he is holding the playlists out. `Figure.jsx` only reads it.
 
 ---
 
+## Add a game
+
+1. Make `client/src/game/<name>/` with the game in it. Keep the rules
+   and the opponent in a pure module — no React, no DOM — so they can be
+   tested under node the way `chess/ai.js` and `connect4/engine.js` are.
+2. Add a test beside it and a line to the `test` script in
+   `package.json`.
+3. Register it in `client/src/game/Games.jsx`: a title, a one-line note,
+   and a `lazy()` import. The lazy import is what keeps it out of
+   everybody else's bundle.
+
+Chess is the worked example: `chess.js` for the rules because
+hand-rolled chess legality is a trap, a search that spends a time budget
+rather than a fixed depth so a slow phone sees less instead of freezing,
+and a worker because a second of thinking on the main thread stops the
+whole site.
+
 ## Add a chapter
 
 1. Append to `chapters.json`.

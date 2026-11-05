@@ -93,7 +93,10 @@ portfolio/
         │   └── youtube.js       the IFrame API, loaded once
         │
         ├── journey/        the flat, scrollable telling of the same five chapters
-        ├── game/           tic-tac-toe. engine.js is pure and tested.
+        ├── game/           one folder per game, loaded only when chosen
+        │   ├── Games.jsx        the room: a list, then the game
+        │   ├── chess/           ai.js is pure and tested; it thinks in a worker
+        │   └── connect4/        engine.js is pure and tested
         ├── pages/Work.jsx  the escape hatch: no 3D, no motion
         ├── lib/            playlists.js, media.js, asset.js — content accessors
         └── styles/         tokens.css, app.css, hub.css, music.css, journey.css

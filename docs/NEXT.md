@@ -31,7 +31,10 @@ from every screen, because not everyone wants a globe.
 **A journey page.** `/journey` — the same five chapters told as a flat,
 scrollable page.
 
-**A game.** Tic-tac-toe with a minimax opponent.
+**Games.** Chess at three strengths against a computer that searches to a
+time budget and thinks in a worker so the site does not freeze, and Connect
+Four. Both are pure engines with their own tests; the room loads a game only
+when you pick it, so neither costs anything to a visitor who does not play.
 
 **47 tests** over the geometry, run in two seconds by `node`, asserting in
 screen pixels at thirteen viewport sizes.
@@ -64,7 +67,15 @@ compressed from 6.7MB to 0.55MB. Binding `pose.js` to real bones needs an
 axis remap calibrated against whatever the rig exports — a day's careful
 work, and the single biggest visual upgrade available.
 
-### 4. Two duplicate songs and a bad title
+### 4. Play against Rahul
+
+Chosen, designed and not built: a challenge, a notification, and a game
+that survives a closed tab. It needs a Supabase project, which needs an
+account, which needs him — the twenty minutes of setup and the schema are
+written out in [MULTIPLAYER.md](MULTIPLAYER.md). Nothing else is blocked on
+it, and chess against the computer must keep working when it is down.
+
+### 5. Two duplicate songs and a bad title
 
 - "Dil Tu Hi Bataa" is in Personal Favourites twice, at 5 and 23.
 - "3:59 AM" is in Rap twice, at 2 and 7.
@@ -73,7 +84,7 @@ work, and the single biggest visual upgrade available.
 Left alone deliberately: they are his lists, and deleting from someone's
 favourites is not a thing to do unasked.
 
-### 5. Smaller things
+### 6. Smaller things
 
 - Desktop chapter labels still overlap by about 65px at some widths; the
   front-only rule that fixes it is applied on phones only.
