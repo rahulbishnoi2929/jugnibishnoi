@@ -11,4 +11,8 @@ const base = process.env.BASE ?? '/jugnibishnoi/'
 export default defineConfig({
   base,
   plugins: [react()],
+  // A port of its own. 5173 is vite's default, so every other project on
+  // this machine wants it too, and a dev server that quietly lands on a
+  // different port each time is a dev server you cannot bookmark.
+  server: { port: 5186, strictPort: true },
 })

@@ -211,6 +211,46 @@
   backdrop-filter: blur(22px) saturate(1.15);
 }
 
+/* A game takes the room.
+
+   The reading panel is a column of text, and 440 pixels of it is right
+   for reading. A chess board in that column came out at 43 pixels a
+   square — under the 44 a finger needs — with its own buttons below the
+   fold, while half the window sat empty beside it. While a game is being
+   played the panel widens and the chapter's own words step back: you
+   came to play, not to read the lede again.
+
+   `:has` rather than a prop threaded down through three components,
+   because .games only exists in the DOM once a game has been chosen. */
+.panel:has(.games) {
+  width: min(840px, 94vw);
+}
+.panel:has(.games) .panel-lede,
+.panel:has(.games) .panel-years,
+.panel:has(.games) .panel-place {
+  display: none;
+}
+.panel:has(.games) .panel-title {
+  font-size: var(--step-2);
+  margin-bottom: var(--s2);
+}
+/* Two ways back, on one line: out of the game, and out of the room. */
+.panel:has(.games) .panel-back { margin-bottom: var(--s2); }
+.panel:has(.games) .games-back { margin-top: calc(var(--s2) * -1); }
+
+@media (max-width: 900px) {
+  /* On a sheet the width is already the screen; what is scarce is
+     height. The sheet is 60vh, which is a board and no room for the
+     buttons under it, so a game gets the whole screen. */
+  .panel:has(.games) { width: 100%; height: 100%; }
+  /* And the board gets the width the padding was holding. At 16px a
+     side the squares came out at 43 across, one under what a finger
+     needs; at 8px they clear it. */
+  .panel:has(.games) .panel-scroll { padding-inline: var(--s2); }
+  .panel:has(.games) .panel-title { display: none; }
+  .panel:has(.games) .panel-back { margin-bottom: var(--s2); }
+}
+
 .panel-scroll {
   position: relative;
   z-index: 1;

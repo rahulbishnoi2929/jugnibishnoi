@@ -5,10 +5,17 @@
 .chess {
   display: grid;
   gap: var(--s2);
-  max-width: min(100%, 520px);
+  justify-items: center;
+  /* Bounded by the height as well as the width, so the board and the two
+     buttons under it are on the screen together instead of the buttons
+     being a scroll away. */
+  max-width: min(100%, 58vh);
+  margin: 0 auto;
+  width: 100%;
 }
 
 .chess-top {
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -56,6 +63,7 @@
   border: 1px solid var(--line);
   border-radius: 4px;
   overflow: hidden;
+  box-shadow: 0 10px 40px rgb(0 0 0 / 0.35);
 }
 .chess-rank { display: grid; grid-template-columns: repeat(8, 1fr); }
 
@@ -67,10 +75,11 @@
   display: grid;
   place-items: center;
   background: #d9cdbb;
-  /* The glyph scales with the board, so one rule covers a phone and a
-     desktop. */
-  font-size: min(7vw, 34px);
   line-height: 1;
+  /* The square is the container; the glyph inside it is sized in cqw.
+     Putting the unit on the square itself resolves it against whatever
+     container is further up — which is none — and the pieces vanish. */
+  container-type: inline-size;
 }
 .chess-square.is-dark { background: #8a7a63; }
 
@@ -100,31 +109,43 @@
   border-radius: 50%;
 }
 
+/* Both sides outlined, so a white piece reads on a light square and a
+   black one on a dark square. Without it the white pieces on the near
+   rank — which is every piece you own at the start — were #fdfaf4 on
+   #d9cdbb, which is nearly nothing. */
 .chess-piece {
-  color: #fdfaf4;
-  text-shadow: 0 1px 2px rgb(0 0 0 / 0.5);
+  /* As a share of its own square, so one rule covers a phone and a
+     desktop and any panel width between. */
+  font-size: 74cqw;
+  color: #fcf8f0;
+  -webkit-text-stroke: 1.2px #2a2520;
+  paint-order: stroke fill;
+  text-shadow: 0 2px 3px rgb(0 0 0 / 0.35);
   pointer-events: none;
 }
 .chess-piece.is-black {
-  color: #23201c;
-  text-shadow: 0 1px 1px rgb(255 255 255 / 0.22);
+  color: #1c1915;
+  -webkit-text-stroke: 1.2px #e8dfcf;
+  text-shadow: 0 2px 3px rgb(0 0 0 / 0.3);
 }
 
 /* What each side has lost, which is the fastest way to read who is
    winning without counting the board. */
 .chess-taken {
-  min-height: 1.2em;
-  font-size: var(--step--1);
+  width: 100%;
+  min-height: 1.35em;
+  font-size: var(--step-0);
   line-height: 1;
-  color: #fdfaf4;
-  opacity: 0.75;
+  color: #fcf8f0;
+  opacity: 0.8;
+  letter-spacing: -0.08em;
 }
 .chess-taken .is-black { color: #23201c; }
 @media (prefers-color-scheme: dark) {
   .chess-taken .is-black { color: #6b6257; }
 }
 
-.chess-keys { display: flex; gap: var(--s2); }
+.chess-keys { width: 100%; display: flex; gap: var(--s2); }
 .chess-keys button {
   font-family: var(--mono);
   font-size: var(--step--2);

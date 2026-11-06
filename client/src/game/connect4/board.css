@@ -1,5 +1,12 @@
 .cf {
   margin-top: var(--s4);
+  /* The panel widens for a game, which chess wanted and this did not:
+     a seven-column grid given 790 pixels draws discs the size of a fist
+     and pushes its own last row three hundred pixels below the fold.
+     Bounded by the height as well, so the whole grid is on the screen. */
+  width: 100%;
+  max-width: min(100%, 58vh, 440px);
+  margin-inline: auto;
 }
 
 .cf-head {
