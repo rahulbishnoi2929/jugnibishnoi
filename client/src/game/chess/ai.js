@@ -184,14 +184,15 @@ export const LEVELS = {
 
 // Pick a move. `at` is a FEN; returns a move in chess.js verbose form, or
 // null if the game is already over.
-export function bestMove(at, level = 'medium', random = Math.random) {
+export function bestMove(at, level = 'medium', random = Math.random, ms = null) {
   const rules = LEVELS[level] ?? LEVELS.medium
   const game = new Chess(at)
   const moves = ordered(game)
   if (moves.length === 0) return null
   if (moves.length === 1) return moves[0]
 
-  const deadline = Date.now() + rules.ms
+  // A clock, if there is one, can give it less time than its level.
+  const deadline = Date.now() + (ms ?? rules.ms)
   let scored = moves.map((m) => ({ move: m, score: -Infinity }))
 
   // Iterative deepening: finish a depth, keep it, try the next one. If the

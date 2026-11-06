@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Chess as Rules } from 'chess.js'
 import { bestMove, LEVELS, state } from './ai.js'
+import { CONTROLS, budget, controlOf, flagged, left, newClock, press, show, start, stop } from './clock.js'
 import './chess.css'
 
 // A board you can play on.
@@ -26,10 +27,47 @@ export default function ChessGame() {
   const [last, setLast] = useState(null)
   const history = useRef([])
 
+  // The clock. `tick` exists only to make the component redraw four
+  // times a second — the time itself is worked out from the clock and
+  // the moment you ask, never counted down in storage, so a backgrounded
+  // tab that stops firing timers does not gain you a minute.
+  const [control, setControl] = useState('off')
+  const [clock, setClock] = useState(() => newClock(null))
+  const [, setTick] = useState(0)
+  const flag = useRef(null)
+
   const game = useMemo(() => new Rules(fen), [fen])
   const board = game.board()
   const turn = game.turn()
-  const where = useMemo(() => state(fen), [fen])
+  const rules = useMemo(() => state(fen), [fen])
+  // A game is also over when somebody runs out of time, and that is not
+  // something chess.js can know.
+  const where = flag.current
+    ? { over: true, winner: flag.current === 'w' ? 'b' : 'w', why: 'time' }
+    : rules
+
+  const running = clock.turn != null && !where.over
+
+  // One loop: redraw the faces, and notice when one of them has run out.
+  //
+  // The flag check lives here rather than in an effect of its own
+  // because the clock object only changes when somebody moves. Watching
+  // it for a flag therefore never fires while time is merely passing,
+  // which is the only way a clock ever actually runs out — the time hit
+  // zero, went red, and the game carried on as though nothing had
+  // happened.
+  useEffect(() => {
+    if (!running) return
+    const id = setInterval(() => {
+      const out = flagged(clock, Date.now())
+      if (out) {
+        flag.current = out
+        setClock((c) => stop(c, Date.now()))
+      }
+      setTick((n) => n + 1)
+    }, 100)
+    return () => clearInterval(id)
+  }, [running, clock])
 
   // Where the piece you have picked up is allowed to go.
   const canGo = useMemo(() => {
@@ -50,12 +88,12 @@ export default function ChessGame() {
     return () => brain.current?.terminate()
   }, [])
 
-  const think = useCallback((at, how) => {
+  const think = useCallback((at, how, ms) => {
     return new Promise((resolve) => {
       const worker = brain.current
       if (!worker) {
         // No worker to be had, so it thinks here and the page waits.
-        resolve(bestMove(at, how))
+        resolve(bestMove(at, how, Math.random, ms))
         return
       }
       const id = Math.random().toString(36).slice(2)
@@ -65,28 +103,34 @@ export default function ChessGame() {
         resolve(e.data.move ?? null)
       }
       worker.addEventListener('message', hear)
-      worker.postMessage({ fen: at, level: how, id })
+      worker.postMessage({ fen: at, level: how, ms, id })
     })
   }, [])
 
   // Black is the opponent. When it is black's turn and the game is still
-  // going, it answers.
+  // going, it answers — on its own clock, which is what stops it playing
+  // beautifully and losing on time.
   useEffect(() => {
     if (turn !== 'b' || where.over) return
     let gone = false
     setThinking(true)
-    think(fen, level).then((move) => {
+    const spend = budget(LEVELS[level].ms, left(clock, 'b', Date.now()))
+    think(fen, level, spend).then((move) => {
       if (gone || !move) return setThinking(false)
       const next = new Rules(fen)
       next.move(move)
       history.current.push(fen)
       setLast({ from: move.from, to: move.to })
       setFen(next.fen())
+      setClock((c) => press(c, Date.now()))
       setThinking(false)
     })
     return () => {
       gone = true
     }
+    // The clock is read when this runs, not depended on: adding it would
+    // restart the opponent's thinking four times a second.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fen, turn, where.over, level, think])
 
   const tap = (square) => {
@@ -103,6 +147,16 @@ export default function ChessGame() {
       setLast({ from, to: square })
       setFen(next.fen())
       setFrom(null)
+      // The first move starts the clock — your thinking before it is
+      // free — and every move after it is a press.
+      //
+      // Whether the clock has started is a question the clock can answer,
+      // so nothing is remembered here. It used to set a ref inside this
+      // updater, which React's StrictMode calls twice precisely to catch:
+      // the second call saw the ref already set, took the other branch,
+      // and returned a clock that had never started. React keeps the
+      // second answer, so the clock never ran.
+      setClock((c) => (c.turn == null ? start(c, 'b', Date.now()) : press(c, Date.now())))
       return
     }
     // Tapping your own piece picks it up; tapping it again puts it down.
@@ -110,16 +164,25 @@ export default function ChessGame() {
     else setFrom(null)
   }
 
-  const again = () => {
+  const again = (id = control) => {
     history.current = []
+    flag.current = null
     setLast(null)
     setFrom(null)
     setFen(new Rules().fen())
+    setClock(newClock(controlOf(id).ms))
+  }
+
+  const pickControl = (id) => {
+    setControl(id)
+    // Changing the clock starts the game again: carrying a half-played
+    // position onto a new time control is nobody's idea of either game.
+    again(id)
   }
 
   // Back goes two: your move and its answer, so you land on your turn.
   const back = () => {
-    if (!history.current.length || thinking) return
+    if (!history.current.length || thinking || where.over) return
     const earlier = history.current
     const to = earlier.length >= 2 ? earlier.splice(-2)[0] : earlier.pop()
     setLast(null)
@@ -156,13 +219,33 @@ export default function ChessGame() {
             </button>
           ))}
         </div>
+        <div className="chess-clocks" role="group" aria-label="Time control">
+          {CONTROLS.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className={'chess-clock' + (control === c.id ? ' is-on' : '')}
+              onClick={() => pickControl(c.id)}
+              aria-pressed={control === c.id}
+              aria-label={c.name}
+              title={c.name}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+
         <p className="chess-say" aria-live="polite">
           {where.over
-            ? where.why === 'checkmate'
+            ? where.why === 'time'
               ? where.winner === 'w'
-                ? 'You won.'
-                : 'It won.'
-              : 'Drawn — ' + where.why + '.'
+                ? 'It ran out of time. You won.'
+                : 'You ran out of time.'
+              : where.why === 'checkmate'
+                ? where.winner === 'w'
+                  ? 'You won.'
+                  : 'It won.'
+                : 'Drawn — ' + where.why + '.'
             : thinking
               ? 'Thinking…'
               : where.check
@@ -175,10 +258,13 @@ export default function ChessGame() {
         </p>
       </div>
 
-      <div className="chess-taken" aria-hidden="true">
-        {taken('b').map((t, i) => (
-          <span key={i} className="is-black">{GLYPH[t]}</span>
-        ))}
+      <div className="chess-side">
+        <span className="chess-taken" aria-hidden="true">
+          {taken('b').map((t, i) => (
+            <span key={i} className="is-black">{GLYPH[t]}</span>
+          ))}
+        </span>
+        <Face clock={clock} side="b" live={clock.turn === 'b' && !where.over} />
       </div>
 
       <div className="chess-board" role="grid" aria-label="Chess board">
@@ -218,17 +304,20 @@ export default function ChessGame() {
         ))}
       </div>
 
-      <div className="chess-taken" aria-hidden="true">
-        {taken('w').map((t, i) => (
-          <span key={i}>{GLYPH[t]}</span>
-        ))}
+      <div className="chess-side">
+        <span className="chess-taken" aria-hidden="true">
+          {taken('w').map((t, i) => (
+            <span key={i}>{GLYPH[t]}</span>
+          ))}
+        </span>
+        <Face clock={clock} side="w" live={clock.turn === 'w' && !where.over} />
       </div>
 
       <div className="chess-keys">
         <button type="button" onClick={back} disabled={!history.current.length || thinking}>
           Take it back
         </button>
-        <button type="button" onClick={again}>
+        <button type="button" onClick={() => again()}>
           New game
         </button>
       </div>
@@ -237,3 +326,18 @@ export default function ChessGame() {
 }
 
 const NAMES = { k: 'king', q: 'queen', r: 'rook', b: 'bishop', n: 'knight', p: 'pawn' }
+
+// One side's clock. Nothing here counts: it asks what is left at the
+// moment it draws, which is why a backgrounded tab cannot gain you time.
+function Face({ clock, side, live }) {
+  const ms = left(clock, side, Date.now())
+  if (ms == null) return null
+  return (
+    <span
+      className={'chess-face' + (live ? ' is-live' : '') + (ms < 20_000 ? ' is-low' : '')}
+      aria-label={(side === 'w' ? 'Your' : 'Its') + ' time'}
+    >
+      {show(ms)}
+    </span>
+  )
+}

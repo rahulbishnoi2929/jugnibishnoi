@@ -32,8 +32,9 @@ from every screen, because not everyone wants a globe.
 scrollable page.
 
 **Games.** Chess at three strengths against a computer that searches to a
-time budget and thinks in a worker so the site does not freeze, and Connect
-Four. Both are pure engines with their own tests; the room loads a game only
+time budget and thinks in a worker so the site does not freeze, with a
+clock — no clock, 1, 2, 10 or 30 minutes, and you lose if it runs out —
+and Connect Four. Both are pure engines with their own tests; the room loads a game only
 when you pick it, so neither costs anything to a visitor who does not play.
 
 **47 tests** over the geometry, run in two seconds by `node`, asserting in
