@@ -44,12 +44,29 @@ screen pixels at thirteen viewport sizes.
 
 ## Next, in the order I would do it
 
-### 1. The bundle is too big — ~990KB, 278KB gzipped
+### 1. ~~The bundle is too big~~ — settled, November 2026
 
-The PRD's budget was 200KB. The whole 3D world, the cosmos and the music
-section are in one chunk. Splitting the cosmos (only needed once you zoom
-past the planet) and the music section (only needed in one chapter) is the
-obvious first cut and needs no design decisions.
+The 990KB chunk was mostly other people's code. Measured gzipped:
+three.js is 171KB on its own, react 60, drei and fiber 51 — and the
+site's own 3D is 49. The PRD's 200KB budget was written before the site
+became a three.js site; it cannot be met while the globe exists, and the
+globe is the site.
+
+What was actually wrong got fixed instead:
+
+- **Every push re-downloaded three.js.** It all shipped as one chunk, so
+  a returning visitor fetched the whole engine again whenever the site
+  changed. The libraries live in their own chunks now, which change only
+  when a dependency is deliberately updated.
+- **The plain pages loaded the 3D engine.** The first attempt at that
+  split made it worse: Vite's lazy-import helper and React's JSX runtime
+  were left unclaimed, Rollup put them in the r3f chunk, and r3f imports
+  three.js — so /work, the page that exists for people who do not want a
+  globe, fetched 300KB of globe. The chunking claims them for React now.
+
+Where it landed, gzipped: **/work and /journey load 75KB**, two files.
+**The hub's first visit is 349KB**, and a returning visitor after a push
+downloads only the 49KB that changed.
 
 ### 2. Content gaps
 

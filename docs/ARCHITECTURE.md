@@ -237,7 +237,7 @@ what would have to change if it stops being enough.
 |---|---|
 | No backend; content is JSON in the repo | When someone other than Rahul needs to edit it |
 | No test runner; tests are `.mjs` files run by node | When there are enough to need filtering or watch mode |
-| The hub bundle is ~990KB (278KB gzipped) | It is over the PRD's 200KB budget. Code-splitting the cosmos and the music section is the obvious first cut. |
+| The hub's first visit is 349KB gzipped, mostly three.js (171KB) | Over the PRD's 200KB budget, which predates the 3D and cannot be met with it. Libraries are split into their own chunks in vite.config.js so pushes do not re-download them, and the plain pages load 75KB. |
 | The 3D figure is boxes, not a rigged model | A Mixamo-rigged GLB was started; `pose.js` would bind to real bones with an axis remap |
 | Photographs are committed as WebP in `client/src/photos` | If the set grows past a few hundred, they want a CDN |
 | `prefers-reduced-motion` stops animation but the 3D still renders | A genuinely static fallback is `pages/Work.jsx`, which is linked from everywhere |
