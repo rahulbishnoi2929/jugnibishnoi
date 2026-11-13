@@ -140,8 +140,33 @@ const worthOf = (m) =>
   (m.promotion ? VALUE[m.promotion] : 0) +
   (m.san.includes('#') ? MATE : m.san.includes('+') ? 50 : 0)
 
+// A position, for the purpose of "has this happened before": the board,
+// whose turn, castling rights and en passant — the parts that make two
+// positions the same position — without the move counters.
+const keyOf = (fen) => fen.split(' ').slice(0, 4).join(' ')
+
+// Play a move and score what follows. A position that has already been
+// on the board — earlier in the game or earlier on this line — is scored
+// as a draw rather than searched, which is how an engine sees a
+// repetition coming. Treating the second occurrence as the draw rather
+// than waiting for the third is what every engine does: the line that
+// reaches it can always be played again.
+function after(game, move, depth, alpha, beta, ply, deadline, seen) {
+  game.move(move)
+  const k = keyOf(game.fen())
+  let got
+  if (seen.has(k)) got = 0
+  else {
+    seen.add(k)
+    got = search(game, depth, alpha, beta, ply, deadline, seen)
+    seen.delete(k)
+  }
+  game.undo()
+  return got
+}
+
 // Negamax with alpha-beta. Returns the score for the side to move.
-function search(game, depth, alpha, beta, ply, deadline) {
+function search(game, depth, alpha, beta, ply, deadline, seen) {
   const end = terminal(game, ply)
   if (end.over) return end.score
   if (depth <= 0) {
@@ -154,9 +179,7 @@ function search(game, depth, alpha, beta, ply, deadline) {
 
   let best = -Infinity
   for (const move of ordered(game)) {
-    game.move(move)
-    const got = search(game, depth - 1, -beta, -alpha, ply + 1, deadline)
-    game.undo()
+    const got = after(game, move, depth - 1, -beta, -alpha, ply + 1, deadline, seen)
     if (got === null) return null
     const score = -got
     if (score > best) best = score
@@ -184,7 +207,12 @@ export const LEVELS = {
 
 // Pick a move. `at` is a FEN; returns a move in chess.js verbose form, or
 // null if the game is already over.
-export function bestMove(at, level = 'medium', random = Math.random, ms = null) {
+// `history` is the FEN of every position before this one in the game.
+// Without it the engine is handed a single position with no past, and
+// cannot see a repetition coming: it shuffled won positions into draws by
+// threefold repetition — two games in eight against easy, when it was
+// given the time a phone or a one minute clock gives it.
+export function bestMove(at, level = 'medium', random = Math.random, ms = null, history = []) {
   const rules = LEVELS[level] ?? LEVELS.medium
   const game = new Chess(at)
   const moves = ordered(game)
@@ -193,6 +221,8 @@ export function bestMove(at, level = 'medium', random = Math.random, ms = null) 
 
   // A clock, if there is one, can give it less time than its level.
   const deadline = Date.now() + (ms ?? rules.ms)
+  const seen = new Set(history.map(keyOf))
+  seen.add(keyOf(at))
   let scored = moves.map((m) => ({ move: m, score: -Infinity }))
 
   // Iterative deepening: finish a depth, keep it, try the next one. If the
@@ -202,9 +232,7 @@ export function bestMove(at, level = 'medium', random = Math.random, ms = null) 
     const round = []
     let done = true
     for (const { move } of scored) {
-      game.move(move)
-      const got = search(game, depth - 1, -Infinity, Infinity, 1, deadline)
-      game.undo()
+      const got = after(game, move, depth - 1, -Infinity, Infinity, 1, deadline, seen)
       if (got === null) { done = false; break }
       round.push({ move, score: -got })
     }

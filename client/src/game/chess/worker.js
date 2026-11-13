@@ -7,9 +7,9 @@
 import { bestMove } from './ai.js'
 
 self.onmessage = (e) => {
-  const { fen, level, ms, id } = e.data
+  const { fen, level, ms, history, id } = e.data
   try {
-    self.postMessage({ id, move: bestMove(fen, level, Math.random, ms) })
+    self.postMessage({ id, move: bestMove(fen, level, Math.random, ms, history) })
   } catch (err) {
     self.postMessage({ id, error: String(err?.message ?? err) })
   }

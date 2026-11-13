@@ -88,12 +88,12 @@ export default function ChessGame() {
     return () => brain.current?.terminate()
   }, [])
 
-  const think = useCallback((at, how, ms) => {
+  const think = useCallback((at, how, ms, past) => {
     return new Promise((resolve) => {
       const worker = brain.current
       if (!worker) {
         // No worker to be had, so it thinks here and the page waits.
-        resolve(bestMove(at, how, Math.random, ms))
+        resolve(bestMove(at, how, Math.random, ms, past))
         return
       }
       const id = Math.random().toString(36).slice(2)
@@ -103,7 +103,7 @@ export default function ChessGame() {
         resolve(e.data.move ?? null)
       }
       worker.addEventListener('message', hear)
-      worker.postMessage({ fen: at, level: how, ms, id })
+      worker.postMessage({ fen: at, level: how, ms, history: past, id })
     })
   }, [])
 
@@ -115,7 +115,8 @@ export default function ChessGame() {
     let gone = false
     setThinking(true)
     const spend = budget(LEVELS[level].ms, left(clock, 'b', Date.now()))
-    think(fen, level, spend).then((move) => {
+    // Every position before this one, so it can see a repetition coming.
+    think(fen, level, spend, history.current.slice()).then((move) => {
       if (gone || !move) return setThinking(false)
       const next = new Rules(fen)
       next.move(move)

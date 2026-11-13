@@ -29,7 +29,7 @@ test('it only ever plays a legal move', () => {
   for (const level of Object.keys(LEVELS)) {
     const game = new Chess()
     for (let i = 0; i < 12 && !game.isGameOver(); i++) {
-      const move = bestMove(game.fen(), level)
+      const move = bestMove(game.fen(), level, Math.random, 150)
       assert.ok(move, level + ': no move offered on move ' + i)
       const legal = game.moves({ verbose: true })
       assert.ok(
@@ -76,7 +76,7 @@ test('it takes a free queen', () => {
   // reach d5 at all — the engine was right and the test was wrong.
   const game = new Chess('rnb1kbnr/ppp1pppp/8/3q4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1')
   for (const level of ['medium', 'hard']) {
-    const move = bestMove(game.fen(), level)
+    const move = bestMove(game.fen(), level, Math.random, 150)
     assert.equal(move.to, 'd5', level + ' played ' + move.san + ' and left the queen')
   }
 })
@@ -86,7 +86,7 @@ test('it does not hang its own queen for nothing', () => {
   for (const level of ['medium', 'hard']) {
     const game = new Chess(START)
     for (let i = 0; i < 8; i++) {
-      const move = bestMove(game.fen(), level)
+      const move = bestMove(game.fen(), level, Math.random, 150)
       game.move(move)
       // Reply with the best capture available, if any.
       const replies = game.moves({ verbose: true }).filter((m) => m.captured === 'q')
@@ -102,22 +102,93 @@ test('it does not hang its own queen for nothing', () => {
   }
 })
 
-test('hard beats easy over a whole game', () => {
-  // Not a close-run thing: if the levels are not actually different then
-  // "easy, medium, hard" is three buttons that do the same.
-  const game = new Chess()
-  let moves = 0
-  while (!game.isGameOver() && moves < 120) {
-    const level = game.turn() === 'w' ? 'hard' : 'easy'
-    const move = bestMove(game.fen(), level)
-    if (!move) break
-    game.move(move)
-    moves++
+// A seeded random, so easy's slips are the same slips every run. The
+// first version of this test used Math.random and the machine's own
+// speed, and failed one deploy in a few on GitHub's slower runners.
+const seeded = (n) => () => {
+  n |= 0; n = (n + 0x6d2b79f5) | 0
+  let t = Math.imul(n ^ (n >>> 15), 1 | n)
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+}
+
+const keyOf = (fen) => fen.split(' ').slice(0, 4).join(' ')
+
+test('hard beats easy, two games in three', () => {
+  // If the levels are not actually different, "easy, medium, hard" is
+  // three buttons that do the same. Best of three rather than one game,
+  // because a single game is one sample of something that depends on how
+  // fast the machine is, and the machine is not the thing under test.
+  let won = 0
+  const results = []
+  for (const seed of [1, 2, 3]) {
+    const game = new Chess()
+    const past = []
+    const easy = seeded(seed)
+    let moves = 0
+    while (!game.isGameOver() && moves < 80) {
+      const white = game.turn() === 'w'
+      const move = white
+        ? bestMove(game.fen(), 'hard', Math.random, 200, past)
+        : bestMove(game.fen(), 'easy', easy, null, past)
+      if (!move) break
+      past.push(game.fen())
+      game.move(move)
+      moves++
+    }
+    const score = evaluate(game)
+    const outcome = game.isCheckmate()
+      ? game.turn() === 'b' ? 'hard mated easy' : 'easy mated hard'
+      : game.isGameOver() ? 'drawn' : 'unfinished at ' + score
+    results.push(outcome)
+    if (game.isCheckmate() ? game.turn() === 'b' : !game.isGameOver() && score > 300) won++
   }
-  const score = evaluate(game) // positive is good for white, who played hard
-  assert.ok(
-    game.isCheckmate() ? game.turn() === 'b' : score > 300,
-    'hard did not get on top of easy: ' + (game.isGameOver() ? game.isCheckmate() ? 'easy mated hard' : 'drawn' : 'score ' + score)
+  assert.ok(won >= 2, 'hard won ' + won + ' of 3: ' + results.join(', '))
+})
+
+test('winning, it steers away from a repetition', () => {
+  // A queen up. Whatever it would normally play, once the position that
+  // move leads to has already happened, playing it again is a draw — and
+  // a draw is worse than a won game, so it should find something else.
+  // Before it was given the game's history it could not see this, and it
+  // shuffled won positions into threefold repetition.
+  const fen = '4k3/8/8/8/8/8/8/3QK3 w - - 0 1'
+  const first = bestMove(fen, 'hard', Math.random, 400)
+  const game = new Chess(fen)
+  game.move(first)
+  const repeated = game.fen()
+
+  const second = bestMove(fen, 'hard', Math.random, 400, [repeated])
+  const check = new Chess(fen)
+  check.move(second)
+  assert.notEqual(
+    keyOf(check.fen()),
+    keyOf(repeated),
+    'played ' + second.san + ' into a position that has already happened, a queen up'
+  )
+})
+
+test('losing, it takes the repetition', () => {
+  // The other half. A bare king against a queen and king is lost, so a
+  // move into a position that has already happened — a draw — is the
+  // best thing on the board, and it should play it.
+  //
+  // The repetition is put behind a move it would not otherwise play. The
+  // first version of this test aimed at the move it preferred anyway, so
+  // it passed with the history switched off and proved nothing.
+  const fen = '4k3/8/8/8/8/8/8/3QK3 b - - 0 1'
+  const preferred = bestMove(fen, 'hard', Math.random, 400)
+  const game = new Chess(fen)
+  const target = game.moves({ verbose: true }).find((m) => m.to !== preferred.to)
+  assert.ok(target, 'needs a second legal move to aim at')
+  game.move(target)
+  const drawn = game.fen()
+
+  const move = bestMove(fen, 'hard', Math.random, 400, [drawn])
+  assert.equal(
+    move.to,
+    target.to,
+    'played ' + move.san + ' rather than ' + target.san + ', the repetition, which was the draw'
   )
 })
 
