@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import {
   branchCurve,
   branchDrift,
+  labelFront,
   depthFade,
   hubOpacity,
   labelScaleFor,
@@ -103,16 +104,8 @@ function Node({ node, index, state, onPick, zoom, head }) {
     const hub = hubOpacity(zoom?.current ?? 1)
     const fade = depth * hub
 
-    // On a phone, only the front of the ring is labelled.
-    //
-    // Eight labels at 16px will not fit around a ring 264 pixels wide: over
-    // a full turn they overlapped each other by up to 70 pixels, which is
-    // most of a word. The dots stay, and so does the click that brings a
-    // branch round to the front — it is the text that goes, and only for
-    // the half of the ring that is behind him. Four labels at a time, and
-    // none of them on top of another.
-    const front =
-      s.size.width < 520 ? THREE.MathUtils.smoothstep(world.z, -0.1, 0.3) : 1
+    // Only the front of the ring is labelled — see labelFront in layout.js.
+    const front = labelFront(world.z)
 
     dot.current.scale.setScalar(
       THREE.MathUtils.lerp(dot.current.scale.x, targetScale + wobble, k)

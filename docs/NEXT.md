@@ -104,8 +104,6 @@ favourites is not a thing to do unasked.
 
 ### 6. Smaller things
 
-- Desktop chapter labels still overlap by about 65px at some widths; the
-  front-only rule that fixes it is applied on phones only.
 - "Plainly" still sits under The work as its years, which is real copy
   rather than a placeholder — remove it if it reads as one.
 - The music section's blur over the whole window is the most expensive

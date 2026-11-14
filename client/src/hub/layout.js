@@ -172,6 +172,22 @@ export const cardFor = (narrow, count = 4) =>
 //
 // The phase step is the golden angle, so wherever they start they start
 // about as far apart as a given number of them can.
+// How much of a chapter's label is drawn, by where it is on the ring.
+//
+// Only the front half is labelled. The dots stay, and so does the click
+// that brings a branch round to the front — it is the text that goes, and
+// only for the half of the ring that is behind him.
+//
+// This was a phone rule. Eight labels will not fit round a ring 264
+// pixels wide; over a full turn they overlapped by up to 70 pixels. It
+// was assumed a desktop had the room, and the test that checks label
+// collisions only measured a phone, so nobody found out that it did not:
+// turning the ring at 1440 wide put a label at 0.3 opacity across a front
+// one by up to 66 by 32 pixels, at most angles of the turn. A label you
+// can only read a third of, on top of one you are trying to read, is
+// worse than a dot.
+export const labelFront = (z) => THREE.MathUtils.smoothstep(z, -0.1, 0.3)
+
 export const branchDrift = (index) => ({
   rate: 0.24 + index * 0.058,
   reach: 0.04 + ((index * 5) % 7) * 0.0065,

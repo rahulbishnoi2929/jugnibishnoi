@@ -42,6 +42,7 @@ import {
   BODY_TOP,
   branchCurve,
   branchDrift,
+  labelFront,
   fitFor,
   fitRadius,
   hubOpacity,
@@ -928,8 +929,9 @@ test('no two labels sit on top of each other', () => {
     const boxes = []
     for (const n of named) {
       const p = n.pos.clone().applyAxisAngle(spin, turn)
-      // Behind him, the text is not drawn.
-      if (p.z < 0) continue
+      // Behind him, the text is not drawn — by the same rule the
+      // component uses, rather than this test's own idea of it.
+      if (labelFront(p.z) < 0.5) continue
       const s = at(p)
       const width = Math.max(46, n.id.length * 9 + 16)
       const box = { l: s.x - width / 2, r: s.x + width / 2, t: s.y - 45, b: s.y - 1 }
