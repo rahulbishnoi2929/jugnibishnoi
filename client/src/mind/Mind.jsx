@@ -51,8 +51,11 @@ function boneMaterial() {
         vec4 mv = modelViewMatrix * vec4(position, 1.0);
         vec3 n = normalize(normalMatrix * aNormal);
         float rim = 1.0 - abs(dot(n, normalize(-mv.xyz)));
-        vGlow = 0.08 + pow(rim, 2.5) * 1.3;
-        gl_PointSize = min(aSize * uSize * (uScale / -mv.z), 56.0);
+        // Steep, so the outlines are lines and what faces you nearly goes;
+        // and the edge points drawn bigger, so a line is a line rather
+        // than a row of specks.
+        vGlow = 0.03 + pow(rim, 3.0) * 1.9;
+        gl_PointSize = min(aSize * uSize * (uScale / -mv.z) * (0.7 + 0.9 * rim), 56.0);
         gl_Position = projectionMatrix * mv;
       }
     `,
@@ -128,7 +131,7 @@ export default function Mind({ narrow, at, scale, turn, picked, onPick }) {
   const [bone, setBone] = useState(null)
   const shown = useRef(0)
   useEffect(() => {
-    const count = narrow ? 5000 : 10000
+    const count = narrow ? 7000 : 14000
     let geometry = null
     let gone = false
     const take = (s) => {
