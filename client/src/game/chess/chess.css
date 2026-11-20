@@ -1,238 +1,363 @@
-/* The board, in the site's own colours rather than a chess set's.
-   Squares are earth and bone; the pieces are one glyph set, coloured,
-   so both sides weigh the same on the page. */
+/* A board you would want to sit down at.
+
+   Walnut and maple rather than the site's grey-brown, because the old
+   squares were two shades of the same mud and the pieces sank into them.
+   Every column is the board's width, so the bars, the board and the
+   buttons line up instead of hanging off a wider page. */
 
 .chess {
+  --sq-light: #ecd9b9;
+  --sq-dark: #a97b55;
+  --mark: rgb(222 196 72 / 0.55);
+  --hint: rgb(38 26 14 / 0.26);
+
   display: grid;
-  gap: var(--s2);
-  justify-items: center;
-  /* A sensible column. The board inside it is bounded by the height as
-     well, so it and the buttons under it are on the screen together
-     rather than the buttons being a scroll away — but the rows of
-     settings are not, or two groups of pills cannot sit side by side
-     and cost a line each. */
-  max-width: min(100%, 640px);
-  margin: 0 auto;
+  gap: 10px;
   width: 100%;
+  /* Bounded by the height too, so the board and the buttons under it are
+     on the screen together rather than a scroll away. 400px is everything
+     on a desktop that is not the board: the panel's heading above, and the
+     settings, both players and the buttons. */
+  max-width: min(100%, calc(100dvh - 400px), 560px);
+  min-width: min(100%, 300px);
+  margin: 0 auto;
 }
+
+/* ---------- settings ---------- */
 
 .chess-top {
-  width: 100%;
   display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: var(--s2) var(--s3);
   flex-wrap: wrap;
-}
-/* The status takes whatever is left of the row, and sits at the end of
-   it, so the two pickers read as a pair of settings rather than as part
-   of the sentence. */
-.chess-top .chess-say { margin-left: auto; }
-
-.chess-levels {
-  display: flex;
-  gap: 2px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 2px;
-}
-.chess-level {
-  font-family: var(--mono);
-  font-size: var(--step--2);
-  letter-spacing: 0.04em;
-  text-transform: lowercase;
-  padding: 4px 12px;
-  border: 0;
-  border-radius: 999px;
-  background: none;
-  color: var(--ink-dim);
-  cursor: pointer;
-}
-.chess-level.is-on {
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
-  color: var(--ink);
-}
-.chess-level:hover:not(.is-on) { color: var(--ink); }
-
-.chess-say {
-  margin: 0;
-  font-family: var(--mono);
-  font-size: var(--step--1);
-  color: var(--ink-dim);
-}
-
-.chess-board {
-  max-width: min(100%, 58vh);
-  display: grid;
-  grid-template-rows: repeat(8, 1fr);
-  aspect-ratio: 1;
-  width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  overflow: hidden;
-  box-shadow: 0 10px 40px rgb(0 0 0 / 0.35);
-}
-.chess-rank { display: grid; grid-template-columns: repeat(8, 1fr); }
-
-.chess-square {
-  position: relative;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  background: #d9cdbb;
-  line-height: 1;
-  /* The square is the container; the glyph inside it is sized in cqw.
-     Putting the unit on the square itself resolves it against whatever
-     container is further up — which is none — and the pieces vanish. */
-  container-type: inline-size;
-}
-.chess-square.is-dark { background: #8a7a63; }
-
-/* Where the last move came from and went to, so you can see what it did
-   without replaying it in your head. */
-.chess-square.is-last { background: color-mix(in srgb, var(--accent) 38%, #d9cdbb); }
-.chess-square.is-dark.is-last { background: color-mix(in srgb, var(--accent) 38%, #8a7a63); }
-
-/* The piece you are holding. */
-.chess-square.is-held { background: color-mix(in srgb, var(--accent) 60%, #d9cdbb); }
-.chess-square.is-dark.is-held { background: color-mix(in srgb, var(--accent) 60%, #8a7a63); }
-
-/* A dot for somewhere you may go, a ring for something you may take —
-   the two mean different things and should not look the same. */
-.chess-square.is-open::after {
-  content: '';
-  width: 26%;
-  height: 26%;
-  border-radius: 50%;
-  background: rgb(0 0 0 / 0.3);
-}
-.chess-square.is-takeable::after {
-  content: '';
-  position: absolute;
-  inset: 8%;
-  border: 3px solid rgb(0 0 0 / 0.32);
-  border-radius: 50%;
-}
-
-/* Both sides outlined, so a white piece reads on a light square and a
-   black one on a dark square. Without it the white pieces on the near
-   rank — which is every piece you own at the start — were #fdfaf4 on
-   #d9cdbb, which is nearly nothing. */
-.chess-piece {
-  /* As a share of its own square, so one rule covers a phone and a
-     desktop and any panel width between. */
-  font-size: 74cqw;
-  color: #fcf8f0;
-  -webkit-text-stroke: 1.2px #2a2520;
-  paint-order: stroke fill;
-  text-shadow: 0 2px 3px rgb(0 0 0 / 0.35);
-  pointer-events: none;
-}
-.chess-piece.is-black {
-  color: #1c1915;
-  -webkit-text-stroke: 1.2px #e8dfcf;
-  text-shadow: 0 2px 3px rgb(0 0 0 / 0.3);
-}
-
-/* What each side has lost, which is the fastest way to read who is
-   winning without counting the board. */
-.chess-taken {
-  width: 100%;
-  min-height: 1.35em;
-  font-size: var(--step-0);
-  line-height: 1;
-  color: #fcf8f0;
-  opacity: 0.8;
-  letter-spacing: -0.08em;
-}
-.chess-taken .is-black { color: #23201c; }
-@media (prefers-color-scheme: dark) {
-  .chess-taken .is-black { color: #6b6257; }
-}
-
-.chess-keys { width: 100%; display: flex; gap: var(--s2); }
-.chess-keys button {
-  font-family: var(--mono);
-  font-size: var(--step--2);
-  padding: 6px 14px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: none;
-  color: var(--ink-dim);
-  cursor: pointer;
-}
-.chess-keys button:hover:not(:disabled) { color: var(--ink); border-color: var(--accent); }
-.chess-keys button:disabled { opacity: 0.4; cursor: default; }
-
-/* ---------- the clock ---------- */
-
-/* Each side's row: what they have taken on the left, what they have left
-   to think with on the right. */
-.chess-side {
-  width: 100%;
-  max-width: min(100%, 58vh);
-  display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: var(--s3);
-  min-height: 1.6em;
+  gap: 8px;
 }
 
-.chess-face {
-  font-family: var(--mono);
-  font-size: var(--step-0);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
-  padding: 2px 10px;
-  border-radius: 4px;
-  border: 1px solid var(--line);
-  color: var(--ink-dim);
-  background: color-mix(in srgb, var(--bg-raised) 70%, transparent);
-  /* Tabular figures and a fixed slot, so the board does not shift
-     sideways every time a digit changes width. */
-  min-width: 4.5ch;
-  text-align: center;
-}
-
-/* Whose turn it is, without having to read the board. */
-.chess-face.is-live {
-  color: var(--ink);
-  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-}
-
-/* Under twenty seconds, which is also where the tenths appear. */
-.chess-face.is-low { color: #ff6b57; border-color: #ff6b57; }
-.chess-face.is-live.is-low {
-  background: color-mix(in srgb, #ff6b57 18%, transparent);
-}
-
-.chess-clocks {
+/* Each group grows to share the row, so whether it is one row (desktop)
+   or two (a phone), the pills run edge to edge under the board's width. */
+.chess-pills {
+  flex: 1 1 auto;
   display: flex;
-  flex-wrap: wrap;
   gap: 2px;
-  border: 1px solid var(--line);
+  padding: 3px;
   border-radius: 999px;
-  padding: 2px;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  border: 1px solid var(--line);
 }
-.chess-clock {
-  flex: 0 0 auto;
-  /* Wide enough to hit: the shortest of these was 39px across. */
-  min-width: 44px;
+.chess-pill {
   font-family: var(--mono);
   font-size: var(--step--2);
-  padding: 6px 8px;
+  letter-spacing: 0.03em;
+  /* Narrow enough that both groups share one row above a 400px board;
+     on a phone they wrap to a row each and stretch to 60px and more. */
+  flex: 1 0 auto;
+  min-width: 38px;
+  min-height: 32px;
+  padding: 0 8px;
   border: 0;
   border-radius: 999px;
   background: none;
   color: var(--ink-dim);
   cursor: pointer;
   white-space: nowrap;
+  transition: background-color 0.15s, color 0.15s;
 }
-.chess-clock.is-on {
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
+.chess-pill:hover:not(.is-on) { color: var(--ink); }
+.chess-pill.is-on {
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+/* ---------- the players ---------- */
+
+.chess-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+}
+
+.chess-avatar {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #3a2c20;
+}
+.chess-avatar.is-w { background: var(--sq-light); }
+.chess-avatar .chess-piece { width: 30px; height: 30px; filter: none; }
+
+.chess-who {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.chess-who b { font-weight: 600; color: var(--ink); font-size: var(--step-0); }
+.chess-who small {
+  font-family: var(--mono);
+  font-size: var(--step--2);
+  color: var(--ink-dim);
+}
+
+/* Thinking: three dots, because a sentence that appears and disappears
+   every move is noise. */
+.chess-dots { display: inline-flex; gap: 3px; align-self: center; }
+.chess-dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: chess-dot 1s infinite ease-in-out;
+}
+.chess-dots i:nth-child(2) { animation-delay: 0.15s; }
+.chess-dots i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes chess-dot {
+  0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chess-dots i { animation: none; opacity: 0.8; }
+}
+
+/* What this side has taken, overlapped like a hand of cards, and how far
+   ahead that leaves them — the fastest way to read who is winning. */
+.chess-took {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+.chess-took .chess-piece {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin-right: -9px;
+  filter: none;
+}
+.chess-took .chess-piece.is-last-of { margin-right: -3px; }
+/* Black on the page's near-black needs a lighter edge to be seen at all. */
+.chess-took .chess-piece.is-b { --fill: #4a3d32; --edge: #b5a48b; }
+.chess-took em {
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: var(--step--2);
+  color: var(--ink-dim);
+  margin-left: 8px;
+}
+
+/* ---------- the clock ---------- */
+
+.chess-face {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: var(--step-0);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: var(--ink-dim);
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+  /* A fixed slot, so nothing shifts when a digit changes width. */
+  min-width: 5.2ch;
+  text-align: right;
+}
+/* Whose turn it is, without having to read the board. */
+.chess-face.is-live { color: var(--bg); background: var(--ink); }
+/* Under twenty seconds, which is also where the tenths appear. */
+.chess-face.is-low { color: #ff6b57; }
+.chess-face.is-live.is-low { color: #fff; background: #d6402d; }
+
+/* ---------- the board ---------- */
+
+.chess-board {
+  position: relative;
+  display: grid;
+  grid-template-rows: repeat(8, 1fr);
+  aspect-ratio: 1;
+  width: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.5),
+    0 0 0 5px #3a2a1d,
+    0 0 0 6px rgb(255 255 255 / 0.06),
+    0 18px 50px rgb(0 0 0 / 0.5);
+  margin: 6px 0;
+}
+.chess-rank { display: grid; grid-template-columns: repeat(8, 1fr); }
+
+.chess-square {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border: 0;
+  padding: 0;
+  background: var(--sq-light);
+  cursor: default;
+  /* The square is the container; the coordinates inside it are sized in
+     cqw. Putting the unit on the square itself resolves it against
+     whatever container is further up — which is none. */
+  container-type: inline-size;
+}
+.chess-square.is-dark { background: var(--sq-dark); }
+.chess-square.is-mine,
+.chess-square.is-open,
+.chess-square.is-takeable { cursor: pointer; }
+.chess-square:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; z-index: 1; }
+
+/* The last move, and the piece in your hand, tinted rather than recoloured
+   so one rule covers both colours of square. */
+.chess-square.is-last { background-image: linear-gradient(var(--mark), var(--mark)); }
+.chess-square.is-held {
+  background-image: linear-gradient(rgb(222 196 72 / 0.8), rgb(222 196 72 / 0.8));
+}
+
+/* Red under a king in check. */
+.chess-square.is-check {
+  background-image: radial-gradient(
+    circle,
+    #ff3b2f 0%,
+    rgb(230 40 30 / 0.75) 30%,
+    rgb(170 0 0 / 0) 72%
+  );
+}
+
+/* A dot for somewhere you may go, a ring for something you may take —
+   the two mean different things and should not look the same. */
+.chess-square.is-open::after {
+  content: '';
+  width: 30%;
+  height: 30%;
+  border-radius: 50%;
+  background: var(--hint);
+}
+.chess-square.is-takeable::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, transparent 62%, var(--hint) 63%);
+}
+@media (hover: hover) {
+  .chess-square.is-open:hover,
+  .chess-square.is-takeable:hover {
+    background-image: linear-gradient(rgb(38 26 14 / 0.14), rgb(38 26 14 / 0.14));
+  }
+  .chess-square.is-mine:hover .chess-piece { transform: translateY(-2%) scale(1.04); }
+}
+
+.chess-piece {
+  /* The colours of a side, read by every shape in Piece.jsx. */
+  --fill: #fbf6ec;
+  --edge: #2b2119;
+  --detail: #2b2119;
+  width: 92%;
+  height: 92%;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 1.5px rgb(0 0 0 / 0.35));
+  transition: transform 0.12s;
+}
+.chess-piece.is-b {
+  --fill: #2a221c;
+  --edge: #120d09;
+  --detail: #d9c7a8;
+}
+.chess-piece path,
+.chess-piece rect,
+.chess-piece circle {
+  fill: var(--fill);
+  stroke: var(--edge);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+.chess-piece .d { fill: none; stroke: var(--detail); stroke-width: 3; stroke-linecap: round; }
+.chess-piece .e { fill: var(--detail); stroke: none; }
+
+/* a–h along the bottom, 1–8 down the left, in the other square's colour. */
+.chess-coord {
+  position: absolute;
+  font-family: var(--mono);
+  font-size: 18cqw;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--sq-dark);
+  pointer-events: none;
+}
+.chess-square.is-dark .chess-coord { color: var(--sq-light); }
+.chess-coord.is-rank { top: 5%; left: 6%; }
+.chess-coord.is-file { bottom: 5%; right: 7%; }
+
+/* ---------- the end of a game ---------- */
+
+.chess-over {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(10 8 6 / 0.45);
+  animation: chess-in 0.25s ease-out;
+}
+.chess-card {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 18px 26px 20px;
+  border-radius: 12px;
+  background: var(--bg-raised, #1c1a17);
+  border: 1px solid var(--line);
+  box-shadow: 0 16px 40px rgb(0 0 0 / 0.5);
+  text-align: center;
+}
+.chess-result { margin: 0; font-size: var(--step-2); color: var(--ink); font-weight: 600; }
+.chess-why { margin: 0 0 10px; font-family: var(--mono); font-size: var(--step--2); color: var(--ink-dim); }
+.chess-again {
+  font-family: var(--mono);
+  font-size: var(--step--1);
+  min-height: 40px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+  cursor: pointer;
+}
+@keyframes chess-in {
+  from { opacity: 0; }
+}
+
+/* ---------- under the board ---------- */
+
+.chess-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.chess-say {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: var(--step--1);
+  color: var(--ink-dim);
+}
+.chess-keys { display: flex; gap: 8px; }
+.chess-keys button {
+  font-family: var(--mono);
+  font-size: var(--step--2);
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: none;
   color: var(--ink);
+  cursor: pointer;
 }
-.chess-clock:hover:not(.is-on) { color: var(--ink); }
+.chess-keys button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.chess-keys button:disabled { opacity: 0.35; cursor: default; }

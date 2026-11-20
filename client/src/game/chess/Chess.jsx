@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Chess as Rules } from 'chess.js'
 import { bestMove, LEVELS, state } from './ai.js'
 import { CONTROLS, budget, controlOf, flagged, left, newClock, press, show, start, stop } from './clock.js'
+import Piece from './Piece.jsx'
 import './chess.css'
 
 // A board you can play on.
@@ -10,11 +11,6 @@ import './chess.css'
 // squares, the pieces and whose turn it is. It holds a FEN string as its
 // state rather than a chess.js instance, because an instance is mutable
 // and React wants to be told that something changed.
-
-// Outline glyphs for both sides, then coloured by CSS. The filled black
-// glyphs (♟♜♞) render at a different weight to the white ones in most
-// fonts, so a board using both looks like two different sets of pieces.
-const GLYPH = { k: '♔', q: '♕', r: '♖', b: '♗', n: '♘', p: '♙' }
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
 const RANKS = [8, 7, 6, 5, 4, 3, 2, 1]
@@ -191,28 +187,66 @@ export default function ChessGame() {
     setFen(to)
   }
 
-  const taken = (colour) => {
-    const start = { p: 8, n: 2, b: 2, r: 2, q: 1 }
-    const left = {}
+  // What a side has lost, best first, and what that is worth.
+  const lost = (colour) => {
+    const start = { q: 1, r: 2, b: 2, n: 2, p: 8 }
+    const have = {}
     for (const row of board) {
-      for (const p of row) if (p && p.color === colour) left[p.type] = (left[p.type] ?? 0) + 1
+      for (const p of row) if (p && p.color === colour) have[p.type] = (have[p.type] ?? 0) + 1
     }
     const out = []
-    for (const type of ['q', 'r', 'b', 'n', 'p']) {
-      for (let i = 0; i < start[type] - (left[type] ?? 0); i++) out.push(type)
+    for (const type of Object.keys(start)) {
+      for (let i = 0; i < start[type] - (have[type] ?? 0); i++) out.push(type)
     }
     return out
   }
+  const lostW = lost('w')
+  const lostB = lost('b')
+  // Ahead by, in the usual pawn = 1 points. Counted off the board rather
+  // than from what was taken, so a promotion counts as the queen it became.
+  let lead = 0
+  for (const row of board) {
+    for (const p of row) if (p) lead += (p.color === 'w' ? 1 : -1) * (POINTS[p.type] ?? 0)
+  }
+
+  // The king that is in check, if one is — red under it, which is the
+  // first thing anybody looks for and was not there at all.
+  let checked = null
+  if (game.inCheck()) {
+    for (const row of board) {
+      for (const p of row) if (p && p.type === 'k' && p.color === turn) checked = p.square
+    }
+  }
+
+  const say = where.over
+    ? where.why === 'time'
+      ? where.winner === 'w'
+        ? 'Rahul ran out of time. You won.'
+        : 'You ran out of time.'
+      : where.why === 'checkmate'
+        ? where.winner === 'w'
+          ? 'Checkmate. You won.'
+          : 'Checkmate. Rahul won.'
+        : 'Drawn — ' + where.why + '.'
+    : thinking
+      ? 'Thinking…'
+      : where.check
+        ? turn === 'w'
+          ? 'You are in check.'
+          : 'Check.'
+        : turn === 'w'
+          ? 'Your move.'
+          : '…'
 
   return (
     <div className="chess">
       <div className="chess-top">
-        <div className="chess-levels" role="group" aria-label="How hard it plays">
+        <div className="chess-pills" role="group" aria-label="How hard it plays">
           {Object.keys(LEVELS).map((name) => (
             <button
               key={name}
               type="button"
-              className={'chess-level' + (level === name ? ' is-on' : '')}
+              className={'chess-pill' + (level === name ? ' is-on' : '')}
               onClick={() => setLevel(name)}
               aria-pressed={level === name}
             >
@@ -220,12 +254,12 @@ export default function ChessGame() {
             </button>
           ))}
         </div>
-        <div className="chess-clocks" role="group" aria-label="Time control">
+        <div className="chess-pills" role="group" aria-label="Time control">
           {CONTROLS.map((c) => (
             <button
               key={c.id}
               type="button"
-              className={'chess-clock' + (control === c.id ? ' is-on' : '')}
+              className={'chess-pill is-clock' + (control === c.id ? ' is-on' : '')}
               onClick={() => pickControl(c.id)}
               aria-pressed={control === c.id}
               aria-label={c.name}
@@ -235,38 +269,17 @@ export default function ChessGame() {
             </button>
           ))}
         </div>
-
-        <p className="chess-say" aria-live="polite">
-          {where.over
-            ? where.why === 'time'
-              ? where.winner === 'w'
-                ? 'It ran out of time. You won.'
-                : 'You ran out of time.'
-              : where.why === 'checkmate'
-                ? where.winner === 'w'
-                  ? 'You won.'
-                  : 'It won.'
-                : 'Drawn — ' + where.why + '.'
-            : thinking
-              ? 'Thinking…'
-              : where.check
-                ? turn === 'w'
-                  ? 'You are in check.'
-                  : 'Check.'
-                : turn === 'w'
-                  ? 'Your move.'
-                  : '…'}
-        </p>
       </div>
 
-      <div className="chess-side">
-        <span className="chess-taken" aria-hidden="true">
-          {taken('b').map((t, i) => (
-            <span key={i} className="is-black">{GLYPH[t]}</span>
-          ))}
-        </span>
-        <Face clock={clock} side="b" live={clock.turn === 'b' && !where.over} />
-      </div>
+      <Player
+        name="Rahul"
+        note={level}
+        colour="b"
+        took={lostW}
+        lead={-lead}
+        thinking={thinking}
+        face={<Face clock={clock} side="b" live={clock.turn === 'b' && !where.over} />}
+      />
 
       <div className="chess-board" role="grid" aria-label="Chess board">
         {RANKS.map((rank, r) => (
@@ -288,45 +301,95 @@ export default function ChessGame() {
                     (dark ? ' is-dark' : '') +
                     (from === square ? ' is-held' : '') +
                     (canGo.includes(square) ? (piece ? ' is-takeable' : ' is-open') : '') +
-                    (last && (last.from === square || last.to === square) ? ' is-last' : '')
+                    (last && (last.from === square || last.to === square) ? ' is-last' : '') +
+                    (checked === square ? ' is-check' : '') +
+                    (piece?.color === 'w' && turn === 'w' && !where.over ? ' is-mine' : '')
                   }
                   onClick={() => tap(square)}
                   aria-label={square + ', ' + name}
                 >
-                  {piece && (
-                    <span className={'chess-piece' + (piece.color === 'b' ? ' is-black' : '')}>
-                      {GLYPH[piece.type]}
-                    </span>
-                  )}
+                  {f === 0 && <span className="chess-coord is-rank">{rank}</span>}
+                  {r === 7 && <span className="chess-coord is-file">{file}</span>}
+                  {piece && <Piece type={piece.type} color={piece.color} />}
                 </button>
               )
             })}
           </div>
         ))}
+
+        {where.over && (
+          <div className="chess-over">
+            <div className="chess-card">
+              <p className="chess-result">
+                {where.winner === 'w' ? 'You won' : where.winner === 'b' ? 'Rahul won' : 'Drawn'}
+              </p>
+              <p className="chess-why">
+                {where.why === 'time'
+                  ? 'on time'
+                  : where.why === 'checkmate'
+                    ? 'by checkmate'
+                    : 'by ' + where.why}
+              </p>
+              <button type="button" className="chess-again" onClick={() => again()}>
+                Play again
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="chess-side">
-        <span className="chess-taken" aria-hidden="true">
-          {taken('w').map((t, i) => (
-            <span key={i}>{GLYPH[t]}</span>
-          ))}
-        </span>
-        <Face clock={clock} side="w" live={clock.turn === 'w' && !where.over} />
-      </div>
+      <Player
+        name="You"
+        colour="w"
+        took={lostB}
+        lead={lead}
+        face={<Face clock={clock} side="w" live={clock.turn === 'w' && !where.over} />}
+      />
 
-      <div className="chess-keys">
-        <button type="button" onClick={back} disabled={!history.current.length || thinking}>
-          Take it back
-        </button>
-        <button type="button" onClick={() => again()}>
-          New game
-        </button>
+      <div className="chess-foot">
+        <p className="chess-say" aria-live="polite">
+          {say}
+        </p>
+        <div className="chess-keys">
+          <button type="button" onClick={back} disabled={!history.current.length || thinking || where.over}>
+            Take back
+          </button>
+          <button type="button" onClick={() => again()}>
+            New game
+          </button>
+        </div>
       </div>
     </div>
   )
 }
 
 const NAMES = { k: 'king', q: 'queen', r: 'rook', b: 'bishop', n: 'knight', p: 'pawn' }
+const POINTS = { q: 9, r: 5, b: 3, n: 3, p: 1 }
+
+// One side of the table: who, what they have taken, and their clock.
+// `took` is the other side's pieces, so they are drawn in its colour.
+function Player({ name, note, colour, took, lead, thinking, face }) {
+  const other = colour === 'w' ? 'b' : 'w'
+  return (
+    <div className="chess-player">
+      <span className={'chess-avatar is-' + colour} aria-hidden="true">
+        <Piece type="k" color={colour} />
+      </span>
+      <span className="chess-who">
+        <b>{name}</b>
+        {note && <small>{note}</small>}
+        {thinking && <span className="chess-dots" aria-hidden="true"><i /><i /><i /></span>}
+      </span>
+      <span className="chess-took" aria-hidden="true">
+        {took.map((t, i) => (
+          <Piece key={i} type={t} color={other} className={took[i + 1] !== t ? 'is-last-of' : ''} />
+        ))}
+        {lead > 0 && <em>+{lead}</em>}
+      </span>
+      {face}
+    </div>
+  )
+}
 
 // One side's clock. Nothing here counts: it asks what is left at the
 // moment it draws, which is why a backgrounded tab cannot gain you time.
@@ -336,7 +399,7 @@ function Face({ clock, side, live }) {
   return (
     <span
       className={'chess-face' + (live ? ' is-live' : '') + (ms < 20_000 ? ' is-low' : '')}
-      aria-label={(side === 'w' ? 'Your' : 'Its') + ' time'}
+      aria-label={(side === 'w' ? 'Your' : "Rahul's") + ' time'}
     >
       {show(ms)}
     </span>

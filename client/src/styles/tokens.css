@@ -35,6 +35,9 @@
   --body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, monospace;
 
+  /* the games used this for years before it existed, and got whatever
+     size their parent had */
+  --step--2: clamp(0.74rem, 0.72rem + 0.1vw, 0.8rem);
   --step--1: clamp(0.83rem, 0.8rem + 0.15vw, 0.9rem);
   --step-0: clamp(1rem, 0.95rem + 0.25vw, 1.13rem);
   --step-1: clamp(1.4rem, 1.2rem + 1vw, 1.9rem);
