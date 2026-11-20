@@ -10,12 +10,11 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import * as THREE from 'three'
-import { head, CENTER } from '../mind/mind.js'
+import { skull } from '../mind/mind.js'
 import {
   mindView,
   MIND_SCALE,
-  HEAD_RY,
-  HEAD_RXZ,
+  SKULL_R,
   HOME_VIEW,
   STAGES,
   ZOOM_MIN,
@@ -2004,29 +2003,25 @@ test('no two branches keep time with each other', () => {
   )
 })
 
-test('mindView frames the whole head, big on a computer and inside a phone', () => {
-  // The real reach, from the generator, not the constants.
-  const h = head({ count: 3000 })
-  let ry = 0
-  let rxz = 0
-  for (let i = 0; i < 3000; i++) {
-    ry = Math.max(ry, Math.abs(h.pos[i * 3 + 1] - CENTER[1]))
-    rxz = Math.max(rxz, Math.hypot(h.pos[i * 3], h.pos[i * 3 + 2]))
-  }
-  assert.ok(ry <= HEAD_RY && rxz <= HEAD_RXZ, 'the head is bigger than the constants say')
+test('mindView frames the whole skull, big on a computer and inside a phone', () => {
+  // The real bounding radius, from the generator, not the constant.
+  const s = skull({ count: 3000 })
+  let R = 0
+  for (let i = 0; i < 3000; i++)
+    R = Math.max(R, Math.hypot(s.pos[i * 3], s.pos[i * 3 + 1], s.pos[i * 3 + 2]))
+  assert.ok(R <= SKULL_R, 'SKULL_R is smaller than the skull')
   for (const [narrow, aspect] of [
     [false, 16 / 9],
     [true, 0.46],
   ]) {
     const v = mindView(narrow)
     assert.ok(v.fixed, 'the hub zoom would move it')
-    const half = Math.tan(((40 / 2) * Math.PI) / 180) * v.pos.distanceTo(v.look)
-    const s = MIND_SCALE(narrow)
-    const tall = (ry * s) / half
-    const wide = (rxz * s) / (half * aspect)
-    assert.ok(tall < 0.95, 'runs off the top or bottom: ' + tall.toFixed(2))
-    assert.ok(wide < 0.95, 'runs off the sides: ' + wide.toFixed(2))
-    assert.ok(Math.max(tall, wide) > 0.8, 'too small to be the subject')
+    const d = v.pos.distanceTo(v.look)
+    const half = Math.tan(((40 / 2) * Math.PI) / 180) * d
+    const room = half * Math.min(1, aspect)
+    const r = R * MIND_SCALE(narrow)
+    assert.ok(r < room * 0.95, 'skull runs off the screen')
+    assert.ok(r > room * (narrow ? 0.75 : 0.8), 'skull too small: ' + (r / room).toFixed(2))
   }
 })
 

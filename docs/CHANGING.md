@@ -169,11 +169,8 @@ are `featured` in `client/src/content/work.js` — add one there (title,
 blurb, body, problem, stack) and it appears in the head, at
 `/c/build/<title in lowercase>`. Nothing in `also` is shown there.
 
-The head and neck, the skull inside them, the neurons and the paths the
-projects travel are generated in
-`client/src/mind/mind.js` (in millimetres, from average adult measurements),
-tested by `mind.test.mjs`; the head and skull are built in `skull.worker.js`
-and `Mind.jsx` draws
+The skull, the neurons and the paths the projects travel are generated in
+`client/src/mind/mind.js`, tested by `mind.test.mjs`; `Mind.jsx` draws
 them. Its framing is `mindView` and `MIND_SCALE` in `hub/layout.js`.
 
 ## Add a game
