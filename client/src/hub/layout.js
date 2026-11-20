@@ -825,14 +825,15 @@ export function spinToFront(node, current) {
 
 // Build: the inside of his head.
 //
-// The skull is drawn at MIND_SCALE, centred on where his head was, with
-// the camera straight in front of it at a fixed distance — `fixed`, so
-// the hub's pinch-zoom and narrow-screen pull-back leave it alone. Sized
-// by its bounding radius rather than its height, because it turns: the
-// widest it ever gets is that sphere. On a computer it fills most of the
-// height; on a phone it is the width that runs out first.
-export const SKULL_R = 0.95
-export const MIND_SCALE = (narrow) => (narrow ? 0.78 : 1.04)
+// A head and neck, drawn at MIND_SCALE and turning about its own middle,
+// which sits where his head was, with the camera straight in front of it
+// at a fixed distance — `fixed`, so the hub's pinch-zoom and narrow-screen
+// pull-back leave it alone. Sized by how far it reaches up and down from
+// that middle and how far it reaches sideways as it turns: on a computer
+// the height runs out first, on a phone the width.
+export const HEAD_RY = 1.13
+export const HEAD_RXZ = 0.95
+export const MIND_SCALE = (narrow) => (narrow ? 0.78 : 0.87)
 
 export function mindView(narrow) {
   const look = headFor(narrow)

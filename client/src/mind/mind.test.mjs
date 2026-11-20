@@ -6,7 +6,7 @@
 
 import assert from 'node:assert/strict'
 import { projectFor } from './projects.js'
-import { skull, skullSdf, neurons, inBrain, loops, loopAt, BRAIN } from './mind.js'
+import { head, headSdf, skull, skullSdf, neurons, inBrain, loops, loopAt, BRAIN } from './mind.js'
 
 let passed = 0
 function test(name, fn) {
@@ -155,6 +155,34 @@ test('projectFor: known ids from featured, null otherwise', () => {
   assert.equal(z.lede, 'Uber for farm machinery.')
   assert.equal(z.body.length, 2)
   assert.match(z.artifacts[0].value, /PostGIS/)
+})
+
+test('head: points finite and on the skin', () => {
+  const h = head({ count: 1500 })
+  assert.equal(h.pos.length, 4500)
+  for (let i = 0; i < 1500; i++) {
+    const p = at(h.pos, i)
+    assert.ok(Number.isFinite(p[0] + p[1] + p[2]))
+    assert.ok(Math.abs(headSdf(p)) < 0.02, 'point ' + i + ' is off the skin')
+  }
+})
+
+test('head: the skull is inside it, and so is everything in the brain', () => {
+  const s = skull({ count: 1500 })
+  for (let i = 0; i < 1500; i++) assert.ok(headSdf(at(s.pos, i)) < 0, 'bone pokes through the skin')
+  const n = neurons({ seeds: 6 })
+  for (let i = 0; i < n.pos.length; i += 3)
+    assert.ok(headSdf([n.pos[i], n.pos[i + 1], n.pos[i + 2]]) < 0)
+})
+
+test('head: a face — eyes open, lips parted, ears standing off the side, a neck', () => {
+  assert.ok(headSdf([0.267, 0.133, 0.6]) < 0, 'no eyeball in the socket')
+  assert.ok(headSdf([0.267, 0.133, 0.64]) > 0, 'the eyelids are closed')
+  assert.ok(headSdf([0, -0.396, 0.7]) > 0, 'the lips are sealed shut')
+  assert.ok(headSdf([0, -0.35, 0.64]) < 0, 'no upper lip')
+  assert.ok(headSdf([0.6, 0.02, -0.17]) < 0, 'no ear')
+  assert.ok(headSdf([0, -1.2, -0.15]) < 0, 'no neck')
+  assert.ok(headSdf([0, -1.5, -0.15]) > 0, 'the neck does not end')
 })
 
 console.log('\n' + passed + ' passed')

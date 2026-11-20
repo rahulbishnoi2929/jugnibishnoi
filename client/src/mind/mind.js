@@ -210,8 +210,12 @@ const ramus = both((p) =>
 const jawMM = (p) => {
   // Nothing of the jaw is above the condyle, at y = -1: a lower bound on
   // the distance is enough up there, and it skips the curve search for
-  // most of the head.
-  if (p[1] > 4) return p[1] - 1
+  // most of the head. It once said `p[1] - 1`, which is less than the
+  // real distance — harmless for the bone, but the skin grows six
+  // millimetres out from it and turned that into a sheet at eye level.
+  // Far enough above it that the skin's six millimetres cannot reach
+  // down to it; the bound is the distance to the top of the condyle.
+  if (p[1] > 12) return p[1] + 1
   let d = jawBody(p)
   d = smin(d, ell(p, [0, -79, 64], [12, 7, 6]), 6) // chin
   return smin(d, ramus(p), 8)
@@ -238,27 +242,56 @@ const holes = (p) => Math.min(orbit(mm(p)), nose(mm(p)), ear(mm(p))) / MM
 const teeth = (p) => teethMM(mm(p)) / MM
 const jaw = (p) => jawMM(mm(p)) / MM
 
-const grad = (p, h = 1e-3) =>
+const grad = (f, p, h = 1e-3) =>
   [0, 1, 2].map((k) => {
     const a = p.slice()
     const b = p.slice()
     a[k] += h
     b[k] -= h
-    return (skullSdf(a) - skullSdf(b)) / (2 * h)
+    return (f(a) - f(b)) / (2 * h)
   })
 
-// Walk a point onto the surface along the gradient. Returns null if it
-// will not settle — a point that started in a crease can oscillate.
-function settle(p) {
+// Walk a point onto the surface of f along the gradient. Returns null if
+// it will not settle — a point that started in a crease can oscillate.
+function settle(f, p) {
   for (let i = 0; i < 8; i++) {
-    const d = skullSdf(p)
+    const d = f(p)
     if (Math.abs(d) < 0.002) break
-    const g = grad(p)
+    const g = grad(f, p)
     const g2 = g[0] * g[0] + g[1] * g[1] + g[2] * g[2]
     if (g2 < 1e-9) return null
     p = p.map((v, k) => v - (d * g[k]) / g2)
   }
-  return Math.abs(skullSdf(p)) < 0.01 && Math.hypot(p[0], p[1], p[2]) <= 1 ? p : null
+  return Math.abs(f(p)) < 0.01 ? p : null
+}
+
+// Scatter `count` points over the surface of f inside a box, keeping
+// every point that `feature` says matters and `plain` of the rest, each
+// with its unit normal and a size.
+function scatter(f, { seed, count, box, feature, plain }) {
+  const rand = rng(seed)
+  const pos = new Float32Array(count * 3)
+  const normal = new Float32Array(count * 3)
+  const size = new Float32Array(count)
+  let n = 0
+  while (n < count) {
+    // Most of the box is nowhere near the surface. One look at the
+    // distance throws those away before paying for the walk onto it.
+    const q = box.map(([lo, hi]) => lo + (hi - lo) * rand())
+    if (Math.abs(f(q)) > 0.04) continue
+    const p = settle(f, q)
+    if (!p) continue
+    if (!feature(p) && rand() > plain) continue
+    const g = grad(f, p)
+    const l = Math.hypot(g[0], g[1], g[2]) || 1
+    for (let k = 0; k < 3; k++) {
+      pos[n * 3 + k] = p[k]
+      normal[n * 3 + k] = g[k] / l
+    }
+    size[n] = 0.6 + 0.8 * rand()
+    n++
+  }
+  return { pos, normal, size }
 }
 
 // Points everywhere, and extra round the holes and on the teeth. The
@@ -268,30 +301,114 @@ function settle(p) {
 // from you, faint where it faces you — and it picks out the outline, the
 // sockets and the jaw from whichever side you are looking.
 export function skull({ seed = 11, count = 6000 } = {}) {
-  const rand = rng(seed)
-  const pos = new Float32Array(count * 3)
-  const normal = new Float32Array(count * 3)
-  const size = new Float32Array(count)
-  let n = 0
-  while (n < count) {
-    // Most of the box is nowhere near bone. One look at the distance
-    // throws those away before paying for the walk onto the surface.
-    const q = [rand() * 2 - 1, rand() * 2 - 1, rand() * 2 - 1]
-    if (Math.abs(skullSdf(q)) > 0.04) continue
-    const p = settle(q)
-    if (!p) continue
-    const feature = Math.abs(holes(p)) < 0.05 || teeth(p) < 0.01 || jaw(p) < 0.01
-    if (!feature && rand() > 0.55) continue
-    const g = grad(p)
-    const l = Math.hypot(g[0], g[1], g[2]) || 1
-    for (let k = 0; k < 3; k++) {
-      pos[n * 3 + k] = p[k]
-      normal[n * 3 + k] = g[k] / l
-    }
-    size[n] = 0.6 + 0.8 * rand()
-    n++
-  }
-  return { pos, normal, size, radius: 1 }
+  const s = scatter(skullSdf, {
+    seed,
+    count,
+    box: [
+      [-1, 1],
+      [-1, 1],
+      [-1, 1],
+    ],
+    feature: (p) => Math.abs(holes(p)) < 0.05 || teeth(p) < 0.01 || jaw(p) < 0.01,
+    plain: 0.55,
+  })
+  return { ...s, radius: 1 }
+}
+
+// ============================================================
+// the head
+// ============================================================
+//
+// Skin over the skull: the bone without its holes, grown outward by six
+// millimetres, then the soft parts the bone does not have — cheeks, lips,
+// the nose, eyes under their lids, ears, and the neck. Building it out of
+// the skull rather than beside it keeps the two agreeing: the ear sits on
+// the ear canal, the eyes in their sockets, the lips over the teeth.
+
+// The bone, solid: no sockets, no nose opening, no teeth.
+function boneMM(p) {
+  let d = cranium(p)
+  d = smin(d, maxilla(p), 14)
+  d = smin(d, brow(p), 6)
+  d = smin(d, cheek(p), 10)
+  d = smin(d, nasalBones(p), 5)
+  d = smin(d, mastoid(p), 12)
+  return smin(d, jawMM(p), 6)
+}
+
+// The eye: a ball in the socket, and the lids round it with an almond of
+// an opening, so it reads as an eye rather than a marble.
+const eyeball = both((p) => ell(p, [32, 16, 63], [12.5, 12.5, 12.5]))
+const eyeSlit = both((p) => ell(p, [32, 16, 76], [14, 5.6, 12]))
+
+// The outer ear: a flat oval standing off the side of the head at the
+// ear canal, with a raised rim round the back and top and a bowl in it.
+const earFlap = both((p) => {
+  const flap = ell(p, [71, 2, -20], [4.5, 30, 17])
+  const rim = Math.max(ell(p, [73, 3, -21], [6.5, 30, 17]), -ell(p, [75, 5, -19], [7, 24, 12]))
+  return smax(smin(flap, rim, 2), -ell(p, [74.5, -5, -17], [3.5, 9, 7]), 1.5)
+})
+
+// The nose, outside the bone: bridge, tip, the wings either side, and the
+// nostrils under them.
+const noseFlesh = (p) => {
+  let d = rod(p, [0, 28, 86], [0, -3, 100], 6)
+  d = smin(d, ell(p, [0, -6, 99], [9, 8, 8.5]), 5)
+  d = smin(d, both((q) => ell(q, [12, -12, 90], [8, 6.5, 7]))(p), 4)
+  return smax(d, -both((q) => ell(q, [6, -15.5, 95], [3.6, 2.2, 4.5]))(p), 1)
+}
+
+// The neck: an oval column from under the skull to where the shoulders
+// would begin, with the larynx at the front.
+const neck = (p) => {
+  const ring = (Math.hypot(p[0] / 52, (p[2] + 18) / 56) - 1) * 52
+  const col = Math.max(ring, Math.max(p[1] + 40, -170 - p[1]))
+  return smin(col, ell(p, [0, -105, 37], [8, 11, 6]), 6)
+}
+
+function headMM(p) {
+  let d = boneMM(p) - 6 // skin
+  // The lower face carries far more than six millimetres: without this
+  // it came out gaunt, with the edges of the jaw showing through.
+  d = smin(d, ell(p, [0, -50, 28], [54, 40, 46]), 22)
+  d = smin(d, both((q) => ell(q, [42, -26, 46], [22, 26, 22]))(p), 18) // cheeks
+  d = smin(d, ell(p, [0, -46, 60], [30, 18, 18]), 16) // round the mouth
+  d = smin(d, ell(p, [0, -88, 66], [16, 10, 10]), 10) // chin
+  d = smin(d, ell(p, [0, -42, 77], [19, 5, 6]), 4) // upper lip
+  d = smin(d, ell(p, [0, -53, 75], [17, 5.5, 6]), 4) // lower lip
+  d = smax(d, -ell(p, [0, -47.5, 82], [20, 0.9, 9]), 1) // between them
+  d = smin(d, noseFlesh(p), 5)
+  d = smax(d, -eyeSlit(p), 2)
+  d = Math.min(d, eyeball(p))
+  d = smin(d, earFlap(p), 4)
+  return smin(d, neck(p), 34)
+}
+
+export const headSdf = (p) => headMM(mm(p)) / MM
+
+// The middle of the head and neck together, in units: the point it turns
+// about and is framed on. The skull alone was framed on its own middle.
+export const CENTER = [0, -0.3, 0]
+
+const faceParts = (p) => {
+  const q = mm(p)
+  return (
+    eyeSlit(q) < 6 || noseFlesh(q) < 4 || earFlap(q) < 4 || (Math.abs(q[1] + 47.5) < 9 && q[2] > 60)
+  )
+}
+
+export function head({ seed = 13, count = 9000 } = {}) {
+  return scatter(headSdf, {
+    seed,
+    count,
+    box: [
+      [-0.75, 0.75],
+      [-1.65, 0.9],
+      [-1, 1],
+    ],
+    feature: faceParts,
+    plain: 0.6,
+  })
 }
 
 // ============================================================
