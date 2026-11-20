@@ -70,11 +70,12 @@ const SHAPES = {
   ),
 }
 
-export default function Piece({ type, color, className = '' }) {
+export default function Piece({ type, color, className = '', style }) {
   return (
     <svg
       viewBox="6 5 88 88"
       className={'chess-piece is-' + color + (className ? ' ' + className : '')}
+      style={style}
       aria-hidden="true"
       focusable="false"
     >

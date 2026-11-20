@@ -62,7 +62,9 @@
   white-space: nowrap;
   transition: background-color 0.15s, color 0.15s;
 }
-.chess-pill:hover:not(.is-on) { color: var(--ink); }
+.chess-pill:hover:not(.is-on):not(:disabled) { color: var(--ink); }
+/* Locked once the game is under way. */
+.chess-pill:disabled:not(.is-on) { opacity: 0.35; cursor: default; }
 .chess-pill.is-on {
   background: var(--accent);
   color: var(--bg);
@@ -152,28 +154,6 @@
 }
 
 /* ---------- the clock ---------- */
-
-.chess-face {
-  flex: 0 0 auto;
-  margin-left: auto;
-  font-family: var(--mono);
-  font-size: var(--step-0);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  padding: 8px 10px;
-  border-radius: 6px;
-  color: var(--ink-dim);
-  background: color-mix(in srgb, var(--ink) 7%, transparent);
-  /* A fixed slot, so nothing shifts when a digit changes width. */
-  min-width: 5.2ch;
-  text-align: right;
-}
-/* Whose turn it is, without having to read the board. */
-.chess-face.is-live { color: var(--bg); background: var(--ink); }
-/* Under twenty seconds, which is also where the tenths appear. */
-.chess-face.is-low { color: #ff6b57; }
-.chess-face.is-live.is-low { color: #fff; background: #d6402d; }
 
 /* ---------- the board ---------- */
 
@@ -279,6 +259,33 @@
 }
 .chess-piece .d { fill: none; stroke: var(--detail); stroke-width: 3; stroke-linecap: round; }
 .chess-piece .e { fill: var(--detail); stroke: none; }
+
+/* Dragging: the piece left behind fades, and a copy follows the pointer. */
+.chess-square.is-mine { touch-action: none; }
+.chess-piece.is-lifted { opacity: 0.3; }
+.chess-piece.is-dragged {
+  position: absolute;
+  z-index: 2;
+  transform: translate(-50%, -50%) scale(1.12);
+  filter: drop-shadow(0 8px 6px rgb(0 0 0 / 0.45));
+  transition: none;
+}
+
+/* What a pawn becomes, four pieces in a row. */
+.chess-promo { display: flex; gap: 6px; margin-bottom: 10px; }
+.chess-promo button {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--sq-light);
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.12s;
+}
+.chess-promo button:hover,
+.chess-promo button:focus-visible { transform: translateY(-2px); border-color: var(--accent); }
 
 /* a–h along the bottom, 1–8 down the left, in the other square's colour. */
 .chess-coord {

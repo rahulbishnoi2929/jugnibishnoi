@@ -1,10 +1,10 @@
-// Run: node client/src/game/chess/clock.test.mjs
+// Run: node client/src/game/clock.test.mjs
 //
 // The clock takes the time rather than reading it, so a game that flags
 // on move forty plays out here in no time at all.
 
 import assert from 'node:assert/strict'
-import { CONTROLS, controlOf, newClock, left, start, press, stop, flagged, show, budget } from './clock.js'
+import { TURN, newClock, left, start, press, stop, flagged, show, budget } from './clock.js'
 
 let passed = 0
 function test(name, fn) {
@@ -20,20 +20,20 @@ function test(name, fn) {
 }
 
 test('a fresh clock has not started', () => {
-  const c = newClock(60_000)
+  const c = newClock(60_000, null)
   assert.equal(left(c, 'w', 1000), 60_000, 'white lost time before the game began')
   assert.equal(left(c, 'b', 9999), 60_000, 'black lost time before the game began')
   assert.equal(flagged(c, 9999), null)
 })
 
 test('only the side to move loses time', () => {
-  let c = start(newClock(60_000), 'w', 0)
+  let c = start(newClock(60_000, null), 'w', 0)
   assert.equal(left(c, 'w', 10_000), 50_000, 'white should have spent ten seconds')
   assert.equal(left(c, 'b', 10_000), 60_000, 'black is not on the clock yet')
 })
 
 test('pressing it banks what you used and hands it over', () => {
-  let c = start(newClock(60_000), 'w', 0)
+  let c = start(newClock(60_000, null), 'w', 0)
   c = press(c, 10_000)
   assert.equal(c.w, 50_000, 'white should have banked fifty seconds')
   assert.equal(c.turn, 'b')
@@ -43,7 +43,7 @@ test('pressing it banks what you used and hands it over', () => {
 
 test('a whole game of presses adds up', () => {
   // Ten moves each, three seconds a move.
-  let c = start(newClock(60_000), 'w', 0)
+  let c = start(newClock(60_000, null), 'w', 0)
   let now = 0
   for (let i = 0; i < 20; i++) {
     now += 3000
@@ -54,7 +54,7 @@ test('a whole game of presses adds up', () => {
 })
 
 test('it flags, and not before', () => {
-  let c = start(newClock(60_000), 'w', 0)
+  let c = start(newClock(60_000, null), 'w', 0)
   assert.equal(flagged(c, 59_999), null, 'flagged with a millisecond left')
   assert.equal(flagged(c, 60_000), 'w', 'did not flag on empty')
   assert.equal(flagged(c, 90_000), 'w', 'should stay flagged')
@@ -63,7 +63,7 @@ test('it flags, and not before', () => {
 })
 
 test('stopping it keeps what was left', () => {
-  let c = start(newClock(60_000), 'w', 0)
+  let c = start(newClock(60_000, null), 'w', 0)
   c = stop(c, 20_000)
   assert.equal(c.w, 40_000)
   assert.equal(c.turn, null)
@@ -71,7 +71,7 @@ test('stopping it keeps what was left', () => {
 })
 
 test('no clock means no clock', () => {
-  const c = newClock(null)
+  const c = newClock(null, null)
   assert.equal(left(c, 'w', 10_000), null)
   assert.equal(flagged(c, 10_000), null, 'a game with no clock cannot be lost on time')
 })
@@ -109,7 +109,7 @@ test('the opponent spends its time at a rate that lasts', () => {
 })
 
 test('a minute a move refills after every move, and flags inside one', () => {
-  let c = start(newClock(60_000, true), 'w', 0)
+  let c = start(newClock(60_000, 60_000), 'w', 0)
   // Fifty seconds a move, forever: on a game clock white would be out on
   // the second move. A move clock does not care.
   let now = 0
@@ -126,17 +126,19 @@ test('a minute a move refills after every move, and flags inside one', () => {
   assert.equal(flagged(c, now + 60_000), c.turn, 'a move that takes the whole minute should lose')
 })
 
-test('the time controls are the ones offered', () => {
-  assert.deepEqual(CONTROLS.map((c) => c.id), ['off', '1', '2', '10', '30', 'move'])
-  assert.equal(controlOf('10').ms, 600_000)
-  assert.equal(controlOf('move').ms, 60_000)
-  assert.equal(controlOf('move').perMove, true)
-  assert.equal(controlOf('nonsense').id, 'off', 'an unknown control should fall back to no clock')
-  for (const c of CONTROLS) {
-    if (c.ms !== null) assert.ok(c.ms > 0, c.id + ' is not a length of time')
-    assert.ok(c.label && c.label.length <= 3, c.id + ' has a label too long for a row of five')
-    assert.ok(c.name && c.name.length > 2, c.id + ' has no name for a screen reader')
-  }
+test('every turn is timed: thirty seconds for the first, a minute after', () => {
+  let c = start(newClock(), 'w', 0)
+  assert.equal(left(c, 'w', 0), TURN.first)
+  assert.equal(flagged(c, 29_999), null)
+  assert.equal(flagged(c, 30_000), 'w', 'a first move that takes thirty seconds should lose')
+
+  c = press(start(newClock(), 'w', 0), 10_000)
+  assert.equal(c.w, TURN.next, 'after the first move a side gets the full minute')
+  assert.equal(left(c, 'b', 10_000), TURN.first, 'the other side still has its first thirty seconds')
+  c = press(c, 20_000)
+  assert.equal(c.b, TURN.next)
+  assert.equal(flagged(c, 20_000 + 59_999), null, 'the minute is a real minute')
+  assert.equal(flagged(c, 20_000 + 60_000), 'w')
 })
 
 console.log('\n' + passed + ' passed')

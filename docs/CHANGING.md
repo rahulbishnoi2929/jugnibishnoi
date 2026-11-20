@@ -140,13 +140,14 @@ arms when he is holding the playlists out. `Figure.jsx` only reads it.
 
 ---
 
-## Change the chess clock
+## Change the turn timer
 
-The time controls are `CONTROLS` at the top of
-`client/src/game/chess/clock.js` — an id, a short label for the button,
-a full name for a screen reader, and a length in milliseconds. Adding one
-is a line. Add `perMove: true` and the length is a limit on each move
-instead of the whole game: it refills every time that side moves.
+Every turn in both games is timed: `TURN` at the top of
+`client/src/game/clock.js` — thirty seconds for a side's first move, a
+minute for each one after, refilled every move. Running out loses. Change
+the two numbers and both games follow. `useTurnClock` in
+`client/src/game/hooks.js` is what a game uses to run it, and `Face.jsx`
+draws it.
 
 The clock itself is pure and takes the current time rather than reading
 it, so `clock.test.mjs` plays out a game that flags on move forty in no
@@ -166,6 +167,8 @@ computer, so the online game will use the same module.
 1. Make `client/src/game/<name>/` with the game in it. Keep the rules
    and the opponent in a pure module — no React, no DOM — so they can be
    tested under node the way `chess/ai.js` and `connect4/engine.js` are.
+   Take an `onBusy` prop and call it with whether a game is under way, so
+   the room asks before leaving throws it away.
 2. Add a test beside it and a line to the `test` script in
    `package.json`.
 3. Register it in `client/src/game/Games.jsx`: a title, a one-line note,

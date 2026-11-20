@@ -1,4 +1,4 @@
-// A chess clock. Pure — no React, no timers, no Date.now inside it.
+// A game clock, for chess and Connect Four alike. Pure — no React, no timers, no Date.now inside it.
 //
 // Every function here is given the current time rather than reading it,
 // which is what makes a clock testable: a game that flags on move forty
@@ -11,33 +11,20 @@
 // what stops a clock drifting when a tab is backgrounded and the timer it
 // was leaning on stops firing.
 
-// What you can pick.
-//
-// Two labels each: a short one for the button, because five of
-// "30 min" across a row wraps onto a second line and costs more height
-// than the board can spare, and a full one for anybody listening rather
-// than looking.
-export const CONTROLS = [
-  { id: 'off', label: '∞', name: 'No clock', ms: null },
-  { id: '1', label: "1'", name: 'One minute', ms: 60_000 },
-  { id: '2', label: "2'", name: 'Two minutes', ms: 120_000 },
-  { id: '10', label: "10'", name: 'Ten minutes', ms: 600_000 },
-  { id: '30', label: "30'", name: 'Thirty minutes', ms: 1_800_000 },
-  // Not a budget for the game but a limit on each move: a minute to play,
-  // refilled every time you do, and taking the whole minute loses.
-  { id: 'move', label: "1'↻", name: 'One minute a move', ms: 60_000, perMove: true },
-]
+// Every turn is timed. Thirty seconds for your first move, a minute for
+// each one after, and taking all of it loses. Your bank goes back to a
+// full minute every time you move rather than carrying over, so a quick
+// move buys nothing but the move.
+export const TURN = { first: 30_000, next: 60_000 }
 
-export const controlOf = (id) => CONTROLS.find((c) => c.id === id) ?? CONTROLS[0]
-
-// `refill` is set on a move clock: what a side's time goes back to each
-// time it moves.
-export const newClock = (ms, perMove = false) => ({
+// `refill` is what a side's time goes back to each time it moves; without
+// one the clock is an ordinary game clock that only ever runs down.
+export const newClock = (ms = TURN.first, refill = TURN.next) => ({
   w: ms,
   b: ms,
   turn: null,
   since: null,
-  refill: perMove ? ms : null,
+  refill,
 })
 
 // What a side has left, now.

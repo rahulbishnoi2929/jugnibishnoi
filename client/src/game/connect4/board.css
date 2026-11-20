@@ -58,6 +58,7 @@
   transition: color 150ms var(--ease), border-color 150ms var(--ease);
 }
 
+.cf-col.is-hover,
 .cf-col:hover:not(:disabled) {
   color: var(--node);
   border-color: var(--node);
@@ -92,9 +93,29 @@
   background: #3ddc97;
 }
 
+.cf-grid.is-yours .cf-cell { cursor: pointer; }
+
+/* Where your disc would land. */
+.cf-cell.is-ghost { background: color-mix(in srgb, #d4a72c 35%, #16170f); }
+
+/* The disc just played falls in from above, further the lower it lands. */
+.cf-cell.is-fresh { animation: cf-fall calc(120ms + var(--fall) * 45ms) cubic-bezier(0.5, 0, 0.9, 0.6); }
+@keyframes cf-fall {
+  from { transform: translateY(calc(var(--fall) * -110%)); }
+}
+
 .cf-cell.is-win {
   outline: 2px solid var(--ink);
   outline-offset: -3px;
+  animation: cf-win 0.9s ease-in-out infinite alternate;
+}
+@keyframes cf-win {
+  to { transform: scale(0.86); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-cell.is-fresh,
+  .cf-cell.is-win { animation: none; }
 }
 
 .cf-key {
@@ -117,3 +138,6 @@
 .cf-dot.is-cpu {
   margin-left: var(--s3);
 }
+
+/* The clocks sit beside their dots here, not pushed to the edge. */
+.cf-key .games-face { margin-left: 0; font-size: var(--step--1); padding: 4px 8px; }

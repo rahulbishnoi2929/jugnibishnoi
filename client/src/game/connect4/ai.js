@@ -89,18 +89,22 @@ function search(b, depth, alpha, beta, maximising) {
 }
 
 // Best column for the computer, or -1 if the board is full.
-export function bestMove(b, depth = DEPTH) {
+//
+// Among columns that score the same it picks at random. Without that it
+// played the identical game every time, and a line that beat it once
+// beat it forever.
+export function bestMove(b, depth = DEPTH, rand = Math.random) {
   const moves = validMoves(b)
   if (!moves.length) return -1
 
   let best = -Infinity
-  let pick = moves[0]
-  for (const m of moves.sort((x, y) => COL_BONUS[y] - COL_BONUS[x])) {
+  let ties = []
+  for (const m of moves) {
     const v = search(drop(b, m, CPU), depth - 1, -Infinity, Infinity, false)
     if (v > best) {
       best = v
-      pick = m
-    }
+      ties = [m]
+    } else if (v === best) ties.push(m)
   }
-  return pick
+  return ties[Math.floor(rand() * ties.length)]
 }
