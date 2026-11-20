@@ -15,10 +15,11 @@
   gap: 10px;
   width: 100%;
   /* Bounded by the height too, so the board and the buttons under it are
-     on the screen together rather than a scroll away. 400px is everything
-     on a desktop that is not the board: the panel's heading above, and the
-     settings, both players and the buttons. */
-  max-width: min(100%, calc(100dvh - 400px), 560px);
+     on the screen together rather than a scroll away. 380px is everything
+     on a desktop that is not the board: the way back above it, and the
+     settings, both players and the buttons. At 657 tall the board stops
+     at its 300px floor and the buttons still end inside the window. */
+  max-width: min(100%, calc(100dvh - 380px), 560px);
   min-width: min(100%, 300px);
   margin: 0 auto;
 }

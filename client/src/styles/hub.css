@@ -230,10 +230,9 @@
 .panel:has(.games) .panel-place {
   display: none;
 }
-.panel:has(.games) .panel-title {
-  font-size: var(--step-2);
-  margin-bottom: var(--s2);
-}
+/* No heading during a game: "← Games" already says where you are, and
+   the 85 pixels it took are a bigger board on a laptop. */
+.panel:has(.games) .panel-title { display: none; }
 /* Two ways back, on one line: out of the game, and out of the room. */
 .panel:has(.games) .panel-back { margin-bottom: var(--s2); }
 .panel:has(.games) .games-back { margin-top: calc(var(--s2) * -1); }
@@ -247,7 +246,6 @@
      side the squares came out at 43 across, one under what a finger
      needs; at 8px they clear it. */
   .panel:has(.games) .panel-scroll { padding-inline: var(--s2); }
-  .panel:has(.games) .panel-title { display: none; }
   .panel:has(.games) .panel-back { margin-bottom: var(--s2); }
 }
 
