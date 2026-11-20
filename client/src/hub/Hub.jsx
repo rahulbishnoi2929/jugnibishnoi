@@ -658,7 +658,13 @@ function Travel({ view, zoom }) {
     // shrinks instead. Nine thousand units of pull-back would be numerically
     // miserable and would look identical.
     const z = Math.min(zoom.current, ZOOM_HUB_MAX) * fit
-    applyZoom(view, z, targetPos.current, targetLook.current)
+    // Inside his head the camera stays where the view puts it: the zoom
+    // and the narrow-screen pull-back are for the hub, and both would
+    // drag it up and away from the skull.
+    if (view.fixed) {
+      targetPos.current.copy(view.pos)
+      targetLook.current.copy(view.look)
+    } else applyZoom(view, z, targetPos.current, targetLook.current)
     camera.position.lerp(targetPos.current, k)
     look.current.lerp(targetLook.current, k)
     camera.lookAt(look.current)

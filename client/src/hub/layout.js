@@ -825,14 +825,20 @@ export function spinToFront(node, current) {
 
 // Build: the inside of his head.
 //
-// The skull is generated at radius 1 and drawn at MIND_SCALE, centred on
-// where his head was, with the camera straight in front of it. Close
-// enough to fill most of the frame, far enough that it is a whole skull
-// and not a wall of bone — on a phone that is the width that decides it,
-// which is why the phone's scale is smaller and its camera further back.
+// The skull is drawn at MIND_SCALE, centred on where his head was, with
+// the camera straight in front of it at a fixed distance — `fixed`, so
+// the hub's pinch-zoom and narrow-screen pull-back leave it alone. Sized
+// by its bounding radius rather than its height, because it turns: the
+// widest it ever gets is that sphere. On a computer it fills most of the
+// height; on a phone it is the width that runs out first.
+export const SKULL_R = 0.82
 export const MIND_SCALE = (narrow) => (narrow ? 0.9 : 1.2)
 
 export function mindView(narrow) {
   const look = headFor(narrow)
-  return { pos: look.clone().add(new THREE.Vector3(0, 0, narrow ? 6.9 : 4.85)), look }
+  return {
+    pos: look.clone().add(new THREE.Vector3(0, 0, narrow ? 4.85 : 3.05)),
+    look,
+    fixed: true,
+  }
 }

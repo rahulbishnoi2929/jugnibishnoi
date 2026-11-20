@@ -48,6 +48,19 @@ test('skull: has eye sockets — the socket centres are outside the bone', () =>
   assert.ok(skullSdf([0, 0.15, -0.05]) < 0, 'middle of the cranium is inside')
 })
 
+test('skull: every point carries a unit normal', () => {
+  const s = skull({ count: 1000 })
+  assert.equal(s.normal.length, s.pos.length)
+  for (let i = 0; i < 1000; i++) {
+    const l = Math.hypot(s.normal[i * 3], s.normal[i * 3 + 1], s.normal[i * 3 + 2])
+    assert.ok(Math.abs(l - 1) < 1e-3, 'normal ' + i + ' has length ' + l)
+  }
+})
+
+test('skull: has a nose — the middle of the nasal opening is not bone', () => {
+  assert.ok(skullSdf([0, -0.18, 0.6]) > 0)
+})
+
 test('skull: same seed, same head', () => {
   assert.deepEqual(skull({ seed: 3, count: 500 }).pos, skull({ seed: 3, count: 500 }).pos)
 })
@@ -70,6 +83,7 @@ test('neurons: every vertex finite and inside the brain', () => {
     const p = [n.pos[i], n.pos[i + 1], n.pos[i + 2]]
     assert.ok(Number.isFinite(p[0] + p[1] + p[2]))
     assert.ok(inBrain(p), 'a neuron left the brain')
+    assert.ok(skullSdf(p) < 0, 'a neuron is in a socket or outside the bone')
   }
   for (const a of n.along) assert.ok(a >= 0 && a <= 1)
   for (const f of n.phase) assert.ok(f >= 0 && f < 1)
@@ -90,7 +104,13 @@ test('loops: closed, inside the brain, never touching each other', () => {
     }
     for (let t = 0; t < 1; t += 0.01) {
       const at = ls.map((l) => loopAt(l, t))
-      for (const p of at) assert.ok(inBrain(p), 'a project left the brain')
+      // Well inside, not merely inside: the label is drawn round the point,
+      // and a point on the edge of the brain puts half a label outside the
+      // head.
+      for (const p of at) {
+        assert.ok(inBrain(p, 0.75), 'a project wandered to the edge of the brain')
+        assert.ok(skullSdf(p) < -0.08, 'a project is too close to the bone')
+      }
       for (let i = 0; i < at.length; i++)
         for (let j = i + 1; j < at.length; j++)
           assert.ok(

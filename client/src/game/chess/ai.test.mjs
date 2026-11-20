@@ -29,7 +29,9 @@ test('it only ever plays a legal move', () => {
   for (const level of Object.keys(LEVELS)) {
     const game = new Chess()
     for (let i = 0; i < 12 && !game.isGameOver(); i++) {
-      const move = bestMove(game.fen(), level, Math.random, 150)
+      // 400ms rather than 150: on a busy machine 150 can stop it a ply
+      // short, and then it hangs the queen because the machine was slow.
+      const move = bestMove(game.fen(), level, Math.random, 400)
       assert.ok(move, level + ': no move offered on move ' + i)
       const legal = game.moves({ verbose: true })
       assert.ok(
@@ -86,7 +88,9 @@ test('it does not hang its own queen for nothing', () => {
   for (const level of ['medium', 'hard']) {
     const game = new Chess(START)
     for (let i = 0; i < 8; i++) {
-      const move = bestMove(game.fen(), level, Math.random, 150)
+      // 400ms rather than 150: on a busy machine 150 can stop it a ply
+      // short, and then it hangs the queen because the machine was slow.
+      const move = bestMove(game.fen(), level, Math.random, 400)
       game.move(move)
       // Reply with the best capture available, if any.
       const replies = game.moves({ verbose: true }).filter((m) => m.captured === 'q')

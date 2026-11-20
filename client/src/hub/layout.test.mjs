@@ -10,9 +10,11 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import * as THREE from 'three'
+import { skull } from '../mind/mind.js'
 import {
   mindView,
   MIND_SCALE,
+  SKULL_R,
   HOME_VIEW,
   STAGES,
   ZOOM_MIN,
@@ -63,15 +65,7 @@ import {
   spinToFront,
   stagePlacement,
 } from './layout.js'
-import {
-  PLANETS,
-  blackbody,
-  galaxy,
-  orbitOf,
-  solarSystem,
-  starfield,
-  universe,
-} from './cosmos.js'
+import { PLANETS, blackbody, galaxy, orbitOf, solarSystem, starfield, universe } from './cosmos.js'
 
 let passed = 0
 const test = (name, fn) => {
@@ -93,8 +87,7 @@ const test = (name, fn) => {
 // tests still measured a ring of five, so nothing could have failed.
 //
 // Reading the files means adding a chapter is a change the suite sees.
-const read = (f) =>
-  JSON.parse(readFileSync(new URL('../content/' + f, import.meta.url), 'utf8'))
+const read = (f) => JSON.parse(readFileSync(new URL('../content/' + f, import.meta.url), 'utf8'))
 const five = read('chapters.json').chapters
 const three = read('rooms.json').rooms
 const byId = (id) => five.find((c) => c.id === id)
@@ -151,10 +144,7 @@ test('labels shrink as you zoom in rather than swelling', () => {
   let prev = onScreen(1)
   for (let z = 0.95; z >= ZOOM_MIN - 1e-9; z -= 0.05) {
     const now = onScreen(z)
-    assert.ok(
-      now < prev,
-      `zooming from ${(z + 0.05).toFixed(2)} to ${z.toFixed(2)} grew the label`
-    )
+    assert.ok(now < prev, `zooming from ${(z + 0.05).toFixed(2)} to ${z.toFixed(2)} grew the label`)
     prev = now
   }
   // How badly it used to go wrong: drei on its own, at full pinch.
@@ -167,10 +157,7 @@ test('no branch washes out anywhere in the pinch range', () => {
     for (const { fades } of sweep(width)) {
       // The dimmest a branch may go is the back of the ring's depth cue.
       const min = Math.min(...fades)
-      assert.ok(
-        min >= 0.18 - 1e-9,
-        `width ${width}: a branch fell to ${min.toFixed(3)}`
-      )
+      assert.ok(min >= 0.18 - 1e-9, `width ${width}: a branch fell to ${min.toFixed(3)}`)
       // Labels floor at 0.3 so a back branch stays clickable.
       assert.ok(Math.max(0.3, min) >= 0.3)
     }
@@ -182,10 +169,7 @@ test('the front of the ring stays bright at every zoom', () => {
   for (const width of [375, 1440]) {
     for (const { fades } of sweep(width)) {
       const front = Math.max(...fades)
-      assert.ok(
-        front >= 0.6,
-        `width ${width}: the nearest branch was only ${front.toFixed(3)}`
-      )
+      assert.ok(front >= 0.6, `width ${width}: the nearest branch was only ${front.toFixed(3)}`)
     }
   }
 })
@@ -269,7 +253,10 @@ test('the branches leave the top of his head and stay off him', () => {
   // A desktop can hang the rooms below him because the ring is 2.5 wide
   // against a body a fifth of a unit across. A phone cannot, so on a phone
   // both rings go above his head.
-  for (const [name, w] of [['desktop', 1440], ['phone', 375]]) {
+  for (const [name, w] of [
+    ['desktop', 1440],
+    ['phone', 375],
+  ]) {
     const narrow = w < 520
     const h = narrow ? 812 : 820
     const fig = figureFor(narrow)
@@ -289,10 +276,7 @@ test('the branches leave the top of his head and stay off him', () => {
 
     // Every branch has to leave the top of his head going up.
     const chapters = placeNodes(five, narrow)
-    assert.ok(
-      chapters[0].pos.y > head.y,
-      `${name}: the chapter ring is below the top of his head`
-    )
+    assert.ok(chapters[0].pos.y > head.y, `${name}: the chapter ring is below the top of his head`)
 
     // His silhouette, from the primitives Figure draws.
     const half = 0.22 * fig
@@ -331,7 +315,7 @@ test('the branches leave the top of his head and stay off him', () => {
     const limit = narrow ? 0 : sampled * 0.05
     assert.ok(
       crossings <= limit,
-      `${name}: branches cross his body at ${crossings} points of ${sampled}`
+      `${name}: branches cross his body at ${crossings} points of ${sampled}`,
     )
   }
 
@@ -345,10 +329,8 @@ test('the branches leave the top of his head and stay off him', () => {
   // is 1 any more: he is 0.8 on a desktop as well, which is what gives the
   // branches an angle to leave at.
   assert.ok(
-    Math.abs(
-      headFor(true).y / headFor(false).y - figureFor(true) / figureFor(false)
-    ) < 1e-9,
-    'the branch junction does not scale with him'
+    Math.abs(headFor(true).y / headFor(false).y - figureFor(true) / figureFor(false)) < 1e-9,
+    'the branch junction does not scale with him',
   )
 })
 
@@ -361,7 +343,10 @@ test('a branch bows, by the same amount of itself at any size', () => {
   // Measured in world space, not on screen: the branch pointing straight at
   // the camera has almost no span on screen, so a screen-space ratio for it
   // is a division by nearly nothing.
-  for (const [name, narrow] of [['desktop', false], ['phone', true]]) {
+  for (const [name, narrow] of [
+    ['desktop', false],
+    ['phone', true],
+  ]) {
     const head = headFor(narrow)
     for (const node of [...placeNodes(five, narrow), ...placeRooms(three, narrow)]) {
       const pts = branchCurve(head, node.pos, 40)
@@ -375,11 +360,11 @@ test('a branch bows, by the same amount of itself at any size', () => {
       const share = bow / reach
       assert.ok(
         share > 0.08,
-        `${name}: ${node.id} bows ${(share * 100).toFixed(0)}% of its length — that is a spoke`
+        `${name}: ${node.id} bows ${(share * 100).toFixed(0)}% of its length — that is a spoke`,
       )
       assert.ok(
         share < 0.25,
-        `${name}: ${node.id} bows ${(share * 100).toFixed(0)}% of its length — that is a rainbow`
+        `${name}: ${node.id} bows ${(share * 100).toFixed(0)}% of its length — that is a rainbow`,
       )
     }
   }
@@ -400,7 +385,7 @@ test('a branch bows, by the same amount of itself at any size', () => {
   }
   assert.ok(
     Math.abs(shareFor(true) - shareFor(false)) < 0.04,
-    `a branch bows ${(shareFor(true) * 100).toFixed(0)}% of itself on a phone and ${(shareFor(false) * 100).toFixed(0)}% on a desktop`
+    `a branch bows ${(shareFor(true) * 100).toFixed(0)}% of itself on a phone and ${(shareFor(false) * 100).toFixed(0)}% on a desktop`,
   )
 })
 
@@ -418,7 +403,7 @@ test('he faces you inside a chapter, whichever one you opened', () => {
     const facing = ((rig + him) % (Math.PI * 2)) + Math.PI * 2
     assert.ok(
       Math.min(facing % (Math.PI * 2), Math.PI * 2 - (facing % (Math.PI * 2))) < 1e-9,
-      `${node.id}: he ends up ${(((rig + him) * 180) / Math.PI).toFixed(0)} degrees off the camera`
+      `${node.id}: he ends up ${(((rig + him) * 180) / Math.PI).toFixed(0)} degrees off the camera`,
     )
   }
 
@@ -440,8 +425,8 @@ test('every chapter has a fan laid out for its number of branches', () => {
   // content, rather than by someone noticing a chapter looks empty.
   const playlists = new Set(
     JSON.parse(
-      readFileSync(new URL('../content/playlists.json', import.meta.url), 'utf8')
-    ).playlists.map((p) => p.id)
+      readFileSync(new URL('../content/playlists.json', import.meta.url), 'utf8'),
+    ).playlists.map((p) => p.id),
   )
   for (const c of five) {
     const n = (c.branches ?? []).length
@@ -454,12 +439,12 @@ test('every chapter has a fan laid out for its number of branches', () => {
       const where = narrow ? 'phone' : 'desktop'
       assert.ok(
         fanCounts(narrow).includes(n),
-        `${c.id} has ${n} branches and the ${where} fan is laid out for ${fanCounts(narrow).join(', ')} — add positions to FAN in layout.js`
+        `${c.id} has ${n} branches and the ${where} fan is laid out for ${fanCounts(narrow).join(', ')} — add positions to FAN in layout.js`,
       )
       assert.equal(
         placeBranches({ ...c, pos: new THREE.Vector3(), angle: 0 }, c.branches, narrow).length,
         n,
-        `${c.id} placed the wrong number of branches on ${where}`
+        `${c.id} placed the wrong number of branches on ${where}`,
       )
     }
   }
@@ -499,21 +484,24 @@ test('a swipe carries on, and a nudge stops where it was put', () => {
 
   assert.ok(flung(flick, 0, rate), 'a hard flick should carry')
   assert.ok(flung(swipe, 0, rate), 'an ordinary swipe should carry')
-  assert.ok(!flung(nudge, 0, rate), `a 30px nudge should stop where it is, not run on at ${nudge.toFixed(1)} rad/s`)
+  assert.ok(
+    !flung(nudge, 0, rate),
+    `a 30px nudge should stop where it is, not run on at ${nudge.toFixed(1)} rad/s`,
+  )
   assert.ok(!flung(wobble, 0, rate), 'the wobble of a tap should never turn anything')
 
   // Far enough to be worth doing, not so far that it runs away.
   const hard = ride(flick)
   assert.ok(
     hard.degrees > 450 && hard.degrees < 1100,
-    `a hard flick carries ${hard.degrees.toFixed(0)} degrees`
+    `a hard flick carries ${hard.degrees.toFixed(0)} degrees`,
   )
   assert.ok(hard.secs > 0.6 && hard.secs < 3, `and settles in ${hard.secs.toFixed(1)}s`)
 
   const normal = ride(swipe)
   assert.ok(
     normal.degrees > 220 && normal.degrees < 600,
-    `an ordinary swipe carries ${normal.degrees.toFixed(0)} degrees`
+    `an ordinary swipe carries ${normal.degrees.toFixed(0)} degrees`,
   )
 
   // The same gesture has to go the same distance whatever the frame rate.
@@ -524,7 +512,7 @@ test('a swipe carries on, and a nudge stops where it was put', () => {
   const at144 = ride(swipe, 144).degrees
   assert.ok(
     Math.abs(at30 - at144) / at144 < 0.06,
-    `30fps carries ${at30.toFixed(0)} degrees and 144fps carries ${at144.toFixed(0)}`
+    `30fps carries ${at30.toFixed(0)} degrees and 144fps carries ${at144.toFixed(0)}`,
   )
 
   // A dropped frame must not be integrated as the time it really took. A
@@ -535,7 +523,7 @@ test('a swipe carries on, and a nudge stops where it was put', () => {
   assert.equal(
     stalled.moved.toFixed(6),
     capped.moved.toFixed(6),
-    'a 1.5s stall should be clamped to one frame of travel'
+    'a 1.5s stall should be clamped to one frame of travel',
   )
   assert.equal(stalled.left.toFixed(6), capped.left.toFixed(6))
 })
@@ -551,9 +539,19 @@ test('the ring of playlists holds together, on every screen there is', () => {
   const music = byId('music')
   const count = music.branches.length
   const SCREENS = [
-    [360, 780], [375, 812], [414, 896], [430, 932],
-    [560, 900], [600, 800], [768, 1024], [790, 630], [900, 600],
-    [1024, 768], [1280, 720], [1440, 820], [1920, 1080],
+    [360, 780],
+    [375, 812],
+    [414, 896],
+    [430, 932],
+    [560, 900],
+    [600, 800],
+    [768, 1024],
+    [790, 630],
+    [900, 600],
+    [1024, 768],
+    [1280, 720],
+    [1440, 820],
+    [1920, 1080],
   ]
 
   for (const [w, h] of SCREENS) {
@@ -605,18 +603,35 @@ test('the ring of playlists holds together, on every screen there is', () => {
 
     // They are what you tap, so they have to be worth tapping.
     const wide = top.r - top.l
-    assert.ok(wide > 110, name + ': the cards at the front are only ' + wide.toFixed(0) + 'px across')
+    assert.ok(
+      wide > 110,
+      name + ': the cards at the front are only ' + wide.toFixed(0) + 'px across',
+    )
 
     assert.ok(Math.min(top.l, low.l) > wall, name + ': the front pair is behind the panel')
     assert.ok(Math.max(top.r, low.r) < w, name + ': the front pair runs off the right')
-    assert.ok(low.b < free, name + ': the lower card reaches ' + low.b.toFixed(0) + ', under a panel at ' + free)
-    assert.ok(top.t > chin.y, name + ': the upper card covers his face, starting at ' + top.t.toFixed(0) + ' against a chin at ' + chin.y.toFixed(0))
+    assert.ok(
+      low.b < free,
+      name + ': the lower card reaches ' + low.b.toFixed(0) + ', under a panel at ' + free,
+    )
+    assert.ok(
+      top.t > chin.y,
+      name +
+        ': the upper card covers his face, starting at ' +
+        top.t.toFixed(0) +
+        ' against a chin at ' +
+        chin.y.toFixed(0),
+    )
     assert.ok(crown.y > safeTop, name + ': his head is off the top at ' + crown.y.toFixed(0))
 
     // And the two of a pair are two things, not one block.
     assert.ok(
       low.t > top.b,
-      name + ': the pair overlaps — the upper ends at ' + top.b.toFixed(0) + ' and the lower starts at ' + low.t.toFixed(0)
+      name +
+        ': the pair overlaps — the upper ends at ' +
+        top.b.toFixed(0) +
+        ' and the lower starts at ' +
+        low.t.toFixed(0),
     )
 
     // The next one along has to be on screen, or there is nothing to say
@@ -628,8 +643,12 @@ test('the ring of playlists holds together, on every screen there is', () => {
     // one of them is a stack, not a ring.
     assert.ok(
       Math.abs(side.x - front.x) > wide * 0.72,
-      name + ': the card beside the front one lies across it — centres ' +
-        Math.abs(side.x - front.x).toFixed(0) + 'px apart, for a card ' + wide.toFixed(0) + 'px wide'
+      name +
+        ': the card beside the front one lies across it — centres ' +
+        Math.abs(side.x - front.x).toFixed(0) +
+        'px apart, for a card ' +
+        wide.toFixed(0) +
+        'px wide',
     )
   }
 })
@@ -643,9 +662,12 @@ test('the ring turns to a whole slot and knows which one is in front', () => {
     const rest = ringRest(count, at * step)
     assert.ok(
       Math.abs(rest / step - Math.round(rest / step)) < 1e-9,
-      'settled at ' + (rest / step).toFixed(3) + ' slots, which is not a slot'
+      'settled at ' + (rest / step).toFixed(3) + ' slots, which is not a slot',
     )
-    assert.ok(Math.abs(rest - at * step) <= step / 2 + 1e-9, 'settled further than half a slot away')
+    assert.ok(
+      Math.abs(rest - at * step) <= step / 2 + 1e-9,
+      'settled further than half a slot away',
+    )
   }
 
   // And the one at the front is the one the maths says is at the front,
@@ -656,9 +678,17 @@ test('the ring turns to a whole slot and knows which one is in front', () => {
 
   // Only a few face you at once — that is what nine of them fit by.
   const o = ringOf(false, false)
-  const facing = Array.from({ length: count }, (_, i) => ringAt(i, count, 0, o).show).filter((v) => v > 0.05)
-  assert.ok(facing.length <= 4, facing.length + ' slots are facing you; the ring is meant to show a few')
-  assert.ok(facing.length >= 2, 'only ' + facing.length + ' slots face you, which reads as a card rather than a ring')
+  const facing = Array.from({ length: count }, (_, i) => ringAt(i, count, 0, o).show).filter(
+    (v) => v > 0.05,
+  )
+  assert.ok(
+    facing.length <= 4,
+    facing.length + ' slots are facing you; the ring is meant to show a few',
+  )
+  assert.ok(
+    facing.length >= 2,
+    'only ' + facing.length + ' slots face you, which reads as a card rather than a ring',
+  )
 
   // Nine playlists over five slots: four pairs and one on its own, and
   // every one of them in exactly one place.
@@ -723,7 +753,7 @@ test('a branch is drawn from him, and crosses no photograph', () => {
         const hit = points.find((p) => p.x > r.l && p.x < r.r && p.y > r.t && p.y < r.b)
         assert.ok(
           !hit,
-          `${s.name}: the branch to ${SUBS[i].id} crosses ${SUBS[j].id} at ${hit && hit.x.toFixed(0)},${hit && hit.y.toFixed(0)}`
+          `${s.name}: the branch to ${SUBS[i].id} crosses ${SUBS[j].id} at ${hit && hit.x.toFixed(0)},${hit && hit.y.toFixed(0)}`,
         )
       })
       // And it has to be long enough to read as a branch at all.
@@ -771,11 +801,11 @@ test('inside a branch you can see all of him, and all of the branches', () => {
     const feet = at(new THREE.Vector3(0, 0, 0))
     assert.ok(
       crown.y > s.safeTop,
-      `${s.name}: the top of his head is at ${crown.y.toFixed(0)}, under the status bar`
+      `${s.name}: the top of his head is at ${crown.y.toFixed(0)}, under the status bar`,
     )
     assert.ok(
       feet.y < s.free,
-      `${s.name}: his feet are at ${feet.y.toFixed(0)}, behind a panel that starts at ${s.free}`
+      `${s.name}: his feet are at ${feet.y.toFixed(0)}, behind a panel that starts at ${s.free}`,
     )
 
     // The branch row, with room under each for its label.
@@ -789,33 +819,29 @@ test('inside a branch you can see all of him, and all of the branches', () => {
       // is aimed: these sit nearer the lens than the point it looks at, and
       // sizing them at the aim distance is what made a desktop rectangle
       // come out at 307 pixels across when it was meant to be 130.
-      const height = Math.abs(
-        p.y - at(new THREE.Vector3(b.pos.x, b.pos.y + card.h / 2, b.pos.z)).y
-      )
+      const height = Math.abs(p.y - at(new THREE.Vector3(b.pos.x, b.pos.y + card.h / 2, b.pos.z)).y)
       assert.ok(
         p.y - height > s.safeTop,
-        `${s.name}: a branch rectangle runs off the top at ${(p.y - height).toFixed(0)}`
+        `${s.name}: a branch rectangle runs off the top at ${(p.y - height).toFixed(0)}`,
       )
       // The label hangs under the picture on a desktop and sits on its
       // bottom edge on a phone, where there is no room under it.
       const labelAt = narrow ? p.y + height : p.y + height + 26
       assert.ok(
         labelAt < s.free,
-        `${s.name}: a branch label at ${labelAt.toFixed(0)} is behind the panel`
+        `${s.name}: a branch label at ${labelAt.toFixed(0)} is behind the panel`,
       )
       // The row sits above him on both screens, so its label must clear
       // his head too — which on a phone is why the name moved onto the
       // bottom edge of the picture rather than under it.
       assert.ok(
         labelAt < crown.y,
-        `${s.name}: a branch label at ${labelAt.toFixed(0)} lands on his head at ${crown.y.toFixed(0)}`
+        `${s.name}: a branch label at ${labelAt.toFixed(0)} lands on his head at ${crown.y.toFixed(0)}`,
       )
-      const wide = Math.abs(
-        p.x - at(new THREE.Vector3(b.pos.x + card.w / 2, b.pos.y, b.pos.z)).x
-      )
+      const wide = Math.abs(p.x - at(new THREE.Vector3(b.pos.x + card.w / 2, b.pos.y, b.pos.z)).x)
       assert.ok(
         p.x - wide > s.wall && p.x + wide < s.w,
-        `${s.name}: a branch spans x ${(p.x - wide).toFixed(0)}-${(p.x + wide).toFixed(0)}, outside the ${s.wall}-${s.w} strip it has`
+        `${s.name}: a branch spans x ${(p.x - wide).toFixed(0)}-${(p.x + wide).toFixed(0)}, outside the ${s.wall}-${s.w} strip it has`,
       )
     }
 
@@ -841,13 +867,13 @@ test('inside a branch you can see all of him, and all of the branches', () => {
     for (const a of rise) {
       assert.ok(
         a > -62,
-        `${s.name}: a branch leaves the node at ${a.toFixed(0)} degrees, which is a rope`
+        `${s.name}: a branch leaves the node at ${a.toFixed(0)} degrees, which is a rope`,
       )
     }
     const spread = Math.max(...rise) - Math.min(...rise)
     assert.ok(
       spread < 2,
-      `${s.name}: the row leaves at ${rise.map((a) => a.toFixed(0)).join(', ')} — ${spread.toFixed(0)} degrees apart`
+      `${s.name}: the row leaves at ${rise.map((a) => a.toFixed(0)).join(', ')} — ${spread.toFixed(0)} degrees apart`,
     )
 
     // The row goes over his head, and is centred on him. This is the whole
@@ -872,13 +898,13 @@ test('inside a branch you can see all of him, and all of the branches', () => {
     })
     assert.ok(
       Math.max(...box.map((b) => b.b)) < body.t,
-      `${s.name}: the lowest rectangle reaches ${Math.max(...box.map((b) => b.b)).toFixed(0)} and his head is at ${body.t.toFixed(0)} — it is beside him, not over him`
+      `${s.name}: the lowest rectangle reaches ${Math.max(...box.map((b) => b.b)).toFixed(0)} and his head is at ${body.t.toFixed(0)} — it is beside him, not over him`,
     )
     const rowMid = (Math.min(...box.map((b) => b.l)) + Math.max(...box.map((b) => b.r))) / 2
     const himMid = (body.l + body.r) / 2
     assert.ok(
       Math.abs(rowMid - himMid) < 40,
-      `${s.name}: the row is centred on ${rowMid.toFixed(0)} and he is at ${himMid.toFixed(0)}`
+      `${s.name}: the row is centred on ${rowMid.toFixed(0)} and he is at ${himMid.toFixed(0)}`,
     )
   }
 })
@@ -909,8 +935,14 @@ test('no two labels sit on top of each other', () => {
   // test that measures label collisions was the one test that could not
   // see a chapter being added.
   const named = [
-    ...placeNodes(five.map((c) => ({ id: c.title })), true),
-    ...placeRooms(three.map((r) => ({ id: r.title })), true),
+    ...placeNodes(
+      five.map((c) => ({ id: c.title })),
+      true,
+    ),
+    ...placeRooms(
+      three.map((r) => ({ id: r.title })),
+      true,
+    ),
   ]
   const half = 0.22 * fig
   const body = {
@@ -947,7 +979,7 @@ test('no two labels sit on top of each other', () => {
         if (overlaps(boxes[i], boxes[j])) {
           worst = Math.max(
             worst,
-            Math.min(boxes[i].r, boxes[j].r) - Math.max(boxes[i].l, boxes[j].l)
+            Math.min(boxes[i].r, boxes[j].r) - Math.max(boxes[i].l, boxes[j].l),
           )
         }
       }
@@ -1009,9 +1041,7 @@ const _s = new THREE.Vector3()
 function screenOf(stage, size, view, point) {
   stagePlacement(stage, size, view.fit, 0, place)
   _m.compose(place.position, place.quaternion, _s.setScalar(place.scale))
-  const n = new THREE.Vector3(point[0], point[1], point[2])
-    .applyMatrix4(_m)
-    .project(view.cam)
+  const n = new THREE.Vector3(point[0], point[1], point[2]).applyMatrix4(_m).project(view.cam)
   return { x: (n.x + 1) / 2, y: (1 - n.y) / 2, scale: place.scale }
 }
 
@@ -1074,11 +1104,11 @@ test('the ladder is continuous — no stage pops into being', () => {
       const b = cosmicStage(rungs[i].t, stage)
       assert.ok(
         Math.abs(a.opacity - b.opacity) < 0.05,
-        `stage ${stage} jumped ${Math.abs(a.opacity - b.opacity).toFixed(3)} in opacity near zoom ${rungs[i].z.toFixed(1)}`
+        `stage ${stage} jumped ${Math.abs(a.opacity - b.opacity).toFixed(3)} in opacity near zoom ${rungs[i].z.toFixed(1)}`,
       )
       assert.ok(
         Math.abs(Math.log(b.size / a.size)) < 0.05,
-        `stage ${stage} jumped in size near zoom ${rungs[i].z.toFixed(1)}`
+        `stage ${stage} jumped in size near zoom ${rungs[i].z.toFixed(1)}`,
       )
     }
   }
@@ -1092,7 +1122,7 @@ test('there is never an empty screen on the way out', () => {
     const sky = t > 0.15
     assert.ok(
       lit.length >= 1 || sky,
-      `nothing on screen at zoom ${z.toFixed(1)} (t ${t.toFixed(2)})`
+      `nothing on screen at zoom ${z.toFixed(1)} (t ${t.toFixed(2)})`,
     )
     // Two at a time is the cross-fade; three would be a mess.
     assert.ok(lit.length <= 2, `${lit.length} stages at once at zoom ${z.toFixed(1)}`)
@@ -1109,12 +1139,12 @@ test('a stage is only ever fully shown at a size that fits the screen', () => {
       if (opacity > 0.999) {
         assert.ok(
           size <= 1.2,
-          `${STAGES[i - 1]} is fully opaque at ${size.toFixed(2)}x the frame (zoom ${z.toFixed(1)})`
+          `${STAGES[i - 1]} is fully opaque at ${size.toFixed(2)}x the frame (zoom ${z.toFixed(1)})`,
         )
       }
       assert.ok(
         opacity < 0.01 || size < 3.6,
-        `${STAGES[i - 1]} visible at ${size.toFixed(1)}x the frame (zoom ${z.toFixed(1)})`
+        `${STAGES[i - 1]} visible at ${size.toFixed(1)}x the frame (zoom ${z.toFixed(1)})`,
       )
     }
   }
@@ -1134,7 +1164,7 @@ test('each stage is fully itself somewhere, and near the frame size', () => {
     assert.ok(peak > 0.99, `stage ${i} peaks at only ${peak.toFixed(3)}`)
     assert.ok(
       sizeAtPeak > 0.5,
-      `stage ${i} is only ${sizeAtPeak.toFixed(2)} of the frame at its best`
+      `stage ${i} is only ${sizeAtPeak.toFixed(2)} of the frame at its best`,
     )
   }
 })
@@ -1152,7 +1182,7 @@ test('every stage lands on screen when it is the subject', () => {
       const inside = 1 - off / pts.length
       assert.ok(
         inside > 0.93,
-        `${view.name}: only ${(inside * 100).toFixed(0)}% of ${stage.id} is on screen when it is the subject`
+        `${view.name}: only ${(inside * 100).toFixed(0)}% of ${stage.id} is on screen when it is the subject`,
       )
     }
   }
@@ -1173,7 +1203,7 @@ test('every scale is stacked on the same point', () => {
   const first = screenOf(SOLAR, 1, view, SOLAR.anchor)
   assert.ok(
     Math.hypot(first.x - 0.5, first.y - 0.5) < 0.03,
-    `the stack sits ${Math.hypot(first.x - 0.5, first.y - 0.5).toFixed(3)} off the middle`
+    `the stack sits ${Math.hypot(first.x - 0.5, first.y - 0.5).toFixed(3)} off the middle`,
   )
 
   for (const [name, stage] of [
@@ -1186,7 +1216,7 @@ test('every scale is stacked on the same point', () => {
       const apart = Math.hypot(p.x - first.x, p.y - first.y)
       assert.ok(
         apart < 0.001,
-        `${name} at size ${size} sits ${apart.toFixed(4)} from where the others do`
+        `${name} at size ${size} sits ${apart.toFixed(4)} from where the others do`,
       )
     }
   }
@@ -1208,12 +1238,12 @@ test('his planet lands on Earth, not in the sun', () => {
 
     assert.ok(
       HUB.distanceTo(earth) < 1e-9,
-      `at size ${size} his planet is ${HUB.distanceTo(earth).toFixed(4)} from Earth`
+      `at size ${size} his planet is ${HUB.distanceTo(earth).toFixed(4)} from Earth`,
     )
     // And the sun is a real distance away from him, not on top of him.
     assert.ok(
       HUB.distanceTo(sun) > place.scale * 0.3,
-      `at size ${size} the sun is ${HUB.distanceTo(sun).toFixed(3)} away — that is on top of him`
+      `at size ${size} the sun is ${HUB.distanceTo(sun).toFixed(3)} away — that is on top of him`,
     )
   }
 })
@@ -1228,14 +1258,8 @@ test('the solar system sits at the sun, not at the galactic core', () => {
   const sunInGalaxy = new THREE.Vector3(...GALAXY.anchor).applyMatrix4(_m)
   const core = new THREE.Vector3(0, 0, 0).applyMatrix4(_m)
 
-  assert.ok(
-    HUB.distanceTo(sunInGalaxy) < 1e-9,
-    'his planet is not where the galaxy puts the sun'
-  )
-  assert.ok(
-    HUB.distanceTo(core) > place.scale * 0.5,
-    'his planet ended up at the galactic core'
-  )
+  assert.ok(HUB.distanceTo(sunInGalaxy) < 1e-9, 'his planet is not where the galaxy puts the sun')
+  assert.ok(HUB.distanceTo(core) > place.scale * 0.5, 'his planet ended up at the galactic core')
 })
 
 test('nothing has to travel across the frame', () => {
@@ -1259,10 +1283,7 @@ test('nothing has to travel across the frame', () => {
       worst = Math.max(worst, Math.hypot(a.x - b.x, a.y - b.y))
     }
   }
-  assert.ok(
-    worst < 0.002,
-    `an anchor moved ${(worst * 100).toFixed(2)}% of the frame in one frame`
-  )
+  assert.ok(worst < 0.002, `an anchor moved ${(worst * 100).toFixed(2)}% of the frame in one frame`)
 })
 
 // ---------- the solar system, in pixels ----------
@@ -1273,7 +1294,7 @@ test('the solar system is drawn from its real orbital elements', () => {
   // real inclination out of the ecliptic.
   assert.deepEqual(
     SOLAR.planets.map((p) => p.name),
-    PLANETS.map((p) => p.name)
+    PLANETS.map((p) => p.name),
   )
 
   for (let i = 0; i < SOLAR.planets.length; i++) {
@@ -1282,7 +1303,7 @@ test('the solar system is drawn from its real orbital elements', () => {
     if (i > 0) {
       assert.ok(
         p.orbit > SOLAR.planets[i - 1].orbit,
-        `${p.name} is drawn inside ${SOLAR.planets[i - 1].name}`
+        `${p.name} is drawn inside ${SOLAR.planets[i - 1].name}`,
       )
     }
 
@@ -1290,18 +1311,17 @@ test('the solar system is drawn from its real orbital elements', () => {
     const last = p.path[p.path.length - 1]
     assert.ok(
       Math.hypot(first[0] - last[0], first[1] - last[1], first[2] - last[2]) < 1e-9,
-      `${p.name}'s orbit is not a closed loop`
+      `${p.name}'s orbit is not a closed loop`,
     )
 
     // The sun at a focus means the near and far points differ by 2ae, so
     // this ratio recovers the eccentricity. A circle would fail it, and
     // Mercury's 0.206 is visible on screen.
     const rs = p.path.map((q) => Math.hypot(q[0], q[1], q[2]))
-    const spread =
-      (Math.max(...rs) - Math.min(...rs)) / (Math.max(...rs) + Math.min(...rs))
+    const spread = (Math.max(...rs) - Math.min(...rs)) / (Math.max(...rs) + Math.min(...rs))
     assert.ok(
       Math.abs(spread - el.e) < 0.02,
-      `${p.name} drawn at eccentricity ${spread.toFixed(3)}, elements say ${el.e}`
+      `${p.name} drawn at eccentricity ${spread.toFixed(3)}, elements say ${el.e}`,
     )
 
     // Inclination: a tipped orbit has to leave the ecliptic by the right
@@ -1310,7 +1330,7 @@ test('the solar system is drawn from its real orbital elements', () => {
     const want = Math.sin((el.inc * Math.PI) / 180)
     assert.ok(
       Math.abs(rise - want) < 0.02,
-      `${p.name} rises ${rise.toFixed(3)} out of plane, inclination says ${want.toFixed(3)}`
+      `${p.name} rises ${rise.toFixed(3)} out of plane, inclination says ${want.toFixed(3)}`,
     )
   }
 })
@@ -1324,7 +1344,7 @@ test('the belts land where the real ones do', () => {
   for (const r of radii(SOLAR.asteroids)) {
     assert.ok(
       r > mars && r < jupiter,
-      `an asteroid at ${r.toFixed(3)} is not between Mars and Jupiter`
+      `an asteroid at ${r.toFixed(3)} is not between Mars and Jupiter`,
     )
   }
   const neptune = SOLAR.planets[7].orbit
@@ -1345,7 +1365,7 @@ test('every planet is a visible dot, clear of its neighbours', () => {
   const halo = pxOf(SOLAR.sun) * 1.7
   assert.ok(
     pxOf(SOLAR.planets[0].orbit) > halo * 1.4,
-    `Mercury's orbit at ${pxOf(SOLAR.planets[0].orbit).toFixed(0)}px is crowded by the sun's halo at ${halo.toFixed(0)}px`
+    `Mercury's orbit at ${pxOf(SOLAR.planets[0].orbit).toFixed(0)}px is crowded by the sun's halo at ${halo.toFixed(0)}px`,
   )
 
   for (let i = 0; i < SOLAR.planets.length; i++) {
@@ -1357,16 +1377,13 @@ test('every planet is a visible dot, clear of its neighbours', () => {
     const gap = pxOf(p.orbit - prev.orbit)
     assert.ok(
       gap > dot + pxOf(prev.size),
-      `${prev.name} and ${p.name} are ${gap.toFixed(1)}px apart carrying ${(dot + pxOf(prev.size)).toFixed(1)}px of dot`
+      `${prev.name} and ${p.name} are ${gap.toFixed(1)}px apart carrying ${(dot + pxOf(prev.size)).toFixed(1)}px of dot`,
     )
   }
 
   // And Saturn's rings have to be bigger than Saturn or they are a smudge.
   const saturn = SOLAR.planets[5]
-  assert.ok(
-    pxOf(saturn.size * 2.27) - pxOf(saturn.size) > 3,
-    'Saturn has no visible rings'
-  )
+  assert.ok(pxOf(saturn.size * 2.27) - pxOf(saturn.size) > 3, 'Saturn has no visible rings')
 })
 
 test('the sky is behind everything and dense enough to read', () => {
@@ -1414,16 +1431,16 @@ test('point clouds render at a size you can see', () => {
     const t = cssPx(p99, px)
     assert.ok(
       m >= medLo && m <= medHi,
-      `${what}: the typical one renders at ${m.toFixed(1)}px, wanted ${medLo}-${medHi}`
+      `${what}: the typical one renders at ${m.toFixed(1)}px, wanted ${medLo}-${medHi}`,
     )
     assert.ok(
       t >= tailLo && t <= tailHi,
-      `${what}: the brightest render at ${t.toFixed(1)}px, wanted ${tailLo}-${tailHi}`
+      `${what}: the brightest render at ${t.toFixed(1)}px, wanted ${tailLo}-${tailHi}`,
     )
     // A cloud where every point is the same size is a texture, not a sky.
     assert.ok(
       p99 / median > 2,
-      `${what} has no magnitude spread: p99 is only ${(p99 / median).toFixed(1)}x the median`
+      `${what} has no magnitude spread: p99 is only ${(p99 / median).toFixed(1)}x the median`,
     )
   }
 
@@ -1501,12 +1518,21 @@ test('the galaxy has arms, and dust lanes that dim rather than delete', () => {
   const peak = Math.max(...az)
   const trough = Math.min(...az)
 
-  assert.ok(peak / mean > 1.8, `arms are only ${(peak / mean).toFixed(2)}x the mean — too faint to read`)
+  assert.ok(
+    peak / mean > 1.8,
+    `arms are only ${(peak / mean).toFixed(2)}x the mean — too faint to read`,
+  )
   // The dark lanes have to be dark. But not empty: subtracting dust instead
   // of attenuating with it drove the density through zero and cut two blank
   // wedges out of the disc, measured at 3% of the arm peak.
-  assert.ok(trough / peak < 0.3, `the darkest lane is ${(trough / peak).toFixed(2)} of the peak — no lanes`)
-  assert.ok(trough / mean > 0.1, `the darkest lane is ${(trough / mean).toFixed(3)} of the mean — a hole, not dust`)
+  assert.ok(
+    trough / peak < 0.3,
+    `the darkest lane is ${(trough / peak).toFixed(2)} of the peak — no lanes`,
+  )
+  assert.ok(
+    trough / mean > 0.1,
+    `the darkest lane is ${(trough / mean).toFixed(3)} of the mean — a hole, not dust`,
+  )
 
   // Two major arms: two clear maxima half a turn apart.
   const half = az.length / 2
@@ -1521,7 +1547,7 @@ test('the galaxy has arms, and dust lanes that dim rather than delete', () => {
   }
   assert.ok(
     az[bestAt] / mean > 1.6 && az[bestAt + half] / mean > 1.6,
-    'the two major arms are not both there'
+    'the two major arms are not both there',
   )
   // And not two-fold symmetric, or it reads as a pinwheel: the two arms
   // must differ, and there must be structure between them.
@@ -1556,7 +1582,7 @@ test('the galaxy is four populations, not one', () => {
   for (let i = 0; i < GALAXY.layers.bulge.count; i++) {
     maxR = Math.max(
       maxR,
-      Math.hypot(GALAXY.layers.bulge.pos[i * 3], GALAXY.layers.bulge.pos[i * 3 + 2])
+      Math.hypot(GALAXY.layers.bulge.pos[i * 3], GALAXY.layers.bulge.pos[i * 3 + 2]),
     )
   }
   assert.ok(maxR < GALAXY.radius * 0.5, `the bulge reaches ${maxR.toFixed(2)} — that is a disc`)
@@ -1619,10 +1645,7 @@ test('the galaxy is a population, not a gradient', () => {
     }
   }
   assert.ok(bigN > 10 && smallN > 10, 'not enough of each to compare')
-  assert.ok(
-    bigSum / bigN > (smallSum / smallN) * 1.5,
-    'the big stars are not the bright ones'
-  )
+  assert.ok(bigSum / bigN > (smallSum / smallN) * 1.5, 'the big stars are not the bright ones')
 })
 
 test('the sky has a Milky Way in it', () => {
@@ -1631,8 +1654,7 @@ test('the sky has a Milky Way in it', () => {
   // night sky.
   const pole = SKY.pole
   const sinLat = (l, i) =>
-    (l.pos[i * 3] * pole[0] + l.pos[i * 3 + 1] * pole[1] + l.pos[i * 3 + 2] * pole[2]) /
-    SKY.radius
+    (l.pos[i * 3] * pole[0] + l.pos[i * 3 + 1] * pole[1] + l.pos[i * 3 + 2] * pole[2]) / SKY.radius
 
   const share = (l, limit) => {
     let n = 0
@@ -1644,7 +1666,10 @@ test('the sky has a Milky Way in it', () => {
   // sampling of a sphere would put 17% of them inside ten degrees.
   const stars10 = share(SKY, Math.sin((10 * Math.PI) / 180))
   assert.ok(stars10 > 0.28, `only ${(stars10 * 100).toFixed(0)}% of stars near the plane`)
-  assert.ok(stars10 < 0.7, `${(stars10 * 100).toFixed(0)}% near the plane — that is a disc, not a sky`)
+  assert.ok(
+    stars10 < 0.7,
+    `${(stars10 * 100).toFixed(0)}% near the plane — that is a disc, not a sky`,
+  )
 
   // The band of unresolved light: a bright core a few degrees wide, and a
   // glow carrying out to twenty. At a tighter concentration it came out
@@ -1652,7 +1677,10 @@ test('the sky has a Milky Way in it', () => {
   const band20 = share(SKY.band, Math.sin((20 * Math.PI) / 180))
   const band6 = share(SKY.band, Math.sin((6 * Math.PI) / 180))
   assert.ok(band20 > 0.9, `only ${(band20 * 100).toFixed(0)}% of the band is within 20 degrees`)
-  assert.ok(band6 > 0.4 && band6 < 0.85, `${(band6 * 100).toFixed(0)}% of the band is inside 6 degrees`)
+  assert.ok(
+    band6 > 0.4 && band6 < 0.85,
+    `${(band6 * 100).toFixed(0)}% of the band is inside 6 degrees`,
+  )
   // And it must be on the same plane as the star density, or there are two
   // Milky Ways.
   let bandMean = 0
@@ -1668,10 +1696,16 @@ test('the deep field is galaxies, not stars', () => {
   const ang = UNIVERSE.layers.gal.ang
   assert.equal(asp.length, UNIVERSE.layers.gal.count)
   const slivers = asp.filter((v) => v < 0.5).length / asp.length
-  assert.ok(slivers > 0.2, `only ${(slivers * 100).toFixed(0)}% are edge-on enough to read as discs`)
+  assert.ok(
+    slivers > 0.2,
+    `only ${(slivers * 100).toFixed(0)}% are edge-on enough to read as discs`,
+  )
   const round = asp.filter((v) => v > 0.95).length / asp.length
   assert.ok(round < 0.2, `${(round * 100).toFixed(0)}% are round — that is a star field`)
-  assert.ok(asp.every((v) => v > 0.05 && v <= 1), 'an aspect ratio is out of range')
+  assert.ok(
+    asp.every((v) => v > 0.05 && v <= 1),
+    'an aspect ratio is out of range',
+  )
 
   // Turned every which way, not all lying the same direction.
   let sin = 0
@@ -1693,7 +1727,7 @@ test('the planets lean the way they really lean', () => {
     const axis = p.axis
     assert.ok(
       Math.abs(Math.hypot(axis[0], axis[1], axis[2]) - 1) < 1e-9,
-      `${p.name}'s axis is not a unit vector`
+      `${p.name}'s axis is not a unit vector`,
     )
     // The angle from the orbital pole is the obliquity, or its supplement
     // for the two that spin backwards.
@@ -1701,7 +1735,7 @@ test('the planets lean the way they really lean', () => {
     const want = el.tilt
     assert.ok(
       Math.abs(lean - want) < 0.5,
-      `${p.name} leans ${lean.toFixed(1)} degrees, the table says ${want}`
+      `${p.name} leans ${lean.toFixed(1)} degrees, the table says ${want}`,
     )
   }
 
@@ -1709,7 +1743,7 @@ test('the planets lean the way they really lean', () => {
   const uranus = SOLAR.planets[6]
   assert.ok(
     Math.abs(uranus.axis[1]) < 0.2,
-    'Uranus should be lying on its side, axis nearly in its own orbital plane'
+    'Uranus should be lying on its side, axis nearly in its own orbital plane',
   )
   const venus = SOLAR.planets[1]
   assert.ok(venus.axis[1] < -0.9, 'Venus should be upside down')
@@ -1726,7 +1760,7 @@ test('the planets lean the way they really lean', () => {
   const ringTilt = (Math.acos(Math.abs(saturn.axis[1])) * 180) / Math.PI
   assert.ok(
     Math.abs(ringTilt - 26.73) < 0.5,
-    `Saturn's rings would sit at ${ringTilt.toFixed(1)} degrees`
+    `Saturn's rings would sit at ${ringTilt.toFixed(1)} degrees`,
   )
 })
 
@@ -1808,16 +1842,13 @@ test('no frame of the way out jumps', () => {
     const w = roughest({ from, to })
     assert.ok(
       w.opacity < 0.12,
-      `${what}: a stage's opacity moved ${w.opacity.toFixed(3)} in one frame`
+      `${what}: a stage's opacity moved ${w.opacity.toFixed(3)} in one frame`,
     )
     assert.ok(
       w.size < 0.09,
-      `${what}: a stage's size moved ${(Math.exp(w.size) * 100 - 100).toFixed(1)}% in one frame`
+      `${what}: a stage's size moved ${(Math.exp(w.size) * 100 - 100).toFixed(1)}% in one frame`,
     )
-    assert.ok(
-      w.hub < 0.12,
-      `${what}: his planet's own fade moved ${w.hub.toFixed(3)} in one frame`
-    )
+    assert.ok(w.hub < 0.12, `${what}: his planet's own fade moved ${w.hub.toFixed(3)} in one frame`)
   }
 })
 
@@ -1839,7 +1870,7 @@ test('a slow frame is no rougher than a fast one', () => {
   // half a fade — which is what the clamp is there to stop.
   assert.ok(
     stalled.opacity < 0.35,
-    `a stalled frame jumps ${stalled.opacity.toFixed(3)} — over a third of a fade`
+    `a stalled frame jumps ${stalled.opacity.toFixed(3)} — over a third of a fade`,
   )
 
   // And the same gesture takes the same time whatever the frame rate.
@@ -1856,7 +1887,7 @@ test('a slow frame is no rougher than a fast one', () => {
   const b = settle(1 / 30)
   assert.ok(
     Math.abs(a - b) / a < 0.15,
-    `settling took ${a.toFixed(2)}s at 120fps and ${b.toFixed(2)}s at 30fps`
+    `settling took ${a.toFixed(2)}s at 120fps and ${b.toFixed(2)}s at 30fps`,
   )
   // Long enough to read as a journey, short enough not to be a wait.
   assert.ok(a > 0.6 && a < 4, `the whole way out settles in ${a.toFixed(2)}s`)
@@ -1868,7 +1899,7 @@ test('his planet is gone before the subtree is pulled', () => {
   const zoomAt = (t) => ZOOM_HUB_MAX * Math.pow(ZOOM_MAX / ZOOM_HUB_MAX, t / STAGES.length)
   assert.ok(
     hubOpacity(zoomAt(HUB_GONE)) < 0.001,
-    `his planet is still at ${hubOpacity(zoomAt(HUB_GONE)).toFixed(3)} opacity when it unmounts`
+    `his planet is still at ${hubOpacity(zoomAt(HUB_GONE)).toFixed(3)} opacity when it unmounts`,
   )
   // And it is fully there for the whole of its own zoom range.
   for (let z = ZOOM_MIN; z <= ZOOM_HUB_MAX; z += 0.05) {
@@ -1935,11 +1966,11 @@ test('no two branches keep time with each other', () => {
       const apart = Math.abs(drifts[i].rate - drifts[j].rate)
       assert.ok(
         apart > 0.01,
-        `branches ${i} and ${j} drift at ${drifts[i].rate.toFixed(3)} and ${drifts[j].rate.toFixed(3)} — the same, so they never come apart`
+        `branches ${i} and ${j} drift at ${drifts[i].rate.toFixed(3)} and ${drifts[j].rate.toFixed(3)} — the same, so they never come apart`,
       )
       assert.ok(
         Math.abs(drifts[i].wobbleRate - drifts[j].wobbleRate) > 0.01,
-        `branches ${i} and ${j} wobble at the same rate`
+        `branches ${i} and ${j} wobble at the same rate`,
       )
     }
   }
@@ -1953,9 +1984,7 @@ test('no two branches keep time with each other', () => {
   let tightest = Math.PI * 2
   for (let i = 0; i < places.length; i++) {
     const gap =
-      i === places.length - 1
-        ? places[0] + Math.PI * 2 - places[i]
-        : places[i + 1] - places[i]
+      i === places.length - 1 ? places[0] + Math.PI * 2 - places[i] : places[i + 1] - places[i]
     tightest = Math.min(tightest, gap)
   }
   // Evenly spread would be a full turn over the count; a third of that is
@@ -1963,29 +1992,36 @@ test('no two branches keep time with each other', () => {
   const even = (Math.PI * 2) / count
   assert.ok(
     tightest > even / 3,
-    `two branches start ${tightest.toFixed(2)} apart in the cycle, against ${even.toFixed(2)} if they were spread evenly`
+    `two branches start ${tightest.toFixed(2)} apart in the cycle, against ${even.toFixed(2)} if they were spread evenly`,
   )
 
   // The reach varies too, or they are nine of the same thing at nine
   // different moments.
   assert.ok(
     new Set(drifts.map((d) => d.reach.toFixed(4))).size >= 4,
-    'every branch swings by the same amount'
+    'every branch swings by the same amount',
   )
 })
 
-test('mindView frames the whole skull with margin, phone and desktop', () => {
+test('mindView frames the whole skull, big on a computer and inside a phone', () => {
+  // The real bounding radius, from the generator, not the constant.
+  const s = skull({ count: 3000 })
+  let R = 0
+  for (let i = 0; i < 3000; i++)
+    R = Math.max(R, Math.hypot(s.pos[i * 3], s.pos[i * 3 + 1], s.pos[i * 3 + 2]))
+  assert.ok(R <= SKULL_R, 'SKULL_R is smaller than the skull')
   for (const [narrow, aspect] of [
     [false, 16 / 9],
     [true, 0.46],
   ]) {
     const v = mindView(narrow)
+    assert.ok(v.fixed, 'the hub zoom would move it')
     const d = v.pos.distanceTo(v.look)
     const half = Math.tan(((40 / 2) * Math.PI) / 180) * d
-    const r = MIND_SCALE(narrow)
-    assert.ok(r < half * 0.8, 'skull taller than the frame')
-    assert.ok(r < half * aspect * 0.9, 'skull wider than the frame')
-    assert.ok(r > half * Math.min(1, aspect) * 0.55, 'skull too small to be the subject')
+    const room = half * Math.min(1, aspect)
+    const r = R * MIND_SCALE(narrow)
+    assert.ok(r < room * 0.95, 'skull runs off the screen')
+    assert.ok(r > room * (narrow ? 0.75 : 0.8), 'skull too small: ' + (r / room).toFixed(2))
   }
 })
 

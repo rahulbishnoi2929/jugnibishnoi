@@ -41,47 +41,107 @@ const ell = (p, c, r) => {
   return (Math.hypot(x, y, z) - 1) * Math.min(r[0], r[1], r[2])
 }
 
-// Union with a fillet, so the face grows out of the cranium rather than
+// A rounded rod from a to b — the jaw, the arches of the cheekbones.
+const rod = (p, a, b, r) => {
+  const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]]
+  const ap = [p[0] - a[0], p[1] - a[1], p[2] - a[2]]
+  const t = Math.max(
+    0,
+    Math.min(
+      1,
+      (ap[0] * ab[0] + ap[1] * ab[1] + ap[2] * ab[2]) / (ab[0] ** 2 + ab[1] ** 2 + ab[2] ** 2),
+    ),
+  )
+  return Math.hypot(ap[0] - ab[0] * t, ap[1] - ab[1] * t, ap[2] - ab[2] * t) - r
+}
+
+// Union with a fillet, so one bone grows out of the next rather than
 // being stuck on to it.
 const smin = (a, b, k) => {
   const h = Math.max(k - Math.abs(a - b), 0) / k
   return Math.min(a, b) - h * h * k * 0.25
 }
 
-// What is carved out: the eye sockets and the nose. Kept apart from the
-// rest because the edges of these are what make a skull read as a skull,
-// and the sampler below leans on them.
-const HOLES = [
-  { c: [0.2, -0.05, 0.62], r: [0.15, 0.15, 0.15] },
-  { c: [-0.2, -0.05, 0.62], r: [0.15, 0.15, 0.15] },
-  { c: [0, -0.28, 0.64], r: [0.07, 0.1, 0.1] },
-]
-const holes = (p) => Math.min(...HOLES.map((h) => ell(p, h.c, h.r)))
+// Both sides of the face from one description of the left.
+const both = (f) => (p) => Math.min(f(p), f([-p[0], p[1], p[2]]))
+
+// What is carved out. Deep, not dents: in a skull drawn in light it is
+// the walls of a hole, seen nearly edge on, that make the bright ring —
+// a shallow scoop has no walls and reads as nothing, which is how the
+// first version came out with eyes you could barely find and a nose that
+// was one dot.
+const orbit = both((p) => ell(p, [0.18, 0, 0.5], [0.13, 0.125, 0.22]))
+// The nasal opening is a pear standing on its point: narrow between the
+// eyes, widest just above the teeth.
+const nose = (p) =>
+  Math.min(ell(p, [0, -0.12, 0.52], [0.05, 0.1, 0.2]), ell(p, [0, -0.22, 0.52], [0.085, 0.07, 0.2]))
+const holes = (p) => Math.min(orbit(p), nose(p))
+
+// Upper and lower teeth, a row each along the arc of the jaw.
+const TOOTH = 0.032
+const ARC = 0.27
+const teeth = (p) => {
+  let d = Infinity
+  for (let i = 0; i < 8; i++) {
+    const a = -0.95 + (1.9 * i) / 7
+    const x = ARC * Math.sin(a)
+    const z = 0.2 + ARC * Math.cos(a)
+    d = Math.min(
+      d,
+      ell(p, [x, -0.36, z], [TOOTH, TOOTH * 1.4, TOOTH]),
+      ell(p, [x * 0.96, -0.44, z - 0.01], [TOOTH, TOOTH * 1.3, TOOTH]),
+    )
+  }
+  return d
+}
+
+// The lower jaw: a horseshoe — a flattened ellipsoid with its inside
+// scooped out and its back left open — with a chin on the front and a
+// branch up each side to the hinge under the ear.
+const jaw = (p) => {
+  const shoe = Math.max(
+    ell(p, [0, -0.5, 0.18], [0.3, 0.15, 0.33]),
+    -ell(p, [0, -0.48, 0.08], [0.22, 0.2, 0.3]),
+  )
+  // A flat blade, not a rod: thin side to side, wide front to back.
+  const ramus = both((q) => ell(q, [0.29, -0.36, -0.06], [0.04, 0.19, 0.09]))(p)
+  return smin(smin(shoe, ramus, 0.05), ell(p, [0, -0.6, 0.46], [0.09, 0.06, 0.06]), 0.05)
+}
 
 // Negative inside the bone, positive outside, zero on the surface.
 export function skullSdf(p) {
-  let d = ell(p, [0, 0.15, -0.05], [0.62, 0.6, 0.72]) // cranium
-  d = smin(d, ell(p, [0, -0.2, 0.28], [0.45, 0.42, 0.42]), 0.15) // face
-  d = smin(d, ell(p, [0.38, -0.15, 0.3], [0.16, 0.1, 0.18]), 0.08) // cheekbones
-  d = smin(d, ell(p, [-0.38, -0.15, 0.3], [0.16, 0.1, 0.18]), 0.08)
-  d = smin(d, ell(p, [0, -0.55, 0.22], [0.36, 0.2, 0.36]), 0.1) // jaw
-  return Math.max(d, -holes(p))
+  // The vault sits up and back. It used to come down far enough to
+  // swallow the face from the side, and the whole thing read as a bulb.
+  let d = ell(p, [0, 0.28, -0.08], [0.5, 0.46, 0.6]) // cranium
+  // The upper face: cut off flat underneath, where the upper teeth sit,
+  // so there is a mouth rather than one lump from brow to chin.
+  const face = Math.max(ell(p, [0, -0.12, 0.3], [0.34, 0.34, 0.32]), -(p[1] + 0.38))
+  d = smin(d, face, 0.12)
+  d = smin(d, both((q) => ell(q, [0.36, -0.06, 0.3], [0.12, 0.09, 0.17]))(p), 0.06) // cheekbones
+  d = smin(d, both((q) => rod(q, [0.4, -0.06, 0.26], [0.44, -0.05, -0.06], 0.04))(p), 0.05) // arches
+  d = smin(d, ell(p, [0, 0.1, 0.5], [0.33, 0.06, 0.12]), 0.06) // brow ridge
+  d = Math.max(d, -holes(p))
+  d = Math.min(d, teeth(p))
+  d = smin(d, jaw(p), 0.03)
+  return d
 }
+
+const grad = (p, h = 1e-3) =>
+  [0, 1, 2].map((k) => {
+    const a = p.slice()
+    const b = p.slice()
+    a[k] += h
+    b[k] -= h
+    return (skullSdf(a) - skullSdf(b)) / (2 * h)
+  })
 
 // Walk a point onto the surface along the gradient. Returns null if it
 // will not settle — a point that started in a crease can oscillate.
 function settle(p) {
-  const h = 1e-3
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 8; i++) {
     const d = skullSdf(p)
     if (Math.abs(d) < 0.002) break
-    const g = [0, 1, 2].map((k) => {
-      const a = p.slice()
-      const b = p.slice()
-      a[k] += h
-      b[k] -= h
-      return (skullSdf(a) - skullSdf(b)) / (2 * h)
-    })
+    const g = grad(p)
     const g2 = g[0] * g[0] + g[1] * g[1] + g[2] * g[2]
     if (g2 < 1e-9) return null
     p = p.map((v, k) => v - (d * g[k]) / g2)
@@ -89,50 +149,33 @@ function settle(p) {
   return Math.abs(skullSdf(p)) < 0.01 && Math.hypot(p[0], p[1], p[2]) <= 1 ? p : null
 }
 
-// Teeth: a share of the points kept back for little clusters along the
-// arc of the upper jaw. Settled onto the surface like everything else, so
-// they come out as a row of bumps rather than floating dots.
-const TEETH = 14
-const TEETH_SHARE = 0.04
-
+// Points everywhere, and extra round the holes and on the teeth. The
+// rest of what makes it read is done when it is drawn: each point carries
+// the surface's normal, and the shader lights the ones you see edge on.
+// That is how glass and x-rays look — bright where the surface turns away
+// from you, faint where it faces you — and it picks out the outline, the
+// sockets and the jaw from whichever side you are looking.
 export function skull({ seed = 11, count = 6000 } = {}) {
   const rand = rng(seed)
   const pos = new Float32Array(count * 3)
+  const normal = new Float32Array(count * 3)
   const size = new Float32Array(count)
   let n = 0
-  const put = (p) => {
-    if (n >= count) return
-    pos[n * 3] = p[0]
-    pos[n * 3 + 1] = p[1]
-    pos[n * 3 + 2] = p[2]
-    size[n] = 0.6 + 0.8 * rand()
-    n++
-  }
-
-  const teeth = Math.round(count * TEETH_SHARE)
-  while (n < teeth) {
-    const a = -0.9 + 1.8 * (Math.floor(rand() * TEETH) / (TEETH - 1))
-    const p = settle([
-      0.3 * Math.sin(a) + gauss(rand) * 0.015,
-      -0.42 + gauss(rand) * 0.015,
-      0.22 + 0.3 * Math.cos(a) + gauss(rand) * 0.015,
-    ])
-    if (p) put(p)
-  }
-
   while (n < count) {
     const p = settle([rand() * 2 - 1, rand() * 2 - 1, rand() * 2 - 1])
     if (!p) continue
-    put(p)
-    // Twice over at the rim of a socket or the nose: an even scatter
-    // makes a smooth egg, and it is the edges that say "skull".
-    if (Math.abs(holes(p)) < 0.04) {
-      const q = settle(p.map((v) => v + (rand() - 0.5) * 0.01))
-      if (q) put(q)
+    const feature = Math.abs(holes(p)) < 0.05 || teeth(p) < 0.01 || jaw(p) < 0.01
+    if (!feature && rand() > 0.55) continue
+    const g = grad(p)
+    const l = Math.hypot(g[0], g[1], g[2]) || 1
+    for (let k = 0; k < 3; k++) {
+      pos[n * 3 + k] = p[k]
+      normal[n * 3 + k] = g[k] / l
     }
+    size[n] = 0.6 + 0.8 * rand()
+    n++
   }
-
-  return { pos, size, radius: 1 }
+  return { pos, normal, size, radius: 1 }
 }
 
 // ============================================================
@@ -141,7 +184,7 @@ export function skull({ seed = 11, count = 6000 } = {}) {
 
 // The space the neurons and the projects live in: an ellipsoid well
 // inside the cranium, so nothing ever pokes through the bone.
-export const BRAIN = { c: [0, 0.18, -0.05], r: [0.5, 0.46, 0.58] }
+export const BRAIN = { c: [0, 0.28, -0.12], r: [0.4, 0.36, 0.48] }
 
 export function inBrain(p, shrink = 1) {
   const x = (p[0] - BRAIN.c[0]) / (BRAIN.r[0] * shrink)
@@ -224,10 +267,10 @@ export function neurons({ seed = 5, seeds = 36 } = {}) {
 // ============================================================
 
 // One small tilted loop each, their centres spread round a ring. A ring
-// of 0.28 and loops of 0.1 keep any two projects at least 0.28 apart at
+// of 0.21 and loops of 0.05 keep any two projects at least 0.26 apart at
 // every moment, which is what stops their labels landing on each other.
-const LOOP_RING = 0.28
-const LOOP_R = 0.1
+const LOOP_RING = 0.21
+const LOOP_R = 0.05
 
 export function loops(n, { seed = 9 } = {}) {
   const rand = rng(seed)

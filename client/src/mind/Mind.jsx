@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
-import { starMaterial, tuneStars } from '../hub/shaders.js'
+import { tuneStars } from '../hub/shaders.js'
 import { useDisposable } from '../hub/dispose.js'
 import { projects as featured, projectId } from './projects.js'
 import { skull, neurons, loops, loopAt } from './mind.js'
@@ -21,11 +21,58 @@ import './mind.css'
 const reduced =
   typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
-const BONE = new THREE.Color('#bfe9d6').multiplyScalar(0.35)
+const BONE = new THREE.Color('#bfe9d6')
 const NERVE = new THREE.Color('#3DDC97')
 const WORK = '#ffb547'
 const APPEAR = 0.6 // seconds to grow in
 const SPIN = reduced ? 0 : 0.06 // radians a second
+
+// The bone. A point shader like the stars' (same uniforms, so tuneStars
+// sizes it), with one thing added: each point is lit by how edge-on its
+// bit of surface is to you. Facing you, it is barely there; turning away,
+// it glows. That is the whole of what makes it read as glass rather than
+// a cloud — the outline, the sockets, the nose and the jaw light up from
+// whichever side you look, and the dome you are looking through does not.
+function boneMaterial() {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uScale: { value: 400 },
+      uSize: { value: 0.05 },
+      uOpacity: { value: 0 },
+      uColor: { value: BONE },
+    },
+    vertexShader: /* glsl */ `
+      attribute float aSize;
+      attribute vec3 aNormal;
+      uniform float uScale;
+      uniform float uSize;
+      varying float vGlow;
+      void main() {
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vec3 n = normalize(normalMatrix * aNormal);
+        float rim = 1.0 - abs(dot(n, normalize(-mv.xyz)));
+        vGlow = 0.08 + pow(rim, 2.5) * 1.3;
+        gl_PointSize = min(aSize * uSize * (uScale / -mv.z), 56.0);
+        gl_Position = projectionMatrix * mv;
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uColor;
+      uniform float uOpacity;
+      varying float vGlow;
+      void main() {
+        vec2 d = gl_PointCoord - 0.5;
+        float r2 = dot(d, d) * 4.0;
+        float a = exp(-r2 * 3.4) * (1.0 - smoothstep(0.7, 1.0, r2));
+        if (a < 0.004) discard;
+        gl_FragColor = vec4(uColor * vGlow, a * uOpacity);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  })
+}
 
 // The pulse: a bright band travelling root to tip along each branch, at
 // a phase of its own, over a dim line that is always there.
@@ -75,16 +122,14 @@ export default function Mind({ narrow, at, scale, turn, picked, onPick }) {
   const spun = useRef(0)
 
   const bone = useDisposable(() => {
-    const s = skull({ count: narrow ? 2500 : 6000 })
+    const s = skull({ count: narrow ? 5000 : 10000 })
     const g = new THREE.BufferGeometry()
     g.setAttribute('position', new THREE.BufferAttribute(s.pos, 3))
+    g.setAttribute('aNormal', new THREE.BufferAttribute(s.normal, 3))
     g.setAttribute('aSize', new THREE.BufferAttribute(s.size, 1))
-    const col = new Float32Array(s.size.length * 3)
-    for (let i = 0; i < s.size.length; i++) BONE.toArray(col, i * 3)
-    g.setAttribute('color', new THREE.BufferAttribute(col, 3))
     return g
   }, [narrow])
-  const boneMat = useDisposable(() => starMaterial(), [])
+  const boneMat = useDisposable(boneMaterial, [])
 
   const nerves = useDisposable(() => {
     const n = neurons({ seeds: narrow ? 20 : 36 })
@@ -160,12 +205,9 @@ export default function Mind({ narrow, at, scale, turn, picked, onPick }) {
                 blending={THREE.AdditiveBlending}
               />
             </mesh>
-            <Html
-              position={[0, 0.11, 0]}
-              center
-              zIndexRange={[10, 0]}
-              style={{ pointerEvents: 'none' }}
-            >
+            {/* On the point, not above it: a label hung over its light
+                stuck out of the top of the head. */}
+            <Html center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
               <button
                 type="button"
                 className={'mind-project' + (picked === id ? ' is-open' : '')}
@@ -177,7 +219,6 @@ export default function Mind({ narrow, at, scale, turn, picked, onPick }) {
                 onBlur={() => setHot(null)}
               >
                 {p.title}
-                <small>{p.blurb}</small>
               </button>
             </Html>
           </group>
