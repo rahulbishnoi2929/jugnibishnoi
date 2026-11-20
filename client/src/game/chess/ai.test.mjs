@@ -129,7 +129,10 @@ test('hard beats easy, two games in three', () => {
     while (!game.isGameOver() && moves < 80) {
       const white = game.turn() === 'w'
       const move = white
-        ? bestMove(game.fen(), 'hard', Math.random, 200, past)
+        ? // 600ms, not 200: on a slow CI runner 200ms only reached the
+          // depth easy plays at, and hard lost two of three to a machine
+          // being slow rather than to a weaker engine.
+          bestMove(game.fen(), 'hard', Math.random, 600, past)
         : bestMove(game.fen(), 'easy', easy, null, past)
       if (!move) break
       past.push(game.fen())
