@@ -167,7 +167,8 @@ export default function ChessGame() {
     setLast(null)
     setFrom(null)
     setFen(new Rules().fen())
-    setClock(newClock(controlOf(id).ms))
+    const c = controlOf(id)
+    setClock(newClock(c.ms, c.perMove))
   }
 
   const pickControl = (id) => {

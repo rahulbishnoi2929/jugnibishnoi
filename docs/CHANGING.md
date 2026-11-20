@@ -145,7 +145,8 @@ arms when he is holding the playlists out. `Figure.jsx` only reads it.
 The time controls are `CONTROLS` at the top of
 `client/src/game/chess/clock.js` — an id, a short label for the button,
 a full name for a screen reader, and a length in milliseconds. Adding one
-is a line.
+is a line. Add `perMove: true` and the length is a limit on each move
+instead of the whole game: it refills every time that side moves.
 
 The clock itself is pure and takes the current time rather than reading
 it, so `clock.test.mjs` plays out a game that flags on move forty in no

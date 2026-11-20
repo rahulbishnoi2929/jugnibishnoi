@@ -23,11 +23,22 @@ export const CONTROLS = [
   { id: '2', label: "2'", name: 'Two minutes', ms: 120_000 },
   { id: '10', label: "10'", name: 'Ten minutes', ms: 600_000 },
   { id: '30', label: "30'", name: 'Thirty minutes', ms: 1_800_000 },
+  // Not a budget for the game but a limit on each move: a minute to play,
+  // refilled every time you do, and taking the whole minute loses.
+  { id: 'move', label: "1'↻", name: 'One minute a move', ms: 60_000, perMove: true },
 ]
 
 export const controlOf = (id) => CONTROLS.find((c) => c.id === id) ?? CONTROLS[0]
 
-export const newClock = (ms) => ({ w: ms, b: ms, turn: null, since: null })
+// `refill` is set on a move clock: what a side's time goes back to each
+// time it moves.
+export const newClock = (ms, perMove = false) => ({
+  w: ms,
+  b: ms,
+  turn: null,
+  since: null,
+  refill: perMove ? ms : null,
+})
 
 // What a side has left, now.
 export function left(clock, side, now) {
@@ -48,14 +59,15 @@ export function start(clock, side, now) {
 }
 
 // A move has been played. Bank what the mover used and hand the clock
-// over. This is the only place a side's time actually goes down.
+// over. This is the only place a side's time actually goes down — and,
+// on a move clock, where it goes back up to the full minute.
 export function press(clock, now) {
   if (!clock || !clock.turn) return clock
   const side = clock.turn
   const other = side === 'w' ? 'b' : 'w'
   return {
     ...clock,
-    [side]: left(clock, side, now),
+    [side]: clock.refill ?? left(clock, side, now),
     turn: other,
     since: now,
   }

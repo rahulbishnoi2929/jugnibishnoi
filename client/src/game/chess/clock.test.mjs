@@ -108,9 +108,29 @@ test('the opponent spends its time at a rate that lasts', () => {
   assert.equal(budget(450, null), 450, 'no clock, no constraint')
 })
 
+test('a minute a move refills after every move, and flags inside one', () => {
+  let c = start(newClock(60_000, true), 'w', 0)
+  // Fifty seconds a move, forever: on a game clock white would be out on
+  // the second move. A move clock does not care.
+  let now = 0
+  for (let i = 0; i < 20; i++) {
+    now += 50_000
+    assert.equal(flagged(c, now), null, 'flagged at move ' + i + ' with ten seconds of the move left')
+    c = press(c, now)
+  }
+  assert.equal(c.w, 60_000, 'white should start every turn with the full minute')
+  assert.equal(c.b, 60_000, 'and so should black')
+  assert.equal(left(c, c.turn, now + 15_000), 45_000, 'the minute should still run down within a move')
+  // One slow move is enough to lose.
+  assert.equal(flagged(c, now + 59_999), null)
+  assert.equal(flagged(c, now + 60_000), c.turn, 'a move that takes the whole minute should lose')
+})
+
 test('the time controls are the ones offered', () => {
-  assert.deepEqual(CONTROLS.map((c) => c.id), ['off', '1', '2', '10', '30'])
+  assert.deepEqual(CONTROLS.map((c) => c.id), ['off', '1', '2', '10', '30', 'move'])
   assert.equal(controlOf('10').ms, 600_000)
+  assert.equal(controlOf('move').ms, 60_000)
+  assert.equal(controlOf('move').perMove, true)
   assert.equal(controlOf('nonsense').id, 'off', 'an unknown control should fall back to no clock')
   for (const c of CONTROLS) {
     if (c.ms !== null) assert.ok(c.ms > 0, c.id + ' is not a length of time')
