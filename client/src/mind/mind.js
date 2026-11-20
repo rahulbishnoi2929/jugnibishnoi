@@ -134,3 +134,127 @@ export function skull({ seed = 11, count = 6000 } = {}) {
 
   return { pos, size, radius: 1 }
 }
+
+// ============================================================
+// the brain
+// ============================================================
+
+// The space the neurons and the projects live in: an ellipsoid well
+// inside the cranium, so nothing ever pokes through the bone.
+export const BRAIN = { c: [0, 0.18, -0.05], r: [0.5, 0.46, 0.58] }
+
+export function inBrain(p, shrink = 1) {
+  const x = (p[0] - BRAIN.c[0]) / (BRAIN.r[0] * shrink)
+  const y = (p[1] - BRAIN.c[1]) / (BRAIN.r[1] * shrink)
+  const z = (p[2] - BRAIN.c[2]) / (BRAIN.r[2] * shrink)
+  return x * x + y * y + z * z <= 1 + 1e-6
+}
+
+// Outward, at p — the direction to bounce a neuron off the inside of the
+// brain rather than let it out.
+function brainNormal(p) {
+  const n = [0, 1, 2].map((k) => (p[k] - BRAIN.c[k]) / (BRAIN.r[k] * BRAIN.r[k]))
+  const l = Math.hypot(n[0], n[1], n[2]) || 1
+  return n.map((v) => v / l)
+}
+
+const norm = (v) => {
+  const l = Math.hypot(v[0], v[1], v[2]) || 1
+  return v.map((x) => x / l)
+}
+
+const STEP = 0.035
+const KEEP = 0.85 // how much of its direction a neuron keeps each step
+const FORK = 0.07
+const DEPTH = 3
+
+// Branching walks from a handful of roots. Returned as line segments —
+// two vertices each, as THREE.LineSegments wants — with `along`, how far
+// down its own branch a vertex is (0 at the root, 1 at the tip), and a
+// `phase` per branch. A pulse is drawn where along matches the time plus
+// the phase, so it runs root to tip and no two branches fire together.
+export function neurons({ seed = 5, seeds = 36 } = {}) {
+  const rand = rng(seed)
+  const pos = []
+  const along = []
+  const phase = []
+
+  const grow = (start, dir, steps, depth) => {
+    const ph = rand()
+    let p = start
+    let d = dir
+    for (let i = 0; i < steps; i++) {
+      d = norm(d.map((v) => v * KEEP + gauss(rand) * (1 - KEEP)))
+      let q = p.map((v, k) => v + d[k] * STEP)
+      if (!inBrain(q)) {
+        const n = brainNormal(p)
+        const dot = d[0] * n[0] + d[1] * n[1] + d[2] * n[2]
+        d = norm(d.map((v, k) => v - 2 * dot * n[k]))
+        q = p.map((v, k) => v + d[k] * STEP)
+        if (!inBrain(q)) return
+      }
+      pos.push(...p, ...q)
+      along.push(i / steps, (i + 1) / steps)
+      phase.push(ph, ph)
+      if (depth < DEPTH && rand() < FORK) {
+        const side = norm(d.map((v) => v + gauss(rand) * 0.9))
+        grow(q, side, Math.ceil((steps - i) / 2), depth + 1)
+      }
+      p = q
+    }
+  }
+
+  for (let s = 0; s < seeds; s++) {
+    let root
+    do {
+      root = BRAIN.c.map((c, k) => c + (rand() * 2 - 1) * BRAIN.r[k] * 0.8)
+    } while (!inBrain(root, 0.8))
+    grow(root, norm([gauss(rand), gauss(rand), gauss(rand)]), 18 + Math.floor(rand() * 23), 0)
+  }
+
+  return {
+    pos: new Float32Array(pos),
+    along: new Float32Array(along),
+    phase: new Float32Array(phase),
+  }
+}
+
+// ============================================================
+// where the projects travel
+// ============================================================
+
+// One small tilted loop each, their centres spread round a ring. A ring
+// of 0.28 and loops of 0.1 keep any two projects at least 0.28 apart at
+// every moment, which is what stops their labels landing on each other.
+const LOOP_RING = 0.28
+const LOOP_R = 0.1
+
+export function loops(n, { seed = 9 } = {}) {
+  const rand = rng(seed)
+  return Array.from({ length: n }, (_, i) => {
+    const a = (2 * Math.PI * i) / n
+    return {
+      c: [
+        BRAIN.c[0] + LOOP_RING * Math.cos(a),
+        BRAIN.c[1] + LOOP_RING * 0.4 * Math.sin(a),
+        BRAIN.c[2] + LOOP_RING * Math.sin(a),
+      ],
+      r: LOOP_R,
+      tilt: [(rand() - 0.5) * 1.6, (rand() - 0.5) * 1.6],
+      spin: 0.04, // turns a second
+      offset: i / n,
+    }
+  })
+}
+
+// Where a project is, t turns into its loop. Period one.
+export function loopAt(loop, t) {
+  const a = 2 * Math.PI * (t + loop.offset)
+  let x = loop.r * Math.cos(a)
+  let y = 0
+  let z = loop.r * Math.sin(a)
+  const [tx, tz] = loop.tilt
+  ;[y, z] = [y * Math.cos(tx) - z * Math.sin(tx), y * Math.sin(tx) + z * Math.cos(tx)]
+  ;[x, y] = [x * Math.cos(tz) - y * Math.sin(tz), x * Math.sin(tz) + y * Math.cos(tz)]
+  return [loop.c[0] + x, loop.c[1] + y, loop.c[2] + z]
+}

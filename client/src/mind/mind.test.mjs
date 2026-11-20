@@ -5,7 +5,7 @@
 // exactly like a head that has not loaded yet.
 
 import assert from 'node:assert/strict'
-import { skull, skullSdf } from './mind.js'
+import { skull, skullSdf, neurons, inBrain, loops, loopAt, BRAIN } from './mind.js'
 
 let passed = 0
 function test(name, fn) {
@@ -49,6 +49,55 @@ test('skull: has eye sockets — the socket centres are outside the bone', () =>
 
 test('skull: same seed, same head', () => {
   assert.deepEqual(skull({ seed: 3, count: 500 }).pos, skull({ seed: 3, count: 500 }).pos)
+})
+
+test('the brain is inside the skull', () => {
+  const [cx, cy, cz] = BRAIN.c
+  for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) {
+    const p = [cx + dx * BRAIN.r[0], cy + dy * BRAIN.r[1], cz + dz * BRAIN.r[2]]
+    assert.ok(skullSdf(p) < 0, 'the brain pokes out at ' + p.map((v) => v.toFixed(2)))
+  }
+})
+
+test('neurons: every vertex finite and inside the brain', () => {
+  const n = neurons({ seeds: 10 })
+  assert.ok(n.pos.length > 600, 'enough to look like a brain')
+  assert.equal(n.pos.length / 3, n.along.length)
+  assert.equal(n.along.length, n.phase.length)
+  assert.equal((n.pos.length / 3) % 2, 0, 'segments come in pairs of vertices')
+  for (let i = 0; i < n.pos.length; i += 3) {
+    const p = [n.pos[i], n.pos[i + 1], n.pos[i + 2]]
+    assert.ok(Number.isFinite(p[0] + p[1] + p[2]))
+    assert.ok(inBrain(p), 'a neuron left the brain')
+  }
+  for (const a of n.along) assert.ok(a >= 0 && a <= 1)
+  for (const f of n.phase) assert.ok(f >= 0 && f < 1)
+})
+
+test('neurons: same seed, same brain', () => {
+  assert.deepEqual(neurons({ seed: 2, seeds: 4 }).pos, neurons({ seed: 2, seeds: 4 }).pos)
+})
+
+test('loops: closed, inside the brain, never touching each other', () => {
+  for (const count of [1, 2, 3]) {
+    const ls = loops(count, {})
+    assert.equal(ls.length, count)
+    for (const l of ls) {
+      const a = loopAt(l, 0).map((v) => v.toFixed(6))
+      const b = loopAt(l, 1).map((v) => v.toFixed(6))
+      assert.deepEqual(a, b, 'a loop does not close')
+    }
+    for (let t = 0; t < 1; t += 0.01) {
+      const at = ls.map((l) => loopAt(l, t))
+      for (const p of at) assert.ok(inBrain(p), 'a project left the brain')
+      for (let i = 0; i < at.length; i++)
+        for (let j = i + 1; j < at.length; j++)
+          assert.ok(
+            Math.hypot(at[i][0] - at[j][0], at[i][1] - at[j][1], at[i][2] - at[j][2]) > 0.25,
+            count + ' projects came within touching distance at t=' + t.toFixed(2)
+          )
+    }
+  }
 })
 
 console.log('\n' + passed + ' passed')
