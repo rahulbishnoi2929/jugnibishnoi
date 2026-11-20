@@ -41,7 +41,7 @@ const ell = (p, c, r) => {
   return (Math.hypot(x, y, z) - 1) * Math.min(r[0], r[1], r[2])
 }
 
-// A rounded rod from a to b — the jaw, the arches of the cheekbones.
+// A rounded rod from a to b.
 const rod = (p, a, b, r) => {
   const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]]
   const ap = [p[0] - a[0], p[1] - a[1], p[2] - a[2]]
@@ -55,76 +55,188 @@ const rod = (p, a, b, r) => {
   return Math.hypot(ap[0] - ab[0] * t, ap[1] - ab[1] * t, ap[2] - ab[2] * t) - r
 }
 
-// Union with a fillet, so one bone grows out of the next rather than
-// being stuck on to it.
+// Union with a fillet, so one bone grows out of the next; and its
+// opposite, for carving with a rounded edge rather than a sharp one.
 const smin = (a, b, k) => {
   const h = Math.max(k - Math.abs(a - b), 0) / k
   return Math.min(a, b) - h * h * k * 0.25
 }
+const smax = (a, b, k) => -smin(-a, -b, k)
 
-// Both sides of the face from one description of the left.
+// The left side, mirrored: a skull is symmetric, so every paired bone is
+// described once.
 const both = (f) => (p) => Math.min(f(p), f([-p[0], p[1], p[2]]))
 
-// What is carved out. Deep, not dents: in a skull drawn in light it is
-// the walls of a hole, seen nearly edge on, that make the bright ring —
-// a shallow scoop has no walls and reads as nothing, which is how the
-// first version came out with eyes you could barely find and a nose that
-// was one dot.
-const orbit = both((p) => ell(p, [0.18, 0, 0.5], [0.13, 0.125, 0.22]))
-// The nasal opening is a pear standing on its point: narrow between the
-// eyes, widest just above the teeth.
-const nose = (p) =>
-  Math.min(ell(p, [0, -0.12, 0.52], [0.05, 0.1, 0.2]), ell(p, [0, -0.22, 0.52], [0.085, 0.07, 0.2]))
-const holes = (p) => Math.min(orbit(p), nose(p))
+// Signed distance to a 2D polygon (Inigo Quilez's), for bones that are
+// flat plates with a real outline rather than blobs.
+function poly(x, y, pts) {
+  let d = (x - pts[0][0]) ** 2 + (y - pts[0][1]) ** 2
+  let s = 1
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i, i++) {
+    const [ax, ay] = pts[i]
+    const [bx, by] = pts[j]
+    const ex = bx - ax
+    const ey = by - ay
+    const wx = x - ax
+    const wy = y - ay
+    const t = Math.max(0, Math.min(1, (wx * ex + wy * ey) / (ex * ex + ey * ey)))
+    d = Math.min(d, (wx - ex * t) ** 2 + (wy - ey * t) ** 2)
+    const c1 = y >= ay
+    const c2 = y < by
+    const c3 = ex * wy > ey * wx
+    if ((c1 && c2 && c3) || (!c1 && !c2 && !c3)) s = -s
+  }
+  return s * Math.sqrt(d)
+}
 
-// Upper and lower teeth, a row each along the arc of the jaw.
-const TOOTH = 0.032
-const ARC = 0.27
-const teeth = (p) => {
+// A 2D shape given thickness: a flat bone.
+const extrude = (d2, dz, round) =>
+  Math.hypot(Math.max(d2, 0), Math.max(dz, 0)) + Math.min(Math.max(d2, dz), 0) - round
+
+// ------------------------------------------------------------
+// Built in millimetres, from an average adult skull, then scaled down.
+//
+//   cranial length 185, breadth 140, vertex to chin 225
+//   eye sockets 40 wide, 35 tall, 25 apart; nose opening 25 by 35
+//   cheekbone to cheekbone 130; jaw corner to corner 100
+//   the ear canal level with the bottom of the eye sockets — the
+//   Frankfurt plane, which is y = 0 here
+//
+// x is across, y is up, z is forward. The first attempt was a dozen
+// blobs placed by eye, and it looked like a lightbulb wearing a face.
+// ------------------------------------------------------------
+const MM = 120 // millimetres per unit
+
+const cranium = (p) =>
+  smin(
+    ell(p, [0, 25, -28], [70, 66, 78]), // the back of the vault, widest
+    ell(p, [0, 32, 18], [58, 58, 66]), // the forehead, narrower
+    20,
+  )
+
+// The upper face: brow, cheekbones and their arches, the upper jaw.
+const brow = both((p) => rod(p, [0, 37, 78], [40, 36, 67], 5))
+// The cheekbone, and the arch running back from it to just in front of
+// the ear: a band, taller than it is thick, not a round rod.
+const cheek = both((p) =>
+  smin(
+    ell(p, [47, -3, 52], [14, 11, 14]),
+    smin(rod(p, [56, 2, 44], [61, 2, -6], 3), rod(p, [56, -5, 44], [61, -4, -6], 3), 5),
+    10,
+  ),
+)
+const maxilla = (p) => Math.max(ell(p, [0, -14, 42], [46, 38, 34]), -(p[1] + 40))
+const nasalBones = (p) => rod(p, [0, 33, 80], [0, 15, 84], 5)
+// Behind and below each ear, the bump you can feel behind your own.
+const mastoid = both((p) => ell(p, [53, -18, -30], [6, 9, 7]))
+
+// What is carved out, with rounded rims.
+const orbit = both((p) => ell(p, [32, 17, 64], [19, 17, 30]))
+// The nasal opening is a pear standing on its point: narrow under the
+// nasal bones, widest just above the teeth.
+const nose = (p) => Math.min(ell(p, [0, -8, 74], [12.5, 10, 24]), ell(p, [0, 5, 74], [7, 12, 24]))
+// The ear canal: a short tube into the side of the head, level with the
+// bottom of the eye sockets.
+const ear = both((p) => Math.max(Math.hypot(p[1] + 2, p[2] + 18) - 5, 50 - p[0]))
+
+// Fourteen teeth in each jaw along the dental arch, meeting at y = -47.
+const toothAt = (s) => [27 * s, 66 - 36 * s * s]
+const teethMM = (p) => {
+  if (p[1] > -30 || p[1] < -66 || p[2] < 18) return 30
   let d = Infinity
-  for (let i = 0; i < 8; i++) {
-    const a = -0.95 + (1.9 * i) / 7
-    const x = ARC * Math.sin(a)
-    const z = 0.2 + ARC * Math.cos(a)
-    d = Math.min(
-      d,
-      ell(p, [x, -0.36, z], [TOOTH, TOOTH * 1.4, TOOTH]),
-      ell(p, [x * 0.96, -0.44, z - 0.01], [TOOTH, TOOTH * 1.3, TOOTH]),
-    )
+  for (let i = 0; i < 14; i++) {
+    const s = -1 + (2 * i + 1) / 14
+    const [x, z] = toothAt(s)
+    const r = Math.abs(s) < 0.3 ? [3.6, 5.6, 2.6] : [4.6, 5, 5]
+    d = Math.min(d, ell(p, [x, -41.5, z], r), ell(p, [x * 0.95, -52.5, z - 1.5], r))
   }
   return d
 }
 
-// The lower jaw: a horseshoe — a flattened ellipsoid with its inside
-// scooped out and its back left open — with a chin on the front and a
-// branch up each side to the hinge under the ear.
-const jaw = (p) => {
-  const shoe = Math.max(
-    ell(p, [0, -0.5, 0.18], [0.3, 0.15, 0.33]),
-    -ell(p, [0, -0.48, 0.08], [0.22, 0.2, 0.3]),
-  )
-  // A flat blade, not a rod: thin side to side, wide front to back.
-  const ramus = both((q) => ell(q, [0.29, -0.36, -0.06], [0.04, 0.19, 0.09]))(p)
-  return smin(smin(shoe, ramus, 0.05), ell(p, [0, -0.6, 0.46], [0.09, 0.06, 0.06]), 0.05)
+// The lower jaw. The body is a wall bent along a parabola from chin to
+// corners: distance to the curve across, distance to its band up and
+// down, rounded at the edges. It is deeper at the chin than at the back.
+const JAW_N = 16
+const JAW = Array.from({ length: JAW_N + 1 }, (_, i) => {
+  const s = -1 + (2 * i) / JAW_N
+  return [50 * s, 64 - 56 * s * s, s]
+})
+function jawBody(p) {
+  let best = Infinity
+  let at = 0
+  for (let i = 1; i < JAW.length; i++) {
+    const [ax, az, as] = JAW[i - 1]
+    const [bx, bz, bs] = JAW[i]
+    const ex = bx - ax
+    const ez = bz - az
+    const t = Math.max(0, Math.min(1, ((p[0] - ax) * ex + (p[2] - az) * ez) / (ex * ex + ez * ez)))
+    const d = Math.hypot(p[0] - ax - ex * t, p[2] - az - ez * t)
+    if (d < best) {
+      best = d
+      at = as + (bs - as) * t
+    }
+  }
+  const front = 1 - at * at
+  // The top edge, under the teeth, is nearly level; the bottom edge
+  // drops from the corners to the chin, which is what makes a jaw a V
+  // from the front rather than a box.
+  const top = -55 - 3 * front
+  const bottom = -70 - 16 * front
+  const mid = (top + bottom) / 2
+  const half = (top - bottom) / 2
+  return extrude(best - 3, Math.abs(p[1] - mid) - half, 4)
+}
+// Each ramus is a flat plate in the side plane, traced from the real
+// outline: up the back to the hinge, down into the notch, up to the
+// coronoid tip under the cheek arch, and down the front.
+// The back edge leans back as it rises: the angle of the jaw is about
+// 120 degrees, not a right angle.
+const RAMUS = [
+  [8, -71],
+  [-11, -10],
+  [-2, -4],
+  [5, -16],
+  [15, -12],
+  [17, -28],
+  [22, -56],
+]
+const ramus = both((p) =>
+  smin(
+    extrude(poly(p[2], p[1], RAMUS) + 2, Math.abs(p[0] - 50) - 1.5, 4),
+    ell(p, [50, -6, -6], [9, 5, 6]), // the condyle, in front of the ear
+    4,
+  ),
+)
+const jawMM = (p) => {
+  // Nothing of the jaw is above the condyle, at y = -1: a lower bound on
+  // the distance is enough up there, and it skips the curve search for
+  // most of the head.
+  if (p[1] > 4) return p[1] - 1
+  let d = jawBody(p)
+  d = smin(d, ell(p, [0, -79, 64], [12, 7, 6]), 6) // chin
+  return smin(d, ramus(p), 8)
 }
 
-// Negative inside the bone, positive outside, zero on the surface.
-export function skullSdf(p) {
-  // The vault sits up and back. It used to come down far enough to
-  // swallow the face from the side, and the whole thing read as a bulb.
-  let d = ell(p, [0, 0.28, -0.08], [0.5, 0.46, 0.6]) // cranium
-  // The upper face: cut off flat underneath, where the upper teeth sit,
-  // so there is a mouth rather than one lump from brow to chin.
-  const face = Math.max(ell(p, [0, -0.12, 0.3], [0.34, 0.34, 0.32]), -(p[1] + 0.38))
-  d = smin(d, face, 0.12)
-  d = smin(d, both((q) => ell(q, [0.36, -0.06, 0.3], [0.12, 0.09, 0.17]))(p), 0.06) // cheekbones
-  d = smin(d, both((q) => rod(q, [0.4, -0.06, 0.26], [0.44, -0.05, -0.06], 0.04))(p), 0.05) // arches
-  d = smin(d, ell(p, [0, 0.1, 0.5], [0.33, 0.06, 0.12]), 0.06) // brow ridge
-  d = Math.max(d, -holes(p))
-  d = Math.min(d, teeth(p))
-  d = smin(d, jaw(p), 0.03)
-  return d
+function skullMM(p) {
+  let d = cranium(p)
+  d = smin(d, maxilla(p), 14)
+  d = smin(d, brow(p), 6)
+  d = smin(d, cheek(p), 10)
+  d = smin(d, nasalBones(p), 5)
+  d = smin(d, mastoid(p), 12)
+  d = smax(d, -orbit(p), 3)
+  d = smax(d, -nose(p), 2)
+  d = smax(d, -ear(p), 2)
+  d = Math.min(d, teethMM(p))
+  return smin(d, jawMM(p), 2)
 }
+
+// The same, in the unit space the rest of this file works in.
+const mm = (p) => [p[0] * MM, p[1] * MM, p[2] * MM]
+export const skullSdf = (p) => skullMM(mm(p)) / MM
+const holes = (p) => Math.min(orbit(mm(p)), nose(mm(p)), ear(mm(p))) / MM
+const teeth = (p) => teethMM(mm(p)) / MM
+const jaw = (p) => jawMM(mm(p)) / MM
 
 const grad = (p, h = 1e-3) =>
   [0, 1, 2].map((k) => {
@@ -162,7 +274,11 @@ export function skull({ seed = 11, count = 6000 } = {}) {
   const size = new Float32Array(count)
   let n = 0
   while (n < count) {
-    const p = settle([rand() * 2 - 1, rand() * 2 - 1, rand() * 2 - 1])
+    // Most of the box is nowhere near bone. One look at the distance
+    // throws those away before paying for the walk onto the surface.
+    const q = [rand() * 2 - 1, rand() * 2 - 1, rand() * 2 - 1]
+    if (Math.abs(skullSdf(q)) > 0.04) continue
+    const p = settle(q)
     if (!p) continue
     const feature = Math.abs(holes(p)) < 0.05 || teeth(p) < 0.01 || jaw(p) < 0.01
     if (!feature && rand() > 0.55) continue
@@ -184,7 +300,9 @@ export function skull({ seed = 11, count = 6000 } = {}) {
 
 // The space the neurons and the projects live in: an ellipsoid well
 // inside the cranium, so nothing ever pokes through the bone.
-export const BRAIN = { c: [0, 0.28, -0.12], r: [0.4, 0.36, 0.48] }
+// In millimetres it is centred at (0, 30, -14) with radii 50, 46, 64:
+// inside the vault, behind the eye sockets.
+export const BRAIN = { c: [0, 0.25, -0.117], r: [0.417, 0.383, 0.533] }
 
 export function inBrain(p, shrink = 1) {
   const x = (p[0] - BRAIN.c[0]) / (BRAIN.r[0] * shrink)

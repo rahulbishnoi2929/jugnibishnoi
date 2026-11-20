@@ -43,9 +43,11 @@ test('skull: points sit on the surface', () => {
 })
 
 test('skull: has eye sockets — the socket centres are outside the bone', () => {
-  assert.ok(skullSdf([0.2, -0.05, 0.6]) > 0, 'right socket is filled in')
-  assert.ok(skullSdf([-0.2, -0.05, 0.6]) > 0, 'left socket is filled in')
-  assert.ok(skullSdf([0, 0.15, -0.05]) < 0, 'middle of the cranium is inside')
+  // Socket centres are 32mm either side of the middle, 17mm up; at 120mm
+  // to the unit.
+  assert.ok(skullSdf([0.267, 0.142, 0.6]) > 0, 'right socket is filled in')
+  assert.ok(skullSdf([-0.267, 0.142, 0.6]) > 0, 'left socket is filled in')
+  assert.ok(skullSdf([0, 0.25, -0.1]) < 0, 'middle of the cranium is inside')
 })
 
 test('skull: every point carries a unit normal', () => {
@@ -58,7 +60,21 @@ test('skull: every point carries a unit normal', () => {
 })
 
 test('skull: has a nose — the middle of the nasal opening is not bone', () => {
-  assert.ok(skullSdf([0, -0.18, 0.6]) > 0)
+  assert.ok(skullSdf([0, -0.033, 0.65]) > 0)
+})
+
+test('skull: has ears — an opening in each side, level with the bottom of the sockets', () => {
+  assert.ok(skullSdf([0.5, -0.017, -0.15]) > 0, 'right ear canal is filled in')
+  assert.ok(skullSdf([-0.5, -0.017, -0.15]) > 0, 'left ear canal is filled in')
+  assert.ok(skullSdf([0.3, -0.017, -0.15]) < 0, 'the canal goes too deep')
+})
+
+test('skull: the jaw is below the teeth and the chin is the lowest point', () => {
+  const s = skull({ count: 3000 })
+  let low = [0, 9, 0]
+  for (let i = 0; i < 3000; i++) if (s.pos[i * 3 + 1] < low[1]) low = at(s.pos, i)
+  assert.ok(Math.abs(low[0]) < 0.15, 'the lowest point is not the chin: x=' + low[0].toFixed(2))
+  assert.ok(low[2] > 0.3, 'the lowest point is not at the front: z=' + low[2].toFixed(2))
 })
 
 test('skull: same seed, same head', () => {
@@ -67,7 +83,14 @@ test('skull: same seed, same head', () => {
 
 test('the brain is inside the skull', () => {
   const [cx, cy, cz] = BRAIN.c
-  for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]) {
+  for (const [dx, dy, dz] of [
+    [1, 0, 0],
+    [-1, 0, 0],
+    [0, 1, 0],
+    [0, -1, 0],
+    [0, 0, 1],
+    [0, 0, -1],
+  ]) {
     const p = [cx + dx * BRAIN.r[0], cy + dy * BRAIN.r[1], cz + dz * BRAIN.r[2]]
     assert.ok(skullSdf(p) < 0, 'the brain pokes out at ' + p.map((v) => v.toFixed(2)))
   }
@@ -115,7 +138,7 @@ test('loops: closed, inside the brain, never touching each other', () => {
         for (let j = i + 1; j < at.length; j++)
           assert.ok(
             Math.hypot(at[i][0] - at[j][0], at[i][1] - at[j][1], at[i][2] - at[j][2]) > 0.25,
-            count + ' projects came within touching distance at t=' + t.toFixed(2)
+            count + ' projects came within touching distance at t=' + t.toFixed(2),
           )
     }
   }

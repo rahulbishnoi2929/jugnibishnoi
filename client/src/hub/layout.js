@@ -831,8 +831,8 @@ export function spinToFront(node, current) {
 // by its bounding radius rather than its height, because it turns: the
 // widest it ever gets is that sphere. On a computer it fills most of the
 // height; on a phone it is the width that runs out first.
-export const SKULL_R = 0.82
-export const MIND_SCALE = (narrow) => (narrow ? 0.9 : 1.2)
+export const SKULL_R = 0.95
+export const MIND_SCALE = (narrow) => (narrow ? 0.78 : 1.04)
 
 export function mindView(narrow) {
   const look = headFor(narrow)

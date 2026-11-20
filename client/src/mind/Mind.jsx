@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
@@ -121,13 +121,38 @@ export default function Mind({ narrow, at, scale, turn, picked, onPick }) {
   const start = useRef(turn?.current ?? 0)
   const spun = useRef(0)
 
-  const bone = useDisposable(() => {
-    const s = skull({ count: narrow ? 5000 : 10000 })
-    const g = new THREE.BufferGeometry()
-    g.setAttribute('position', new THREE.BufferAttribute(s.pos, 3))
-    g.setAttribute('aNormal', new THREE.BufferAttribute(s.normal, 3))
-    g.setAttribute('aSize', new THREE.BufferAttribute(s.size, 1))
-    return g
+  // The bone arrives from a worker — a second or more of arithmetic that
+  // would otherwise freeze the page as Build opens. Until then the
+  // neurons and the projects are already there, and it fades in round
+  // them. If the browser will not give us a worker, it is made here.
+  const [bone, setBone] = useState(null)
+  const shown = useRef(0)
+  useEffect(() => {
+    const count = narrow ? 5000 : 10000
+    let geometry = null
+    let gone = false
+    const take = (s) => {
+      if (gone) return
+      geometry = new THREE.BufferGeometry()
+      geometry.setAttribute('position', new THREE.BufferAttribute(s.pos, 3))
+      geometry.setAttribute('aNormal', new THREE.BufferAttribute(s.normal, 3))
+      geometry.setAttribute('aSize', new THREE.BufferAttribute(s.size, 1))
+      shown.current = 0
+      setBone(geometry)
+    }
+    let worker = null
+    try {
+      worker = new Worker(new URL('./skull.worker.js', import.meta.url), { type: 'module' })
+      worker.onmessage = (e) => take(e.data)
+      worker.postMessage({ count })
+    } catch {
+      take(skull({ count }))
+    }
+    return () => {
+      gone = true
+      worker?.terminate()
+      geometry?.dispose()
+    }
   }, [narrow])
   const boneMat = useDisposable(boneMaterial, [])
 
@@ -166,8 +191,9 @@ export default function Mind({ narrow, at, scale, turn, picked, onPick }) {
       height: state.size.height,
       dpr: state.viewport.dpr,
       size: scale,
-      opacity: grow,
+      opacity: shown.current,
     })
+    if (bone) shown.current = Math.min(1, shown.current + dt / (reduced ? 0.001 : 0.8))
     nerveMat.uniforms.uTime.value += dt * (reduced ? 0.3 : 1)
     nerveMat.uniforms.uOpacity.value = grow
 
@@ -183,7 +209,7 @@ export default function Mind({ narrow, at, scale, turn, picked, onPick }) {
 
   return (
     <group ref={group}>
-      <points geometry={bone} material={boneMat} />
+      {bone && <points geometry={bone} material={boneMat} />}
       <lineSegments geometry={nerves} material={nerveMat} />
 
       {featured.map((p, i) => {
