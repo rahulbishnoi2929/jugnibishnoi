@@ -162,6 +162,17 @@ on time in a one minute game.
 The clock is written for two players rather than for one of them being a
 computer, so the online game will use the same module.
 
+## Add a project to the head
+
+Build opens into a skull with your work drifting through it. The projects
+are `featured` in `client/src/content/work.js` — add one there (title,
+blurb, body, problem, stack) and it appears in the head, at
+`/c/build/<title in lowercase>`. Nothing in `also` is shown there.
+
+The skull, the neurons and the paths the projects travel are generated in
+`client/src/mind/mind.js`, tested by `mind.test.mjs`; `Mind.jsx` draws
+them. Its framing is `mindView` and `MIND_SCALE` in `hub/layout.js`.
+
 ## Add a game
 
 1. Make `client/src/game/<name>/` with the game in it. Keep the rules

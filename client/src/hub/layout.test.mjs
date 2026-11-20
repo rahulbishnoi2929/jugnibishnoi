@@ -11,6 +11,8 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import * as THREE from 'three'
 import {
+  mindView,
+  MIND_SCALE,
   HOME_VIEW,
   STAGES,
   ZOOM_MIN,
@@ -1970,6 +1972,21 @@ test('no two branches keep time with each other', () => {
     new Set(drifts.map((d) => d.reach.toFixed(4))).size >= 4,
     'every branch swings by the same amount'
   )
+})
+
+test('mindView frames the whole skull with margin, phone and desktop', () => {
+  for (const [narrow, aspect] of [
+    [false, 16 / 9],
+    [true, 0.46],
+  ]) {
+    const v = mindView(narrow)
+    const d = v.pos.distanceTo(v.look)
+    const half = Math.tan(((40 / 2) * Math.PI) / 180) * d
+    const r = MIND_SCALE(narrow)
+    assert.ok(r < half * 0.8, 'skull taller than the frame')
+    assert.ok(r < half * aspect * 0.9, 'skull wider than the frame')
+    assert.ok(r > half * Math.min(1, aspect) * 0.55, 'skull too small to be the subject')
+  }
 })
 
 console.log('\n' + passed + ' passed')

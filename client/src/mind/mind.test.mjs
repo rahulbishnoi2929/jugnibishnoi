@@ -5,6 +5,7 @@
 // exactly like a head that has not loaded yet.
 
 import assert from 'node:assert/strict'
+import { projectFor } from './projects.js'
 import { skull, skullSdf, neurons, inBrain, loops, loopAt, BRAIN } from './mind.js'
 
 let passed = 0
@@ -98,6 +99,19 @@ test('loops: closed, inside the brain, never touching each other', () => {
           )
     }
   }
+})
+
+test('projectFor: known ids from featured, null otherwise', () => {
+  assert.equal(projectFor('zamindara').title, 'Zamindara')
+  assert.equal(projectFor('rights').title, 'Rights')
+  assert.equal(projectFor('dsa in java'), null, 'only featured work belongs in the head')
+  assert.equal(projectFor('nope'), null)
+  assert.equal(projectFor(undefined), null)
+  const z = projectFor('zamindara')
+  assert.equal(z.id, 'zamindara')
+  assert.equal(z.lede, 'Uber for farm machinery.')
+  assert.equal(z.body.length, 2)
+  assert.match(z.artifacts[0].value, /PostGIS/)
 })
 
 console.log('\n' + passed + ' passed')

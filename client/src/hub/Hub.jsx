@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Shadow } from '@react-three/drei'
 import { useNavigate, useParams, Link } from 'react-router-dom'
@@ -20,6 +20,8 @@ import {
   placeBranches,
   HOME_VIEW,
   branchView,
+  mindView,
+  MIND_SCALE,
   coast,
   flung,
   turnRate,
@@ -48,13 +50,17 @@ import {
 } from './layout.js'
 import { CAPTIONS } from './cosmos.js'
 import { asset } from '../lib/asset.js'
+import { projectFor } from '../mind/projects.js'
 import '../styles/hub.css'
+
+// The inside of his head. Only fetched when somebody opens Build — it
+// generates thousands of points and has no business in the first load.
+const Mind = lazy(() => import('../mind/Mind.jsx'))
 
 const chapters = data.chapters
 const rooms = roomData.rooms
 const reduced =
-  typeof matchMedia !== 'undefined' &&
-  matchMedia('(prefers-reduced-motion: reduce)').matches
+  typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
 export default function Hub() {
   const { id, sub } = useParams()
@@ -62,7 +68,7 @@ export default function Hub() {
   // Breakpoint as state, not a one-off read, so rotating the phone
   // re-lays the rings out instead of keeping portrait spacing.
   const [narrow, setNarrow] = useState(
-    () => typeof window !== 'undefined' && window.innerWidth < 520
+    () => typeof window !== 'undefined' && window.innerWidth < 520,
   )
   // Two breakpoints, and they are not the same one. 520 is where he is
   // drawn smaller; 900 is where the reading panel stops being a column
@@ -70,7 +76,7 @@ export default function Hub() {
   // band between them is full-size figure with a sheet, which is its own
   // composition and the one the offer view got wrong when it had two.
   const [sheet, setSheet] = useState(
-    () => typeof window !== 'undefined' && window.innerWidth <= 900
+    () => typeof window !== 'undefined' && window.innerWidth <= 900,
   )
   useEffect(() => {
     const onResize = () => {
@@ -83,7 +89,7 @@ export default function Hub() {
 
   const nodes = useMemo(
     () => [...placeNodes(chapters, narrow), ...placeRooms(rooms, narrow)],
-    [narrow]
+    [narrow],
   )
 
   // He is drawn smaller on a phone, so his branches leave the top of his
@@ -98,6 +104,10 @@ export default function Hub() {
   // the playlists out, so the camera comes in to where his hands are
   // rather than looking at a fan of branches off the ring.
   const offering = active === 'music'
+  // Build is not a fan of branches but the inside of his head: the hub
+  // falls away and the skull is all there is.
+  const inMind = active === 'build'
+  const project = inMind ? projectFor(sub) : null
 
   // How far the ring of playlists has been turned, what is left of a
   // flick, and whether a finger is on it. One object rather than three
@@ -108,10 +118,8 @@ export default function Hub() {
   const activeNode = nodes.find((n) => n.id === active)
   const branches = useMemo(
     () =>
-      activeNode
-        ? placeBranches(activeNode, activeNode.branches, narrow, offering, sheet)
-        : [],
-    [activeNode, narrow, offering, sheet]
+      activeNode ? placeBranches(activeNode, activeNode.branches, narrow, offering, sheet) : [],
+    [activeNode, narrow, offering, sheet],
   )
   const openSub = branches.find((b) => b.id === sub) ?? null
 
@@ -124,10 +132,12 @@ export default function Hub() {
     () =>
       offering
         ? ringView(narrow, sheet)
-        : active
-          ? branchView(narrow)
-          : HOME_VIEW,
-    [active, offering, narrow, sheet]
+        : inMind
+          ? mindView(narrow)
+          : active
+            ? branchView(narrow)
+            : HOME_VIEW,
+    [active, offering, inMind, narrow, sheet],
   )
 
   // Both are useCallback so the Escape handler can list them as the
@@ -139,7 +149,7 @@ export default function Hub() {
       const node = nodes.find((n) => n.id === next)
       navigate(node?.kind === 'link' ? node.to : '/c/' + next)
     },
-    [nodes, navigate]
+    [nodes, navigate],
   )
   const music = useMusic()
   // Read every frame by the figure, so it must not be state: he grooves
@@ -155,7 +165,7 @@ export default function Hub() {
       if (next && isPlaylist(next)) music?.open(next)
       navigate(next ? '/c/' + active + '/' + next : '/c/' + active)
     },
-    [active, navigate, music]
+    [active, navigate, music],
   )
 
   // Drag to turn him — both ways. Nothing happens on hover: the
@@ -194,6 +204,20 @@ export default function Hub() {
   // number: past the solar system his planet is a speck, and unmounting it
   // takes its DOM labels with it. Only ever flips, so one render.
   const [away, setAway] = useState(false)
+
+  // Going into his head, the hub shrinks away first and is then taken out
+  // of the scene altogether — its labels are DOM and would otherwise sit
+  // over the skull. Arriving straight at /c/build there is nothing to
+  // watch shrink, so it starts gone.
+  const [vanished, setVanished] = useState(inMind)
+  useEffect(() => {
+    if (!inMind) return setVanished(false)
+    const t = setTimeout(() => setVanished(true), reduced ? 0 : 600)
+    return () => clearTimeout(t)
+  }, [inMind])
+  // Sideways drags while in there. The rig's own drag value is pinned to
+  // the chapter's framing every frame, so the skull keeps its own.
+  const mindTurn = useRef(0)
 
   // The photo you have opened, and the list the arrows walk. Null most of
   // the time; this is the only thing in the hub that sits above everything
@@ -274,7 +298,7 @@ export default function Hub() {
         want.current = THREE.MathUtils.clamp(
           pinch.current.zoom * (pinch.current.gap / gap),
           ZOOM_MIN,
-          active ? ZOOM_HUB_MAX : ZOOM_MAX
+          active ? ZOOM_HUB_MAX : ZOOM_MAX,
         )
       }
       return
@@ -302,14 +326,15 @@ export default function Hub() {
       moved.current = e.timeStamp
       fling.current.x = THREE.MathUtils.lerp(
         fling.current.x,
-        (-turn * RING_PER_DRAG / gap0) * 1000,
-        Math.min(1, gap0 / 90)
+        ((-turn * RING_PER_DRAG) / gap0) * 1000,
+        Math.min(1, gap0 / 90),
       )
       from.current = { x: e.clientX, y: e.clientY }
       return
     }
 
     drag.current.x += turn
+    if (inMind) mindTurn.current += turn
     // Tilt is clamped — past about 25° you are looking at the top of his
     // head and the branches collapse into a line.
     drag.current.y = THREE.MathUtils.clamp(drag.current.y + tip, -0.45, 0.45)
@@ -366,7 +391,6 @@ export default function Hub() {
   // branches turns around him.
   const spin = useRef(0)
 
-
   const canvasBox = useRef(null)
   useEffect(() => {
     const el = canvasBox.current
@@ -378,7 +402,7 @@ export default function Hub() {
         ZOOM_MIN,
         // Leaving the planet only makes sense from the hub. Inside a
         // chapter the camera is somewhere else entirely.
-        active ? ZOOM_HUB_MAX : ZOOM_MAX
+        active ? ZOOM_HUB_MAX : ZOOM_MAX,
       )
     }
     el.addEventListener('wheel', onWheel, { passive: false })
@@ -414,11 +438,11 @@ export default function Hub() {
       if (plate) return setPlate(null)
       if (want.current > ZOOM_HUB_MAX) return void (want.current = 1)
       if (!active) return
-      openSub ? goSub(null) : go(null)
+      openSub || project ? goSub(null) : go(null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [active, openSub, plate, go, goSub])
+  }, [active, openSub, project, plate, go, goSub])
 
   return (
     <div className={'hub' + (active ? ' is-travelled' : '')}>
@@ -452,7 +476,6 @@ export default function Hub() {
           // transparent so the scene behind shows through once travelled
           gl={{ antialias: true, alpha: true }}
         >
-
           <ambientLight intensity={0.35} />
           <directionalLight position={[-4, 5, -6]} intensity={2.6} color="#d4a72c" />
           <directionalLight position={[5, 3, 4]} intensity={0.5} color="#5b8dbe" />
@@ -474,7 +497,14 @@ export default function Hub() {
           />
 
           <Suspense fallback={null}>
-            <Rig frozen={!!active} drag={drag} aim={aim} spin={spin} fling={fling} coasting={coasting}>
+            <Rig
+              frozen={!!active}
+              drag={drag}
+              aim={aim}
+              spin={spin}
+              fling={fling}
+              coasting={coasting}
+            >
               {/* Keep pulling back and his planet is not the subject any
                   more. Inside the rig, so dragging turns the sky too. */}
               {!active && <Cosmos zoom={zoom} />}
@@ -487,8 +517,8 @@ export default function Hub() {
                   drawing, so it unmounts rather than fading: that takes the
                   branch labels with it, which are DOM and would otherwise
                   hang around over the sky. */}
-              {!away && (
-                <Nest zoom={zoom}>
+              {!away && !vanished && (
+                <Nest zoom={zoom} leaving={inMind}>
                   {!active && <Globe radius={GLOBE_R(narrow)} />}
 
                   {/* He and his branches shrink as you zoom into the
@@ -516,13 +546,7 @@ export default function Hub() {
 
                     {/* Everything growing out of his head rides with it. */}
                     <Breathe bob={bob}>
-                      <Nodes
-                        nodes={nodes}
-                        active={active}
-                        onPick={go}
-                        zoom={zoom}
-                        head={head}
-                      />
+                      <Nodes nodes={nodes} active={active} onPick={go} zoom={zoom} head={head} />
 
                       {branches.length > 0 && (
                         <SubNodes
@@ -544,8 +568,24 @@ export default function Hub() {
                 </Nest>
               )}
             </Rig>
-          </Suspense>
 
+            {/* Outside the rig: it turns on its own, and the rig is busy
+                holding the chapter's framing. */}
+            {inMind && (
+              // Its own boundary: while the skull's code is on its way the
+              // hub keeps drawing, rather than the whole scene blinking out.
+              <Suspense fallback={null}>
+                <Mind
+                  narrow={narrow}
+                  at={headFor(narrow)}
+                  scale={MIND_SCALE(narrow)}
+                  turn={mindTurn}
+                  picked={sub ?? null}
+                  onPick={goSub}
+                />
+              </Suspense>
+            )}
+          </Suspense>
         </Canvas>
       </div>
 
@@ -556,12 +596,7 @@ export default function Hub() {
         <span className="cosmos-legend" ref={legend} />
       </div>
 
-      <button
-        type="button"
-        className="cosmos-back"
-        ref={back}
-        onClick={() => (want.current = 1)}
-      >
+      <button type="button" className="cosmos-back" ref={back} onClick={() => (want.current = 1)}>
         ↓ Back to Earth
       </button>
 
@@ -572,9 +607,19 @@ export default function Hub() {
       </header>
 
       <Panel
-        chapter={openSub ? { ...openSub, accent: activeNode.accent } : chapter}
-        onBack={() => (openSub ? goSub(null) : go(null))}
-        backLabel={openSub ? '← ' + chapter.title : '← All chapters'}
+        // In his head the skull is the chapter, so there is no panel until
+        // a project is opened.
+        chapter={
+          project
+            ? { ...project, accent: activeNode.accent }
+            : inMind
+              ? null
+              : openSub
+                ? { ...openSub, accent: activeNode.accent }
+                : chapter
+        }
+        onBack={() => (openSub || project ? goSub(null) : go(null))}
+        backLabel={openSub || project ? '← ' + chapter.title : '← All chapters'}
         gallery={openSub ? { chapter: active, branch: openSub.id } : null}
         onOpenPhoto={(photo, list) => setPlate({ photo, list })}
       />
@@ -657,9 +702,14 @@ function Ease({ zoom, want }) {
 //
 // Separate from Shrink because the globe is deliberately outside that one —
 // it is what you zoom towards — but it does have to leave with him.
-function Nest({ zoom, children }) {
+function Nest({ zoom, leaving, children }) {
   const g = useRef()
-  useFrame(() => {
+  // 1 while here, easing to 0 as you go into his head.
+  const here = useRef(1)
+  useFrame((_, dt) => {
+    const to = leaving ? 0 : 1
+    here.current += THREE.MathUtils.clamp(to - here.current, -dt / 0.6, dt / 0.6)
+    const k = here.current * here.current * (3 - 2 * here.current)
     // Straight from the eased zoom, with no second smoothing of its own.
     // It used to lerp towards its own target at its own rate while Cosmos
     // read the zoom directly, so his planet lagged behind the solar system
@@ -674,7 +724,7 @@ function Nest({ zoom, children }) {
     // labels that already overlapped each other by 24 pixels went to 65.
     // Filling the top is the title block's job, and it does that from the
     // top of the page now.
-    g.current.scale.setScalar(nestFor(zoom.current))
+    g.current.scale.setScalar(nestFor(zoom.current) * Math.max(k, 1e-4))
   })
   return <group ref={g}>{children}</group>
 }

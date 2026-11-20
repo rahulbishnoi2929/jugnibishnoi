@@ -130,27 +130,12 @@
       "title": "Build",
       "years": "2022 —",
       "accent": "#3DDC97",
-      "place": "IIT Ropar → Fazilka",
-      "lede": "One month at IIT Ropar, teaching a machine to find bees.",
-      "body": [
-        "First year of college, I spent a month at iHub AWaDH — IIT Ropar's agriculture and water technology hub — training a model to detect honey bees.",
-        "I do not think I noticed at the time that I had travelled four hundred kilometres to do a more technical version of what my family has done for five hundred years. Look after the things that keep the field alive.",
-        "Everything since has pointed the same direction. Rights is a legal-emergency app — press SOS, reach a verified lawyer, store the evidence encrypted. Zamindara is Uber for farm machinery: a farmer walks his boundary with his phone, the app measures it in killa and kanal and marla, and the machine owners nearby get the request.",
-        "One of those is for people in the worst hour of their life. The other is for my neighbours."
-      ],
-      "artifacts": [
-        {
-          "type": "stat",
-          "value": "1 month",
-          "label": "IIT Ropar, first year"
-        }
-      ],
+      "lede": "The inside of my head.",
+      "body": [],
       "todo": [
-        "What was the bee model FOR — hive counts, disease, pollination monitoring?",
         "The first thing you ever made that worked, and the year",
         "Hardest bug or problem you have solved"
-      ],
-      "scene": "/scenes/build.svg"
+      ]
     },
     {
       "id": "signal",
