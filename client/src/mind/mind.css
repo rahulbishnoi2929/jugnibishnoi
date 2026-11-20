@@ -1,0 +1,39 @@
+/* A project inside the head. The wrapper drei puts round this takes no
+   pointer, so the button opts back in — the same arrangement as the
+   chapter labels in hub.css. */
+.mind-project {
+  pointer-events: auto;
+  display: grid;
+  gap: 2px;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid #ffb547;
+  border-radius: 999px;
+  background: rgb(14 12 8 / 0.62);
+  backdrop-filter: blur(4px);
+  color: #ffd79a;
+  font-family: var(--mono);
+  font-size: var(--step--1);
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 0 18px rgb(255 181 71 / 0.25);
+  transition: transform 0.15s, box-shadow 0.15s, background-color 0.15s;
+}
+.mind-project small {
+  font-size: var(--step--2);
+  font-weight: 400;
+  color: rgb(255 215 154 / 0.7);
+}
+.mind-project:hover,
+.mind-project:focus-visible,
+.mind-project.is-open {
+  transform: scale(1.06);
+  background: rgb(40 28 10 / 0.8);
+  box-shadow: 0 0 28px rgb(255 181 71 / 0.5);
+  outline: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mind-project { transition: none; }
+}
